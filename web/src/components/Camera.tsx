@@ -13,7 +13,6 @@ export default function Camera({ email, onBack }: { email: string; onBack?: () =
 
   useEffect(() => {
     ws.current = io(SIGNALING_URL);
-    console.log(SIGNALING_URL)
 
     ws.current.on('connect', () => {
       ws.current.emit('email', { email, type: 'camera' });

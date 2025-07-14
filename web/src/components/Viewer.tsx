@@ -21,7 +21,6 @@ export default function Viewer({ email, onBack }: { email: string; onBack?: () =
     });
 
     ws.current.on('cameras-list', (camerasId: string[]) => {
-      console.log("Entre aca")
       setCameras(camerasId || []);
     });
 
