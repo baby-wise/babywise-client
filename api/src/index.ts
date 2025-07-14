@@ -27,7 +27,7 @@ const io = new Server(server, {
 
 interface ClientInfo {
   socket: any;
-  role: 'emisor' | 'viewer';
+  role: 'camera' | 'viewer';
   email: string;
 }
 
@@ -46,11 +46,22 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('cameras-list', (payload) => {
+  socket.on('get-cameras-list', (payload) => {
     const camerasId = clients
       .filter((c) => c.role === 'camera' && c.email === payload.email)
       .map((c) => c.socket.id);
     socket.emit('cameras-list', camerasId);
+  });
+
+  socket.on('add-cameras-list', (payload) => {
+    const camerasId = clients
+      .filter((c) => c.role === 'camera' && c.email === payload.email)
+      .map((c) => c.socket.id);
+    const viewerSockets = clients
+      .filter(c => c.role === 'viewer' && c.email === payload.email)
+      .map((c) => c.socket.id);
+    
+    viewerSockets.forEach(sId =>socket.to(sId).emit('cameras-list', camerasId))
   });
 
   socket.on('offer', (payload) => {

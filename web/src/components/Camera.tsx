@@ -2,11 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Button, Text, StyleSheet } from 'react-native';
 import { RTCPeerConnection, RTCView, RTCSessionDescription, RTCIceCandidate, mediaDevices } from 'react-native-webrtc';
 import io from 'socket.io-client';
-import InCallManager from 'react-native-incall-manager';
+import SIGNALING_URL from '../socket.ts'
 
-const SIGNALING_URL = 'ws://192.168.0.16:3001'; // Reemplaza con tu URL de WebSocket
-
-export default function Emisor({ email, onBack }: { email: string; onBack?: () => void }) {
+export default function Camera({ email, onBack }: { email: string; onBack?: () => void }) {
   const [localStream, setLocalStream] = useState<any>(null);
   const [status, setStatus] = useState('');
   const ws = useRef<any>(null);
@@ -15,9 +13,11 @@ export default function Emisor({ email, onBack }: { email: string; onBack?: () =
 
   useEffect(() => {
     ws.current = io(SIGNALING_URL);
+    console.log(SIGNALING_URL)
 
     ws.current.on('connect', () => {
       ws.current.emit('email', { email, type: 'camera' });
+      ws.current.emit('add-cameras-list', { email });
     });
 
     ws.current.on('offer', async (payload: any) => {

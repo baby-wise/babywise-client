@@ -2,9 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Button, Text, StyleSheet } from 'react-native';
 import { RTCPeerConnection, RTCView, RTCSessionDescription, RTCIceCandidate, MediaStream } from 'react-native-webrtc';
 import io from 'socket.io-client';
-import InCallManager from 'react-native-incall-manager';
-
-const SIGNALING_URL = 'ws://192.168.0.16:3001';
+import SIGNALING_URL from '../socket.ts'
 
 export default function Viewer({ email, onBack }: { email: string; onBack?: () => void }) {
   const [remoteStream, setRemoteStream] = useState<any>(null);
@@ -19,10 +17,11 @@ export default function Viewer({ email, onBack }: { email: string; onBack?: () =
 
     ws.current.on('connect', () => {
       ws.current.emit('email', { email, type: 'viewer' });
-      ws.current.emit('cameras-list', { email });
+      ws.current.emit('get-cameras-list', { email });
     });
 
     ws.current.on('cameras-list', (camerasId: string[]) => {
+      console.log("Entre aca")
       setCameras(camerasId || []);
     });
 

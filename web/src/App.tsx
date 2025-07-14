@@ -7,8 +7,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Button, Text, StyleSheet, TextInput, ScrollView } from 'react-native';
-import Emisor from './Emisor';
-import Viewer from './Viewer';
+import Camera from './components/Camera';
+import Viewer from './components/Viewer';
 
 export default function App() {
   const [role, setRole] = useState<'emisor' | 'viewer' | null>(null);
@@ -31,7 +31,7 @@ export default function App() {
           </View>
         </View>
       )}
-      {role === 'emisor' && <Emisor email={email} onBack={() => setRole(null)} />}
+      {role === 'emisor' && <Camera email={email} onBack={() => setRole(null)} />}
       {role === 'viewer' && <Viewer email={email} onBack={() => setRole(null)} />}
     </View>
   );
