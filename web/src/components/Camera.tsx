@@ -86,10 +86,13 @@ export default function Camera({ email, onBack }: { email: string; onBack?: () =
     });
 
     ws.current.on('ice-candidate', async (payload: any) => {
-      if (pc.current) {
-        await pc.current.addIceCandidate(new RTCIceCandidate(payload.candidate));
-      }
-    });
+    console.log('📥 Camera recibió ICE candidate:', payload.candidate);
+    try {
+      await pc.current.addIceCandidate(new RTCIceCandidate(payload.candidate));
+    } catch (e) {
+      console.error('❌ Error ICE candidate (camera):', e);
+    }
+  });
 
     ws.current.on('disconnected-camera', (payload: any) => {
       setStatus('Viewer desconectado. Esperando nueva conexión...');
@@ -100,6 +103,7 @@ export default function Camera({ email, onBack }: { email: string; onBack?: () =
       setStatus('Solicitando cámara y micrófono...');
       try {
         const stream = await mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
+        //stream.getTracks().forEach(track => pc.current.addTrack(track, stream)); esto me lo puso el chat
         if (isMounted) {
           setLocalStream(stream);
           localStreamRef.current = stream;

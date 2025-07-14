@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Button, Text, StyleSheet } from 'react-native';
-import { RTCPeerConnection, RTCView, RTCSessionDescription, RTCIceCandidate, MediaStream } from 'react-native-webrtc';
+import { RTCPeerConnection, RTCView, RTCSessionDescription, RTCIceCandidate, MediaStream, mediaDevices } from 'react-native-webrtc';
 import io from 'socket.io-client';
 import SIGNALING_URL from '../socket.ts'
 
@@ -34,9 +34,11 @@ export default function Viewer({ email, onBack }: { email: string; onBack?: () =
     });
 
     ws.current.on('ice-candidate', async (payload: any) => {
-      console.log('📥 Recibiendo ICE candidate:', payload.candidate);
-      if (pc.current) {
+      console.log('📥 Viewer recibió ICE candidate:', payload.candidate);
+      try {
         await pc.current.addIceCandidate(new RTCIceCandidate(payload.candidate));
+      } catch (e) {
+        console.error('❌ Error ICE candidate (viewer):', e);
       }
     });
 
@@ -72,6 +74,12 @@ export default function Viewer({ email, onBack }: { email: string; onBack?: () =
     
     pc.current = new RTCPeerConnection(pc_config);
 
+    const stream = await mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
+    stream.getTracks().forEach((track: any) => {
+          console.log('Track enviado')
+          pc.current.addTrack(track, stream);
+    });
+
     console.log('🔍 SignalingState inicial:', pc.current.signalingState);
 
     pc.current.onicecandidate = (event: any) => {
@@ -99,6 +107,7 @@ export default function Viewer({ email, onBack }: { email: string; onBack?: () =
       setRemoteStream(remoteStreamFalopa);
       }
     )
+    
 
     const offer = await pc.current.createOffer();
     await pc.current.setLocalDescription(offer);
