@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
+import { Server } from 'socket.io';
 
 // Configuración de variables de entorno
 dotenv.config();
@@ -18,88 +18,65 @@ app.get('/', (req, res) => {
 });
 
 const server = createServer(app);
-
-
-const wss = new WebSocketServer({ server });
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
 
 interface ClientInfo {
-  ws: any;
-  role: 'emisor' | 'viewer' | null;
+  socket: any;
+  role: 'emisor' | 'viewer';
+  email: string;
 }
 
 const clients: ClientInfo[] = [];
 
-wss.on('connection', (ws) => {
-  // Por defecto, el cliente no tiene rol
-  const clientInfo: ClientInfo = { ws, role: null };
-  clients.push(clientInfo);
+io.on('connection', (socket) => {
+  let clientInfo: ClientInfo | null = null;
 
-  ws.on('message', (message) => {
-    let data;
-    try {
-      // Asegura que el mensaje sea string (por si viene como Buffer)
-      const msgStr = typeof message === 'string' ? message : message.toString();
-      data = JSON.parse(msgStr);
-    } catch {
-      data = message;
-    }
-    console.log('Mensaje recibido:', data);
-
-    // Identificación de rol
-    if (data && data.type === 'identify' && (data.role === 'emisor' || data.role === 'viewer')) {
-      clientInfo.role = data.role;
-      return;
-    }
-
-    // Si el viewer pide la offer
-    if (data && data.type === 'request-offer') {
-      const emisor = clients.find((c) => c.role === 'emisor' && c.ws.readyState === ws.OPEN);
-      if (emisor) {
-        console.log('Enviando request-offer al emisor');
-        emisor.ws.send(JSON.stringify({ type: 'request-offer' }));
-      } else {
-        console.log('No se encontró emisor conectado');
-      }
-      return;
-    }
-
-    // Si el emisor envía la offer, solo la reenvía al viewer
-    if (data && data.type === 'offer') {
-      const viewer = clients.find((c) => c.role === 'viewer' && c.ws.readyState === ws.OPEN);
-      if (viewer) {
-        viewer.ws.send(JSON.stringify({ type: 'offer', offer: data.offer }));
-      }
-      return;
-    }
-
-    // Si el viewer envía la answer, solo la reenvía al emisor
-    if (data && data.type === 'answer') {
-      const emisor = clients.find((c) => c.role === 'emisor' && c.ws.readyState === ws.OPEN);
-      if (emisor) {
-        emisor.ws.send(JSON.stringify({ type: 'answer', answer: data.answer }));
-      }
-      return;
-    }
-
-    // ICE candidates: reenviar al otro
-    if (data && data.type === 'candidate') {
-      const target = clientInfo.role === 'emisor'
-        ? clients.find((c) => c.role === 'viewer' && c.ws.readyState === ws.OPEN)
-        : clients.find((c) => c.role === 'emisor' && c.ws.readyState === ws.OPEN);
-      if (target) {
-        target.ws.send(JSON.stringify({ type: 'candidate', candidate: data.candidate }));
-      }
-      return;
+  socket.on('email', (payload) => {
+    socket.join(payload.email);
+    clientInfo = { socket, role: payload.type, email: payload.email };
+    clients.push(clientInfo);
+    if (payload.type === 'camera') {
+      const camera = { cameraId: socket.id };
+      socket.broadcast.to(payload.email).emit('new-camera', camera);
     }
   });
 
-  ws.on('close', () => {
-    // Eliminar cliente desconectado
-    const idx = clients.indexOf(clientInfo);
-    if (idx !== -1) clients.splice(idx, 1);
+  socket.on('cameras-list', (payload) => {
+    const camerasId = clients
+      .filter((c) => c.role === 'camera' && c.email === payload.email)
+      .map((c) => c.socket.id);
+    socket.emit('cameras-list', camerasId);
+  });
+
+  socket.on('offer', (payload) => {
+    socket.to(payload.targetId).emit('offer', payload);
+  });
+
+  socket.on('answer', (payload) => {
+    socket.to(payload.targetId).emit('answer', payload);
+  });
+
+  socket.on('ice-candidate', (payload) => {
+    socket.to(payload.targetId).emit('ice-candidate', payload);
+  });
+
+  socket.on('disconnecting', () => {
+    if (clientInfo && clientInfo.role === 'camera') {
+      const email = clientInfo.email;
+      socket.broadcast.to(email).emit('disconnected-camera', { cameraId: socket.id });
+    }
+    if (clientInfo) {
+      const idx = clients.indexOf(clientInfo);
+      if (idx !== -1) clients.splice(idx, 1);
+    }
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`Servidor escuchando en puerto ${PORT} (HTTP + WebSocket)`);
+  console.log(`Servidor escuchando en puerto ${PORT} (HTTP + Socket.io)`);
 });

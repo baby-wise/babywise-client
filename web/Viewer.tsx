@@ -1,77 +1,135 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Button, Text, StyleSheet } from 'react-native';
-import { mediaDevices, RTCPeerConnection, RTCView } from 'react-native-webrtc';
+import { RTCPeerConnection, RTCView, RTCSessionDescription, RTCIceCandidate, MediaStream } from 'react-native-webrtc';
+import io from 'socket.io-client';
+import InCallManager from 'react-native-incall-manager';
 
 const SIGNALING_URL = 'ws://192.168.0.16:3001';
 
-export default function Viewer({ onBack }: { onBack?: () => void }) {
+export default function Viewer({ email, onBack }: { email: string; onBack?: () => void }) {
   const [remoteStream, setRemoteStream] = useState<any>(null);
   const [status, setStatus] = useState('');
-  const ws = useRef<WebSocket | null>(null);
+  const [cameras, setCameras] = useState<string[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
+  const ws = useRef<any>(null);
   const pc = useRef<any>(null);
 
   useEffect(() => {
-    ws.current = new WebSocket(SIGNALING_URL);
+    ws.current = io(SIGNALING_URL);
 
-    ws.current.onopen = () => {
-      // Identificarse como viewer
-      ws.current?.send(JSON.stringify({ type: 'identify', role: 'viewer' }));
-    };
+    ws.current.on('connect', () => {
+      ws.current.emit('email', { email, type: 'viewer' });
+      ws.current.emit('cameras-list', { email });
+    });
 
-    ws.current.onmessage = async (e) => {
-      const data = JSON.parse(e.data);
-      if (data.type === 'offer') {
-        const pc_config = {
-          iceServers: [
-            {urls: 'stun:stun.l.google.com:19302'},
-            {urls: 'stun:124.64.206.224:8800'},
-            {
-              urls: 'turn:numb.viagenie.ca',
-              credential: 'muazkh',
-              username: 'webrtc@live.com',
-            },
-            {
-              urls: 'turn:relay.backups.cz',
-              credential: 'webrtc',
-              username: 'webrtc',
-            },
-          ],
-        };
-        pc.current = new RTCPeerConnection(pc_config);
-        pc.current.onicecandidate = (event: any) => {
-          if (event.candidate) {
-            ws.current?.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
-          }
-        };
-        pc.current.ontrack = (event: any) => {
-          setRemoteStream(event.streams[0]);
-        };
-        await pc.current.setRemoteDescription(data.offer);
-        const answer = await pc.current.createAnswer();
-        await pc.current.setLocalDescription(answer);
-        ws.current && ws.current.send(JSON.stringify({ type: 'answer', answer }));
-        setStatus('Transmisión iniciada. Recibiendo video...');
+    ws.current.on('cameras-list', (camerasId: string[]) => {
+      setCameras(camerasId || []);
+    });
+
+    ws.current.on('answer', async (payload: any) => {
+      // En el viejo, la answer se recibe como {sdp, email}
+      if (pc.current) {
+        await pc.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+
+        setStatus('Viewer conectado. Transmisión activa.');
       }
-      if (data.type === 'candidate' && pc.current) {
-        await pc.current.addIceCandidate(data.candidate);
+    });
+
+    ws.current.on('ice-candidate', async (payload: any) => {
+      console.log('📥 Recibiendo ICE candidate:', payload.candidate);
+      if (pc.current) {
+        await pc.current.addIceCandidate(new RTCIceCandidate(payload.candidate));
       }
-    };
+    });
 
     return () => {
-      ws.current && ws.current.close();
+      ws.current && ws.current.disconnect();
       pc.current && pc.current.close();
     };
+    
   }, []);
 
-  const iniciarTransmision = () => {
-    setStatus('Solicitando transmisión al emisor...');
-    ws.current?.send(JSON.stringify({ type: 'request-offer' }));
+  const iniciarTransmision = async () => {
+    if (!selectedCamera) {
+      setStatus('Selecciona una cámara para iniciar la transmisión');
+      return;
+    }
+    setStatus('Creando conexión...');
+    const pc_config = {
+      iceServers: [
+        {urls: 'stun:stun.l.google.com:19302'},
+        {urls: 'stun:124.64.206.224:8800'},
+        {
+          urls: 'turn:numb.viagenie.ca',
+          credential: 'muazkh',
+          username: 'webrtc@live.com',
+        },
+        {
+          urls: 'turn:relay.backups.cz',
+          credential: 'webrtc',
+          username: 'webrtc',
+        },
+      ],
+    };
+    
+    pc.current = new RTCPeerConnection(pc_config);
+
+    console.log('🔍 SignalingState inicial:', pc.current.signalingState);
+
+    pc.current.onicecandidate = (event: any) => {
+      console.log('📤 Enviando ICE candidate:', event.candidate);
+      if (event.candidate) {
+        ws.current.emit('ice-candidate', {
+          candidate: event.candidate,
+          targetId: selectedCamera,
+        });
+      }
+    };
+
+    pc.current.onconnectionstatechange = () => {
+      console.log('🔄 Connection state:', pc.current.connectionState);
+    };
+
+    pc.current.onsignalingstatechange = () => {
+      console.log('🔄 Signaling state:', pc.current.signalingState);
+    };
+
+    pc.current.addEventListener('track', (event: any) => {
+      console.log('Track recibido:', event);  
+      let remoteStreamFalopa = remoteStream || new MediaStream();
+      remoteStreamFalopa.addTrack(event.track, remoteStreamFalopa);
+      setRemoteStream(remoteStreamFalopa);
+      }
+    )
+
+    const offer = await pc.current.createOffer();
+    await pc.current.setLocalDescription(offer);
+    console.log('📨 Offer creada:', offer);
+    ws.current.emit('offer', {
+      sdp: pc.current.localDescription,
+      targetId: selectedCamera,
+      callerId: ws.current.id,
+    });
+    setStatus('Offer enviada. Esperando respuesta del emisor...');
   };
 
   return (
     <View style={styles.container}>
       <Button title="Volver" onPress={onBack} />
       <Text style={styles.title}>Viewer (Visualizador)</Text>
+      <Text style={{ marginBottom: 10 }}>Cámaras disponibles:</Text>
+      {cameras.length === 0 ? (
+        <Text>No hay cámaras conectadas en este grupo.</Text>
+      ) : (
+        cameras.map((cam) => (
+          <Button
+            key={cam}
+            title={cam}
+            color={selectedCamera === cam ? 'green' : undefined}
+            onPress={() => setSelectedCamera(cam)}
+          />
+        ))
+      )}
       <Button title="Iniciar transmisión" onPress={iniciarTransmision} />
       {remoteStream ? (
         <RTCView streamURL={remoteStream.toURL()} style={styles.video} />
@@ -79,6 +137,12 @@ export default function Viewer({ onBack }: { onBack?: () => void }) {
         <Text>Esperando transmisión...</Text>
       )}
       <Text style={styles.status}>{status}</Text>
+      {/* Debug info */}
+      <Text style={{color:'red',fontSize:12}}>
+        Stream: {remoteStream ? 'OK' : 'NO'} | 
+        {remoteStream && remoteStream.getTracks && `Tracks: ${remoteStream.getTracks().length}`}
+        {remoteStream && remoteStream.getTracks && remoteStream.getTracks().map((t:any,i:number)=>` [${i}]:${t.kind}`)}
+      </Text>
     </View>
   );
 }
