@@ -1,16 +1,34 @@
 import express from 'express';
-import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
+import cors from 'cors';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+
 
 const app = express();
-const server = http.createServer(app);
-const io = new SocketIOServer(server, {
-    cors: {
-        origin: '*', // En producción, deberías restringir esto
-    },
-});
+app.use(cors());
+app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
+
+app.get('/', (req, res) => {
+  res.send('API Babywise backend funcionando');
+});
+
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
+
+interface ClientInfo {
+  socket: any;
+  role: 'camera' | 'viewer';
+  group: string;
+}
+
+const clients: ClientInfo[] = [];
 
 io.on('connection', (socket) => {
     console.log(`Cliente conectado: ${socket.id}`);
