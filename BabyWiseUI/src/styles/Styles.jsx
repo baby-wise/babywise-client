@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
   },
-  stopbuttonText: {
+  stopButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

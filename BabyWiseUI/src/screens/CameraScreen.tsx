@@ -78,7 +78,7 @@ const CameraScreen = () => {
 
     stream.getTracks().forEach((track: any) => pc.addTrack(track, stream));
 
-    pc.onicecandidate = (event: any) => {
+    (pc as any).onicecandidate = (event: any) => {
       if (event.candidate) {
         socket.current?.emit('ice-candidate', {
           candidate: event.candidate,
@@ -87,7 +87,7 @@ const CameraScreen = () => {
       }
     };
 
-    const offer = await pc.createOffer();
+    const offer = await (pc as any).createOffer();
     await pc.setLocalDescription(offer);
     socket.current?.emit('offer', { sdp: offer, targetPeerId: peerId });
   };

@@ -11,7 +11,7 @@ const VIEWER_ROOM_ID = 'baby-room-1';
 const ViewerScreen = () => {
   const [remoteStream, setRemoteStream] = useState<any>(null);
   const [status, setStatus] = useState('Inicializando...');
-  const peerConnection = useRef<RTCPeerConnection | null>(null);
+  const peerConnection = useRef<any>(null);
   const socket = useRef<Socket | null>(null);
 
   const configurationViewer = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -37,7 +37,7 @@ const ViewerScreen = () => {
             }
         };
 
-        peerConnection.current.onicecandidate = event => {
+        peerConnection.current.onicecandidate = (event: any) => {
             if (event.candidate) {
                 socket.current?.emit('ice-candidate', {
                     candidate: event.candidate,
@@ -48,7 +48,7 @@ const ViewerScreen = () => {
 
         const answer = await peerConnection.current.createAnswer();
         await peerConnection.current.setLocalDescription(answer);
-        socket.current.emit('answer', { sdp: answer, targetPeerId: sourcePeerId });
+        socket.current?.emit('answer', { sdp: answer, targetPeerId: sourcePeerId });
     });
 
     socket.current.on('ice-candidate', ({ candidate }) => {
