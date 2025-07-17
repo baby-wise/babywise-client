@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, StyleSheet, Text, View, Platform, PermissionsAndroid } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, View, Platform, PermissionsAndroid, TouchableOpacity } from 'react-native';
 import { RTCPeerConnection, RTCView, mediaDevices, RTCIceCandidate, RTCSessionDescription } from 'react-native-webrtc';
 import { io, Socket } from 'socket.io-client';
+import styles from '../styles/Styles';
 
 // --- CONFIGURACIÓN ---
-const SIGNALING_SERVER_URL = 'http://192.168.0.16:3001'; // REEMPLAZAR CON TU IP
+const SIGNALING_SERVER_URL = 'http://192.168.0.107:3001'; // REEMPLAZAR CON TU IP
 const ROOM_ID = 'baby-room-1';
 
 const CameraScreen = () => {
@@ -115,12 +116,17 @@ const CameraScreen = () => {
     <SafeAreaView style={cameraStyles.container}>
       <Text style={cameraStyles.statusText}>{status}</Text>
       {localStream && (
-        <RTCView
-          streamURL={localStream.toURL()}
-          style={cameraStyles.video}
-          objectFit={'cover'}
-          mirror={true}
-        />
+        <>
+          <RTCView
+            streamURL={localStream.toURL()}
+            style={cameraStyles.video}
+            objectFit={'cover'}
+            mirror={true}
+          />
+          <TouchableOpacity style={styles.stopButton} onPress={stopTransmitting}>
+            <Text style={styles.stopButtonText}>Dejar de transmitir</Text>
+          </TouchableOpacity>
+        </>
       )}
     </SafeAreaView>
   );
@@ -131,5 +137,8 @@ const cameraStyles = StyleSheet.create({
   statusText: { position: 'absolute', top: 40, color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, zIndex: 1 },
   video: { width: '100%', height: '100%' },
 });
+
+const stopTransmitting = () => {
+}
 
 export default CameraScreen;

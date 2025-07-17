@@ -34,11 +34,11 @@ io.on('connection', (socket) => {
     console.log(`Cliente conectado: ${socket.id}`);
 
     // Evento para unirse a una sala (ej. la sala del bebé)
-    socket.on('join-room', (roomName: string) => {
-        socket.join(roomName);
-        console.log(`Cliente ${socket.id} se unió a la sala ${roomName}`);
+    socket.on('join-room', (group: string) => {
+        socket.join(group);
+        console.log(`Cliente ${socket.id} se unió al grupo: ${group}`);
         // Notificar a los otros en la sala que un nuevo par se ha unido
-        socket.to(roomName).emit('peer-joined', { peerId: socket.id });
+        socket.to(group).emit('peer-joined', { peerId: socket.id });
     });
 
     // Reenviar la oferta de WebRTC a los otros pares en la sala

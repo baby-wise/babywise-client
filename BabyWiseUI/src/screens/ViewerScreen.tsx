@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { RTCPeerConnection, RTCView, RTCIceCandidate, RTCSessionDescription } from 'react-native-webrtc';
 import { io as ioViewer, Socket as SocketViewer } from 'socket.io-client';
+import styles from '../styles/Styles';
 
 // --- CONFIGURACIÓN ---
-const VIEWER_SIGNALING_SERVER_URL = 'http://192.168.0.16:3001'; // REEMPLAZAR CON TU IP
+const VIEWER_SIGNALING_SERVER_URL = 'http://192.168.0.107:3001'; // REEMPLAZAR CON TU IP
 const VIEWER_ROOM_ID = 'baby-room-1';
 
 const ViewerScreen = () => {
@@ -65,22 +66,29 @@ const ViewerScreen = () => {
   }, []);
 
   return (
-    <SafeAreaView style={viewerStyles.container}>
-      <Text style={viewerStyles.statusText}>{status}</Text>
-      {remoteStream ? (
-        <RTCView
-          streamURL={remoteStream.toURL()}
-          style={viewerStyles.video}
-          objectFit={'cover'}
-        />
-      ) : (
+      <SafeAreaView style={viewerStyles.container}>
+        <Text style={viewerStyles.statusText}>{status}</Text>
+        {remoteStream ? (
+          <>
+            <RTCView
+              streamURL={remoteStream.toURL()}
+              style={viewerStyles.video}
+              objectFit={'cover'}
+            />
+            <TouchableOpacity style={styles.stopButton} onPress={stopViewing} activeOpacity={0.7}>
+              <Text style={styles.stopButtonText}>Dejar de visualizar</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
         <View style={viewerStyles.placeholder}>
           <Text style={viewerStyles.placeholderText}>Esperando video...</Text>
         </View>
-      )}
-    </SafeAreaView>
+        )}
+      </SafeAreaView>
   );
 };
+
+const stopViewing = () => {}
 
 const viewerStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black', alignItems: 'center', justifyContent: 'center' },

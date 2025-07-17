@@ -3,6 +3,6 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">10.0.2.2</domain> <!-- IP especial del emulador de Android para referirse al localhost de la PC -->
-        <domain includeSubdomains="true">192.168.0.16</domain> <!-- Reemplaza esto con tu IP local -->
+        <domain includeSubdomains="true">192.168.0.107</domain> <!-- IP del server. Hay que reemplazar esto con tu IP local -->
     </domain-config>
 </network-security-config>
