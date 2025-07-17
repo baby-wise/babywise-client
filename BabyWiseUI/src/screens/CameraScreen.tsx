@@ -47,8 +47,9 @@ const CameraScreen = () => {
 
   const setupSocketListeners = (stream: any) => {
     socket.current?.on('connect', () => {
-      setStatus('Conectado. Esperando monitores...');
-      socket.current?.emit('join-room', ROOM_ID);
+      setStatus('Conectado. Esperando viewers...');
+      socket.current?.emit('join-room', {group: ROOM_ID, socektId: socket.current.id, role: 'camera'});
+      socket.current?.emit('add-camera', {group: ROOM_ID, socektId: socket.current.id, role: 'camera'});
     });
 
     socket.current?.on('peer-joined', ({ peerId }) => {
