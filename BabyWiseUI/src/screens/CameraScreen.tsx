@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaView, StyleSheet, Text, View, Platform, PermissionsAndroid, TouchableOpacity } from 'react-native';
 import { RTCPeerConnection, RTCView, mediaDevices, RTCIceCandidate, RTCSessionDescription } from 'react-native-webrtc';
-import { io, Socket } from 'socket.io-client';
+import { io , Socket } from 'socket.io-client';
 import styles from '../styles/Styles';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 // --- CONFIGURACIÓN ---
-const SIGNALING_SERVER_URL = 'http://192.168.0.107:3001'; // REEMPLAZAR CON TU IP
 const ROOM_ID = 'baby-room-1';
 
 const CameraScreen = () => {

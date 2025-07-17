@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { RTCPeerConnection, RTCView, RTCIceCandidate, RTCSessionDescription } from 'react-native-webrtc';
-import { io as ioViewer, Socket as SocketViewer } from 'socket.io-client';
+import { io as ioViewer, Socket } from 'socket.io-client';
 import styles from '../styles/Styles';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 // --- CONFIGURACIÓN ---
-const VIEWER_SIGNALING_SERVER_URL = 'http://192.168.0.107:3001'; // REEMPLAZAR CON TU IP
 const VIEWER_ROOM_ID = 'baby-room-1';
 
 const ViewerScreen = () => {
   const [remoteStream, setRemoteStream] = useState<any>(null);
   const [status, setStatus] = useState('Inicializando...');
   const peerConnection = useRef<RTCPeerConnection | null>(null);
-  const socket = useRef<SocketViewer | null>(null);
+  const socket = useRef<Socket | null>(null);
 
   const configurationViewer = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
   useEffect(() => {
-    socket.current = ioViewer(VIEWER_SIGNALING_SERVER_URL);
+    socket.current = ioViewer(SIGNALING_SERVER_URL);
     
     socket.current.on('connect', () => {
         setStatus('Conectado. Esperando stream de la cámara...');
