@@ -3,10 +3,8 @@ import HomeScreen from './src/screens/HomeScreen';
 import CameraScreen from './src/screens/CameraScreen';
 import ViewerScreen from './src/screens/ViewerScreen';
 
-export type Role = 'home' | 'camera' | 'viewer';
-
 const App = () => {
-  const [role, setRole] = useState<Role>('home');
+  const [role, setRole] = useState('home');
 
   const renderScreen = () => {
     switch (role) {

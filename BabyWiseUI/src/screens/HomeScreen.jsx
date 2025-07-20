@@ -1,13 +1,9 @@
 import React from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { Role } from '../../App'; // Importando el tipo desde App.tsx
 import styles from '../styles/Styles';
 
-interface HomeScreenProps {
-  setRole: (role: Role) => void;
-}
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ setRole }) => {
+const HomeScreen = ({ setRole }) => {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Baby Monitor</Text>

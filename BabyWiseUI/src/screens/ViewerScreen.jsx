@@ -10,18 +10,18 @@ import DropDownPicker from 'react-native-dropdown-picker';
 const ROOM_ID = 'baby-room-1';
 
 const ViewerScreen = () => {
-  const [remoteStream, setRemoteStream] = useState<any>(null);
+  const [remoteStream, setRemoteStream] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
   const [cameras, setCameras] = useState([])
-  const peerConnection = useRef<any>(null);
-  const socket = useRef<Socket | null>(null);
+  const peerConnection = useRef(null);
+  const socket = useRef(null);
   const configurationViewer = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
   //Variables para el selector de camras
   const [selectedCameras, setSelectedCameras] = useState([]);
   const [open, setOpen] = useState(false)
-  const [multiple, setMultiple] = useState<any>(false) // Modo selección múltiple
-  const [dropdownItems, setDropdownItems] = useState<any>([]);
+  const [multiple, setMultiple] = useState(false) // Modo selección múltiple
+  const [dropdownItems, setDropdownItems] = useState([]);
 
   useEffect(() => {
     socket.current = ioViewer(SIGNALING_SERVER_URL);
@@ -44,14 +44,14 @@ const ViewerScreen = () => {
 
         peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
 
-        peerConnection.current.ontrack = (event: any) => {
+        peerConnection.current.ontrack = (event) => {
             if(event.streams && event.streams[0]){
                 setRemoteStream(event.streams[0]);
                 setStatus('¡Conectado al bebé!');
             }
         };
 
-        peerConnection.current.onicecandidate = (event: any) => {
+        peerConnection.current.onicecandidate = (event) => {
             if (event.candidate) {
                 socket.current?.emit('ice-candidate', {
                     candidate: event.candidate,

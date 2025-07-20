@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaView, StyleSheet, Text, View, Platform, PermissionsAndroid, TouchableOpacity } from 'react-native';
 import { RTCPeerConnection, RTCView, mediaDevices, RTCIceCandidate, RTCSessionDescription } from 'react-native-webrtc';
-import { io , Socket } from 'socket.io-client';
+import { io  } from 'socket.io-client';
 import styles from '../styles/Styles';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
@@ -9,10 +9,10 @@ import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 const ROOM_ID = 'baby-room-1';
 
 const CameraScreen = () => {
-  const [localStream, setLocalStream] = useState<any>(null);
+  const [localStream, setLocalStream] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
-  const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
-  const socket = useRef<Socket | null>(null);
+  const peerConnections = useRef(new Map());
+  const socket = useRef(null);
 
   const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -39,13 +39,13 @@ const CameraScreen = () => {
     start();
 
     return () => {
-      localStream?.getTracks().forEach((track: any) => track.stop());
+      localStream?.getTracks().forEach((track) => track.stop());
       socket.current?.disconnect();
       peerConnections.current.forEach(pc => pc.close());
     };
   }, []);
 
-  const setupSocketListeners = (stream: any) => {
+  const setupSocketListeners = (stream) => {
     socket.current?.on('connect', () => {
       setStatus('Conectado. Esperando viewers...');
       socket.current?.emit('join-room', {group: ROOM_ID, socektId: socket.current.id, role: 'camera'});
@@ -73,13 +73,13 @@ const CameraScreen = () => {
     });
   };
 
-  const createPeerConnection = async (peerId: string, stream: any) => {
+  const createPeerConnection = async (peerId, stream) => {
     const pc = new RTCPeerConnection(configuration);
     peerConnections.current.set(peerId, pc);
 
-    stream.getTracks().forEach((track: any) => pc.addTrack(track, stream));
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-    (pc as any).onicecandidate = (event: any) => {
+    pc.onicecandidate = (event) => {
       if (event.candidate) {
         socket.current?.emit('ice-candidate', {
           candidate: event.candidate,
@@ -88,7 +88,7 @@ const CameraScreen = () => {
       }
     };
 
-    const offer = await (pc as any).createOffer();
+    const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     socket.current?.emit('offer', { sdp: offer, targetPeerId: peerId });
   };

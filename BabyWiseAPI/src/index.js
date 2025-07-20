@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { group } from 'console';
 
 
 const app = express();
@@ -22,27 +21,27 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
   },
 });
-
+/*
 interface ClientInfo {
   socket: any;
   role: 'camera' | 'viewer';
   group: string;
 }
-
-let clients: ClientInfo[] = [];
+*/
+let clients = [];
 
 io.on('connection', (socket) => {
     console.log(`Cliente conectado: ${socket.id}`);
 
     // Evento para unirse a una sala (ej. la sala del bebé)
-    socket.on('join-room', (data: ClientInfo) => {
+    socket.on('join-room', (data) => {
         socket.join(data.group);
         console.log(`${data.role} ${socket.id} se unió al grupo: ${data.group}`);
         const clientInfo = { socket, role: data.role, group: data.group };
         clients.push(clientInfo);
     });
 
-    socket.on('add-camera', (data: ClientInfo) => {
+    socket.on('add-camera', (data) => {
         const camerasId = clients
             .filter((c) => c.role === 'camera' && c.group === data.group)
             .map((c) => c.socket.id);
@@ -56,7 +55,7 @@ io.on('connection', (socket) => {
             socket.to(sId).emit('cameras-list', camerasId)})
     });
 
-    socket.on('get-cameras-list', (data: ClientInfo) => {
+    socket.on('get-cameras-list', (data) => {
         const camerasId = clients
             .filter((c) => c.role === 'camera' && c.group === data.group)
             .map((c) => c.socket.id);
@@ -64,7 +63,7 @@ io.on('connection', (socket) => {
     });
 
     // Notificar a los otros en la sala que un nuevo par se ha unido
-    socket.on('start-stream', (data: ClientInfo) => {
+    socket.on('start-stream', (data) => {
             /*
             Nota: Esto funciona igual a como lo teniamos antes pero se tiene que cambiar para que 
             busque al cliente camara de ese grupo con ese socketId y mandarle solo a ese      
