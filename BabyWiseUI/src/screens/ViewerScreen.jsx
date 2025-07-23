@@ -9,7 +9,7 @@ import DropDownPicker from 'react-native-dropdown-picker';
 // --- CONFIGURACIÓN ---
 const ROOM_ID = 'baby-room-1';
 
-const ViewerScreen = () => {
+const ViewerScreen = ({ setRole }) => {
   const [remoteStream, setRemoteStream] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
   const [cameras, setCameras] = useState([])
@@ -142,6 +142,10 @@ const ViewerScreen = () => {
           </TouchableOpacity>
         </View>
         )}
+        
+        <TouchableOpacity style={viewerStyles.backButton} onPress={() => setRole('home')}>
+          <Text style={viewerStyles.backButtonText}>← Volver</Text>
+        </TouchableOpacity>
       </SafeAreaView>
   );
 };
@@ -220,6 +224,20 @@ const viewerStyles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 12,
+    borderRadius: 8,
+    zIndex: 2,
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 export default ViewerScreen;
