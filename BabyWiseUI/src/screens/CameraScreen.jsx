@@ -8,7 +8,7 @@ import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 // --- CONFIGURACIÓN ---
 const ROOM_ID = 'baby-room-1';
 
-const CameraScreen = () => {
+const CameraScreen = ({ setRole }) => {
   const [localStream, setLocalStream] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
   const peerConnections = useRef(new Map());
@@ -129,6 +129,10 @@ const CameraScreen = () => {
           </TouchableOpacity>
         </>
       )}
+      
+      <TouchableOpacity style={cameraStyles.backButton} onPress={() => setRole('home')}>
+        <Text style={cameraStyles.backButtonText}>← Volver</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -137,6 +141,20 @@ const cameraStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black', alignItems: 'center', justifyContent: 'center' },
   statusText: { position: 'absolute', top: 40, color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, zIndex: 1 },
   video: { width: '100%', height: '100%' },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 12,
+    borderRadius: 8,
+    zIndex: 2,
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 
 const stopTransmitting = () => {

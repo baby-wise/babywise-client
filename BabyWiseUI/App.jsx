@@ -9,9 +9,9 @@ const App = () => {
   const renderScreen = () => {
     switch (role) {
       case 'camera':
-        return <CameraScreen />;
+        return <CameraScreen setRole={setRole} />;
       case 'viewer':
-        return <ViewerScreen />;
+        return <ViewerScreen setRole={setRole} />;
       default:
         return <HomeScreen setRole={setRole} />;
     }
