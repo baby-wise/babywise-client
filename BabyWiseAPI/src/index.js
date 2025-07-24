@@ -2,11 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import mongoose from 'mongoose'
+import dotenv from 'dotenv';
 
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+dotenv.config()
 
 const PORT = process.env.PORT || 3001;
 
@@ -102,6 +106,14 @@ io.on('connection', (socket) => {
         clients = clients.filter(c => c.socket.id !== socket.id)
     });
 });
+
+// Conexión a MongoDB
+mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGOPW}@babywise.aengkd2.mongodb.net/?retryWrites=true&w=majority&appName=${process.env.MONGOAPPNAME}`, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log("Conectado a MongoDB"))
+  .catch((error) => console.log("Error de conexión a MongoDB:", error));
 
 server.listen(PORT, () => {
     console.log(`Servidor de señalización escuchando en el puerto ${PORT}`);
