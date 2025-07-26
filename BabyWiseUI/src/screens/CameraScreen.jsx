@@ -116,6 +116,11 @@ const CameraScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={cameraStyles.container}>
+      {/* Botón de volver minimalista */}
+      <TouchableOpacity style={cameraStyles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={cameraStyles.backButtonText}>‹</Text>
+      </TouchableOpacity>
+      
       <Text style={cameraStyles.title}>{group.name}</Text>
       <Text style={cameraStyles.statusText}>{status}</Text>
       {localStream && (
@@ -137,6 +142,21 @@ const CameraScreen = ({ navigation, route }) => {
 
 const cameraStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black', alignItems: 'center', justifyContent: 'center' },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 10,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  backButtonText: {
+    fontSize: 32,
+    color: '#fff',
+    fontWeight: '300',
+  },
   title: {
     position: 'absolute',
     top: 80,

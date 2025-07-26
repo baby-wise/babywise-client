@@ -65,6 +65,11 @@ const ViewerScreen = ({ navigation, route }) => {
 
   return (
       <SafeAreaView style={viewerStyles.container}>
+        {/* Botón de volver minimalista */}
+        <TouchableOpacity style={viewerStyles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={viewerStyles.backButtonText}>‹</Text>
+        </TouchableOpacity>
+        
         <Text style={viewerStyles.title}>{group.name}</Text>
         <Text style={viewerStyles.statusText}>{status}</Text>
         {remoteStream ? (
@@ -96,6 +101,21 @@ const viewerStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#000',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 10,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  backButtonText: {
+    fontSize: 32,
+    color: '#fff',
+    fontWeight: '300',
   },
   title: {
     position: 'absolute',

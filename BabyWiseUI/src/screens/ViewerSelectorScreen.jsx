@@ -66,6 +66,11 @@ const ViewerSelectorScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Botón de volver minimalista */}
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.backButtonText}>‹</Text>
+      </TouchableOpacity>
+      
       <Text style={styles.title}>Seleccionar Cámara</Text>
       <Text style={styles.groupName}>{group.name}</Text>
       <Text style={styles.statusText}>{status}</Text>
@@ -107,6 +112,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 10,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  backButtonText: {
+    fontSize: 32,
+    color: '#fff',
+    fontWeight: '300',
   },
   title: {
     fontSize: 28,

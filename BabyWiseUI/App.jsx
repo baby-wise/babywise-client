@@ -38,13 +38,7 @@ const App = () => {
       <Stack.Navigator 
         initialRouteName="HomeGroups"
         screenOptions={{
-          headerStyle: {
-            backgroundColor: '#1A1A1A', // Negro suave elegante
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          headerShown: false, // Ocultar la navigation bar
           cardStyleInterpolator: forSlide,
           gestureEnabled: true,
           gestureDirection: 'horizontal',
