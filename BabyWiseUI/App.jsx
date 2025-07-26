@@ -39,7 +39,7 @@ const App = () => {
         initialRouteName="HomeGroups"
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#007AFF',
+            backgroundColor: '#1A1A1A', // Negro suave elegante
           },
           headerTintColor: '#fff',
           headerTitleStyle: {

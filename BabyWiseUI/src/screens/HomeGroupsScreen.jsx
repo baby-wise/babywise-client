@@ -7,7 +7,9 @@ import {
   View, 
   Alert, 
   ActivityIndicator,
-  ScrollView
+  ScrollView,
+  Modal,
+  TextInput
 } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../config/firebase';
@@ -18,11 +20,13 @@ const HomeGroupsScreen = ({ navigation }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [displayEmail, setDisplayEmail] = useState(null);
-  const [groups, setGroups] = useState([
-    { id: 1, name: 'Casa Principal', members: 3 },
-    { id: 2, name: 'Casa de Verano', members: 2 },
-    { id: 3, name: 'Oficina', members: 5 }
-  ]); // Mock data por ahora
+  const [groups, setGroups] = useState([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   useEffect(() => {
     // Configurar Google Sign-In
@@ -37,6 +41,55 @@ const HomeGroupsScreen = ({ navigation }) => {
     checkCurrentUser();
   }, []);
 
+  // Función para cargar grupos del usuario
+  const loadUserGroups = async (userEmail) => {
+    setIsLoadingGroups(true);
+    try {
+      /* 
+      // TODO: Reemplazar con llamada real al backend
+      // Esta función debería hacer una petición HTTP al backend:
+      // 
+      // const response = await fetch(`${API_BASE_URL}/groups/user`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${userToken}` // si usas tokens
+      //   },
+      //   body: JSON.stringify({
+      //     email: userEmail
+      //   })
+      // });
+      // 
+      // const groupsData = await response.json();
+      // 
+      // El backend debería devolver un array de objetos con esta estructura:
+      // [
+      //   { id: number, name: string, members: number },
+      //   { id: number, name: string, members: number },
+      //   ...
+      // ]
+      */
+      
+      // Datos hardcodeados por ahora - remover cuando se implemente el backend
+      const mockGroups = [
+        { id: 1, name: 'Casa Principal', members: 3 },
+        { id: 2, name: 'Casa de Verano', members: 2 },
+        { id: 3, name: 'Oficina', members: 5 }
+      ];
+      
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setGroups(mockGroups);
+    } catch (error) {
+      console.error('Error loading user groups:', error);
+      // TODO: Mostrar mensaje de error al usuario
+      setGroups([]); // En caso de error, mostrar lista vacía
+    } finally {
+      setIsLoadingGroups(false);
+    }
+  };
+
   const checkCurrentUser = async () => {
     try {
       const currentUser = await GoogleSignin.getCurrentUser();
@@ -46,10 +99,14 @@ const HomeGroupsScreen = ({ navigation }) => {
         email.current = currentUser.user.email;
         setDisplayEmail(currentUser.user.email);
         console.log('User already signed in:', email.current);
+        
+        // Cargar grupos del usuario autenticado
+        await loadUserGroups(currentUser.user.email);
       } else {
         setIsLoggedIn(false);
         email.current = null;
         setDisplayEmail(null);
+        setGroups([]); // Limpiar grupos si no hay usuario
         console.log('No user currently signed in');
       }
     } catch (error) {
@@ -57,6 +114,7 @@ const HomeGroupsScreen = ({ navigation }) => {
       setIsLoggedIn(false);
       email.current = null;
       setDisplayEmail(null);
+      setGroups([]);
     }
   };
 
@@ -69,6 +127,9 @@ const HomeGroupsScreen = ({ navigation }) => {
         email.current = currentUser.user.email;
         setDisplayEmail(currentUser.user.email);
         console.log('Silent sign in successful:', email.current);
+        
+        // Cargar grupos del usuario autenticado
+        await loadUserGroups(currentUser.user.email);
       } catch (error) {
         try {
           await GoogleSignin.hasPlayServices();
@@ -105,6 +166,9 @@ const HomeGroupsScreen = ({ navigation }) => {
           email.current = userInfo.data.user.email;
           setDisplayEmail(userInfo.data.user.email);
           console.log('Manual sign in successful:', email.current);
+          
+          // Cargar grupos del usuario autenticado
+          await loadUserGroups(userInfo.data.user.email);
         } catch (signInError) {
           console.log('Sign in error:', signInError);
           console.log('Error message:', signInError.message);
@@ -137,20 +201,108 @@ const HomeGroupsScreen = ({ navigation }) => {
         email.current = null;
         setDisplayEmail(null);
         setIsLoggedIn(false);
+        setGroups([]); // Limpiar grupos al cerrar sesión
         console.log('Sign out successful');
       } catch (error) {
         console.error('Sign out error:', error);
         email.current = null;
         setDisplayEmail(null);
         setIsLoggedIn(false);
+        setGroups([]);
       }
       setIsLoading(false);
     }
   };
 
+  // Función para mostrar toast
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setShowToast(true);
+    
+    // Ocultar el toast después de 3 segundos
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  // Función para crear un nuevo grupo
+  const createNewGroup = async (groupName, userEmail) => {
+    setIsCreatingGroup(true);
+    try {
+      /* 
+      // TODO: Reemplazar con llamada real al backend
+      // Esta función debería hacer una petición HTTP al backend:
+      // 
+      // const response = await fetch(`${API_BASE_URL}/groups/create`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${userToken}` // si usas tokens
+      //   },
+      //   body: JSON.stringify({
+      //     name: groupName,
+      //     creatorEmail: userEmail
+      //   })
+      // });
+      // 
+      // const newGroup = await response.json();
+      // 
+      // El backend debería devolver el grupo creado con esta estructura:
+      // { id: number, name: string, members: number }
+      */
+      
+      // Simular creación del grupo - remover cuando se implemente el backend
+      const mockNewGroup = {
+        id: Date.now(), // ID temporal usando timestamp
+        name: groupName,
+        members: 1 // El creador es el primer miembro
+      };
+      
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Agregar el nuevo grupo a la lista
+      setGroups(prevGroups => [...prevGroups, mockNewGroup]);
+      
+      // Mostrar toast de éxito
+      showSuccessToast(`Grupo "${groupName}" creado exitosamente`);
+      
+      return mockNewGroup;
+    } catch (error) {
+      console.error('Error creating group:', error);
+      Alert.alert('Error', 'No se pudo crear el grupo. Inténtalo de nuevo.');
+      throw error;
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
   const createGroup = () => {
-    // Handler vacío por ahora
-    console.log('Crear grupo pressed');
+    if (!isLoggedIn) {
+      Alert.alert('Iniciar Sesión', 'Debes iniciar sesión para crear un grupo');
+      return;
+    }
+    setShowCreateModal(true);
+  };
+
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) {
+      Alert.alert('Error', 'Por favor ingresa un nombre para el grupo');
+      return;
+    }
+    
+    try {
+      await createNewGroup(newGroupName.trim(), email.current);
+      setShowCreateModal(false);
+      setNewGroupName('');
+    } catch (error) {
+      // Error ya manejado en createNewGroup
+    }
+  };
+
+  const cancelCreateGroup = () => {
+    setShowCreateModal(false);
+    setNewGroupName('');
   };
 
   const joinGroup = (group) => {
@@ -177,19 +329,36 @@ const HomeGroupsScreen = ({ navigation }) => {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>Mis Grupos</Text>
-        {groups.map(group => (
-          <TouchableOpacity
-            key={group.id}
-            style={styles.groupCard}
-            onPress={() => joinGroup(group)}
-          >
-            <View style={styles.groupInfo}>
-              <Text style={styles.groupName}>{group.name}</Text>
-              <Text style={styles.groupMembers}>{group.members} miembros</Text>
-            </View>
-            <Text style={styles.joinText}>→</Text>
-          </TouchableOpacity>
-        ))}
+        
+        {isLoadingGroups ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.loadingText}>Cargando grupos...</Text>
+          </View>
+        ) : groups.length > 0 ? (
+          groups.map(group => (
+            <TouchableOpacity
+              key={group.id}
+              style={styles.groupCard}
+              onPress={() => joinGroup(group)}
+            >
+              <View style={styles.groupInfo}>
+                <Text style={styles.groupName}>{group.name}</Text>
+                <Text style={styles.groupMembers}>{group.members} miembros</Text>
+              </View>
+              <Text style={styles.joinText}>→</Text>
+            </TouchableOpacity>
+          ))
+        ) : isLoggedIn ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No tienes grupos aún</Text>
+            <Text style={styles.emptySubText}>Crea un grupo o espera a que te inviten</Text>
+          </View>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Inicia sesión para ver tus grupos</Text>
+          </View>
+        )}
       </ScrollView>
 
       <TouchableOpacity 
@@ -210,6 +379,59 @@ const HomeGroupsScreen = ({ navigation }) => {
           Email: {displayEmail || 'No hay email'}
         </Text>
       </View>
+
+      {/* Modal para crear grupo */}
+      <Modal
+        visible={showCreateModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelCreateGroup}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Crear Nuevo Grupo</Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Nombre del grupo"
+              placeholderTextColor="#999"
+              value={newGroupName}
+              onChangeText={setNewGroupName}
+              autoFocus={true}
+              maxLength={50}
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={cancelCreateGroup}
+                disabled={isCreatingGroup}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.createButton, isCreatingGroup && styles.disabledButton]} 
+                onPress={handleCreateGroup}
+                disabled={isCreatingGroup}
+              >
+                {isCreatingGroup ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.createButtonText}>Crear</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Toast de éxito */}
+      {showToast && (
+        <View style={styles.toastContainer}>
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -228,7 +450,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   createButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#007AFF', // Azul elegante que combina con la navegación
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 8,
@@ -319,6 +541,114 @@ const styles = StyleSheet.create({
   debugText: {
     fontSize: 12,
     color: '#fff',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    color: '#fff',
+    fontSize: 16,
+    marginTop: 10,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  emptySubText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 20,
+    backgroundColor: '#f9f9f9',
+    color: '#333', // Texto negro
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48, // Altura exacta en lugar de minHeight
+  },
+  cancelButton: {
+    backgroundColor: '#f0f0f0',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: 10, // Más alto, al nivel de la navigation bar
+    left: 20,
+    right: 20,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 1000,
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
   },
 });
