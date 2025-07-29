@@ -12,6 +12,7 @@ import styles from '../styles/Styles';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../config/firebase';
 import { signInWithCredential, GoogleAuthProvider, signOut } from '@react-native-firebase/auth';
+import Icon from 'react-native-vector-icons/Feather';
 
 const HomeScreen = ({ setRole }) => {
   const email = useRef();
@@ -184,11 +185,21 @@ const HomeScreen = ({ setRole }) => {
     }
   };
 
+  const goToUpload = () =>{
+    setRole('upload')
+  }
+
   const googleText = isLoggedIn ? 'Cerrar Sesión' : 'Iniciar Sesión con Google';
 
   return (
     <SafeAreaView style={localStyles.container}>
-      <Text style={localStyles.title}>Baby Monitor</Text>
+
+      <View style={localStyles.header}>
+        <Text style={localStyles.title}>Baby Monitor</Text>
+        <TouchableOpacity onPress={goToUpload} style={localStyles.uploadIcon}>
+          <Icon name="upload" size={24} color="#007AFF" />
+        </TouchableOpacity>
+      </View>
       
       <View style={localStyles.buttonContainer}>
         <TouchableOpacity 
@@ -310,6 +321,17 @@ const localStyles = StyleSheet.create({
     color: '#fff',
     marginBottom: 5,
     textAlign: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+
+  uploadIcon: {
+    padding: 8,
   },
 });
 

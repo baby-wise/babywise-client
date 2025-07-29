@@ -4,19 +4,16 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import mongoose from 'mongoose'
 import dotenv from 'dotenv';
+dotenv.config()
+import {router as bucketRoutes} from './routes/bucket.routes.js'
+import B2 from 'backblaze-b2'
 
-
+//Configuracion del servidor
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-dotenv.config()
-
 const PORT = process.env.PORT || 3001;
-
-app.get('/', (req, res) => {
-  res.send('API Babywise backend funcionando');
-});
 
 const server = createServer(app);
 const io = new Server(server, {
@@ -108,12 +105,18 @@ io.on('connection', (socket) => {
 });
 
 // Conexión a MongoDB
-mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGOPW}@babywise.aengkd2.mongodb.net/?retryWrites=true&w=majority&appName=${process.env.MONGOAPPNAME}`, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGO_PW}@babywise.aengkd2.mongodb.net/?retryWrites=true&w=majority&appName=${process.env.MONGO_APP_NAME}`)
   .then(() => console.log("Conectado a MongoDB"))
   .catch((error) => console.log("Error de conexión a MongoDB:", error));
+
+//Bucket
+export const b2 = new B2({
+    applicationKeyId: process.env.B2_KEY_ID,
+    applicationKey: process.env.B2_APP_KEY,
+  });
+
+//Rutas permitidas
+app.use(bucketRoutes)
 
 server.listen(PORT, () => {
     console.log(`Servidor de señalización escuchando en el puerto ${PORT}`);
