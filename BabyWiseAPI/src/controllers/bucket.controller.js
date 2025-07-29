@@ -1,13 +1,16 @@
-import b2 from '../index.js'
 import fs from 'fs'
+import { b2 } from '../index.js';
 
-const upload = async (req,res)=>{
+//Conexion con el Bucket
+
+export const upload = async (req,res)=>{
+
   try {
     await b2.authorize();
 
     const fileName = `videos/${Date.now()}_${req.file.originalname}`;
     const fileData = fs.readFileSync(req.file.path);
-    const { data: { uploadUrl, authorizationToken } } = await b2.getUploadUrl({ bucketId: 'TU_BUCKET_ID' });
+    const { data: { uploadUrl, authorizationToken } } = await b2.getUploadUrl({ bucketId: process.env.BUCKET_ID });
 
     await b2.uploadFile({
       uploadUrl,

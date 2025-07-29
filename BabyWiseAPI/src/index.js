@@ -4,23 +4,16 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import mongoose from 'mongoose'
 import dotenv from 'dotenv';
-import multer from 'multer'
+dotenv.config()
+import {router as bucketRoutes} from './routes/bucket.routes.js'
 import B2 from 'backblaze-b2'
 
-//Utilizacion de Env
-dotenv.config()
-
 //Configuracion del servidor
-const upload = multer({ dest: 'uploads/' }) // Lugar donde se guardan los archivos subidos
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
-
-app.get('/', (req, res) => {
-  res.send('API Babywise backend funcionando');
-});
 
 const server = createServer(app);
 const io = new Server(server, {
@@ -116,14 +109,15 @@ mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGO_PW}@babywise.ae
   .then(() => console.log("Conectado a MongoDB"))
   .catch((error) => console.log("Error de conexión a MongoDB:", error));
 
-//Conexion con el Bucket
-const b2 = new B2({
-  applicationKeyId: 'B2_KEY_ID',
-  applicationKey: 'B2_APP_KEY',
-});
+//Bucket
+export const b2 = new B2({
+    applicationKeyId: process.env.B2_KEY_ID,
+    applicationKey: process.env.B2_APP_KEY,
+  });
+
+//Rutas permitidas
+app.use(bucketRoutes)
 
 server.listen(PORT, () => {
     console.log(`Servidor de señalización escuchando en el puerto ${PORT}`);
 });
-
-module.exports={b2}
