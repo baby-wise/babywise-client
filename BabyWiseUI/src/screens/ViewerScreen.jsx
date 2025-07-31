@@ -1,164 +1,129 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { RTCPeerConnection, RTCView, RTCIceCandidate, RTCSessionDescription } from 'react-native-webrtc';
-import styles from '../styles/Styles';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { RTCView } from 'react-native-webrtc';
+import MediasoupService from '../services/mediaSoupService';
 
-const ViewerScreen = ({ navigation, route }) => {
-  const { group, selectedCameras, socket, roomId } = route.params;
-  const [remoteStream, setRemoteStream] = useState(null);
-  const [status, setStatus] = useState('Conectando...');
-  const peerConnection = useRef(null);
-  const configurationViewer = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+const ViewerScreen = ({ route }) => {
+  const { group } = route.params;
+  const [remoteStreams, setRemoteStreams] = useState(new Map());
+  const [status, setStatus] = useState('Inicializando...');
+  const mediasoupService = useRef(null);
+  const ROOM_ID = `baby-room-${group.id}`;
 
   useEffect(() => {
-    if (!socket) return;
-    
-    setStatus('Iniciando transmisión...');
-    socket.emit('start-stream', {group: roomId, socketId: socket.id, role: 'viewer'});
+    mediasoupService.current = new MediasoupService(ROOM_ID);
 
-    socket.on('offer', async ({ sdp, sourcePeerId }) => {
-        setStatus(`Oferta recibida de ${sourcePeerId}. Creando respuesta...`);
-        peerConnection.current = new RTCPeerConnection(configurationViewer);
+    const start = async () => {
+      try {
+        // 1. Conectar al servidor de señalización
+        setStatus('Conectando al servidor...');
+        await mediasoupService.current.connect();
 
-        peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
+        // 2. Unirse a la sala, cargar el 'Device' y obtener productores existentes
+        setStatus('Uniéndose a la sala...');
+        const { producerIds } = await mediasoupService.current.joinRoom();
 
-        peerConnection.current.ontrack = (event) => {
-            if(event.streams && event.streams[0]){
-                setRemoteStream(event.streams[0]);
-                setStatus('¡Conectado al bebé!');
-            }
-        };
-
-        peerConnection.current.onicecandidate = (event) => {
-            if (event.candidate) {
-                socket.emit('ice-candidate', {
-                    candidate: event.candidate,
-                    targetPeerId: sourcePeerId,
-                });
-            }
-        };
-
-        const answer = await peerConnection.current.createAnswer();
-        await peerConnection.current.setLocalDescription(answer);
-        socket.emit('answer', { sdp: answer, targetPeerId: sourcePeerId });
-    });
-
-    socket.on('ice-candidate', ({ candidate }) => {
-        if (peerConnection.current && candidate) {
-            peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+        // 3. Crear el transporte de recepción
+        setStatus('Creando transporte...');
+        await mediasoupService.current.createRecvTransport();
+        
+        // 4. Consumir los productores que ya existen en la sala
+        if (producerIds && producerIds.length > 0) {
+          setStatus(`Encontrados ${producerIds.length} productores. Consumiendo...`);
+          for (const producerId of producerIds) {
+            await consumeProducer(producerId);
+          }
+        } else {
+          setStatus('Esperando a que la cámara comience a transmitir...');
         }
-    });
-
-    return () => {
-        if (peerConnection.current) {
-            peerConnection.current.close();
-        }
+        
+      } catch (error) {
+        console.error('Error en el proceso de inicio del visor:', error);
+        setStatus(`Error: ${error.message}`);
+      }
     };
-  }, [socket, roomId]);
 
-  const stopViewing = () => {
-    if (peerConnection.current) {
-      peerConnection.current.close();
-    }
-    navigation.goBack();
-  };
+    const consumeProducer = async (producerId) => {
+      try {
+        const consumer = await mediasoupService.current.consume(producerId);
+        const { track, kind } = consumer;
+        if (kind === 'video') {
+          console.log('Track de video:', track);
+          console.log('Track readyState:', track.readyState);
+          const audioTrack = Array.from(remoteStreams.values())
+              .flatMap(stream => stream.getAudioTracks())[0];
+          const newStream = audioTrack ? new MediaStream([track, audioTrack]) : new MediaStream([track]);
+          setRemoteStreams(prevStreams => {
+            const newStreams = new Map(prevStreams);
+            newStreams.set(producerId, newStream);
+            return newStreams;
+          });
+          setStatus('Recibiendo stream de video...');
+        } else if (kind === 'audio') {
+          // Solo cambia el status si no hay video
+          setRemoteStreams(prevStreams => {
+            if ([...prevStreams.values()].some(s => s.getVideoTracks().length > 0)) {
+              return prevStreams;
+            }
+            return prevStreams;
+          });
+          if (![...remoteStreams.values()].some(s => s.getVideoTracks().length > 0)) {
+            setStatus('Recibiendo stream de audio...');
+          }
+        }
+      } catch (error) {
+        console.error(`Error al consumir productor ${producerId}:`, error);
+      }
+    };
+
+    start();
+
+    // Función de limpieza
+    return () => {
+      mediasoupService.current?.close();
+    };
+  }, []);
+
+  const videoStream = Array.from(remoteStreams.values()).find(
+    stream => stream.getVideoTracks().length > 0
+  );
+
+  console.log('RTCView streamURL:', videoStream ? videoStream.toURL() : 'NO STREAM');
+  console.log('Video tracks:', videoStream ? videoStream.getVideoTracks() : []);
 
   return (
-      <SafeAreaView style={viewerStyles.container}>
-        {/* Botón de volver minimalista */}
-        <TouchableOpacity style={viewerStyles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={viewerStyles.backButtonText}>‹</Text>
-        </TouchableOpacity>
-        
-        <Text style={viewerStyles.title}>{group.name}</Text>
-        <Text style={viewerStyles.statusText}>{status}</Text>
-        {remoteStream ? (
-          <>
-            <RTCView
-              streamURL={remoteStream.toURL()}
-              style={viewerStyles.video}
-              objectFit={'cover'}
-            />
-            <TouchableOpacity style={styles.stopButton} onPress={stopViewing} activeOpacity={0.7}>
-              <Text style={styles.stopButtonText}>Dejar de visualizar</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-        <View style={viewerStyles.placeholder}>
-          <Text style={viewerStyles.placeholderText}>Esperando conexión...</Text>
-          <Text style={viewerStyles.selectedText}>
-            Cámara: {Array.isArray(selectedCameras) ? selectedCameras.join(', ') : selectedCameras}
-          </Text>
-        </View>
-        )}
-      </SafeAreaView>
+    <View style={styles.container}>
+      <Text style={styles.statusText}>{status}</Text>
+      {videoStream && (
+        <RTCView
+          key={videoStream.id || Math.random()} // fuerza re-render si cambia el stream
+          streamURL={videoStream.toURL()}
+          style={styles.video}
+          objectFit={'cover'}
+        />
+      )}
+    </View>
   );
 };
 
-const viewerStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#000',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 10,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  backButtonText: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: '300',
-  },
-  title: {
-    position: 'absolute',
-    top: 80,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 10,
-    borderRadius: 5,
-    zIndex: 1,
-  },
-  statusText: {
-    position: 'absolute',
-    top: 40,
-    color: 'white',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 10,
-    borderRadius: 5,
-    zIndex: 1,
   },
   video: {
     width: '100%',
-    height: '100%',
+    height: '100%', // Prueba con toda la pantalla
+    backgroundColor: '#111',
   },
-  placeholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: 20,
-  },
-  placeholderText: {
+  statusText: {
     color: 'white',
-    fontSize: 20,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  selectedText: {
-    color: 'white',
-    fontSize: 16,
-    textAlign: 'center',
-    opacity: 0.8,
+    position: 'absolute',
+    top: 40,
+    fontSize: 18,
   },
 });
+
 export default ViewerScreen;

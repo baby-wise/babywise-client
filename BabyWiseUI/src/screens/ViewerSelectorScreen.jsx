@@ -18,35 +18,43 @@ const ViewerSelectorScreen = ({ navigation, route }) => {
   const [dropdownItems, setDropdownItems] = useState([]);
 
   useEffect(() => {
+    // Este socket es temporal y solo para obtener la lista de cámaras.
     socket.current = ioViewer(SIGNALING_SERVER_URL);
     
     socket.current.on('connect', () => {
       setStatus('Conectado. Solicitando cámaras disponibles...');
-      socket.current?.emit('get-cameras-list', {group: ROOM_ID, socketId: socket.current.id, role: 'viewer'});
-      socket.current?.emit('join-room', {group: ROOM_ID, socketId: socket.current.id, role: 'viewer'});
+      socket.current?.emit('get-cameras-list', { roomId: ROOM_ID });
     });
 
     socket.current.on('cameras-list', (cameras) => {
       setStatus(`${cameras.length > 0 ? 'Seleccione una cámara' : 'No hay cámaras disponibles'}`);
-      console.log(cameras);
+      console.log('Cámaras recibidas:', cameras);
       setCameras(cameras);
     });
 
+    // Limpiamos este socket temporal cuando el componente se desmonta.
     return () => {
       socket.current?.disconnect();
     };
   }, []);
 
   useEffect(() => {
-    const items = cameras.map(device => ({
-      label: device,
-      value: device,
+    // Filtramos defensivamente para asegurarnos de que cada cámara tenga un ID.
+    // Esto previene el error de "key" si el servidor envía datos malformados.
+    const validCameras = cameras.filter(camera => camera && camera.id);
+
+    const items = validCameras.map(camera => ({
+      label: camera.name || camera.id, // Usamos el nombre, o el ID como fallback.
+      value: camera.id,                // El valor siempre será un ID válido.
     }));
     setDropdownItems(items);
-    if (items.length > 0) {
-      setSelectedCameras(multiple ? [items[0].value] : items[0].value);
+
+    if (items.length > 0 && !multiple) {
+      setSelectedCameras(items[0].value);
+    } else {
+      setSelectedCameras([]);
     }
-  }, [multiple, cameras]);
+  }, [cameras, multiple]); // Se ejecuta cuando 'cameras' o 'multiple' cambian
 
   const startViewing = () => {
     if (!selectedCameras || (Array.isArray(selectedCameras) && selectedCameras.length === 0)) {
@@ -54,13 +62,11 @@ const ViewerSelectorScreen = ({ navigation, route }) => {
       return;
     }
     
-    console.log('Cámaras seleccionadas:', selectedCameras);
-    // Navegar a la pantalla de visualización
+    // Navegamos a la pantalla de visualización, pasando solo la información del grupo.
+    // El ViewerScreen se encargará de todo el proceso de conexión de Mediasoup.
     navigation.navigate('Viewer', { 
-      group, 
-      selectedCameras, 
-      socket: socket.current,
-      roomId: ROOM_ID 
+      group,
+      // Ya no pasamos el socket ni el roomId.
     });
   };
 

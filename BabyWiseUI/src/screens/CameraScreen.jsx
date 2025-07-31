@@ -1,133 +1,128 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaView, StyleSheet, Text, View, Platform, PermissionsAndroid, TouchableOpacity } from 'react-native';
-import { RTCPeerConnection, RTCView, mediaDevices, RTCIceCandidate, RTCSessionDescription } from 'react-native-webrtc';
-import { io  } from 'socket.io-client';
-import styles from '../styles/Styles';
-import SIGNALING_SERVER_URL from '../siganlingServerUrl';
-
-// --- CONFIGURACIÓN ---
+import { RTCView, mediaDevices } from 'react-native-webrtc';
+import MediasoupService from '../services/mediaSoupService'; // Importamos nuestro servicio
 
 const CameraScreen = ({ navigation, route }) => {
   const { group } = route.params;
   const [localStream, setLocalStream] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
-  const peerConnections = useRef(new Map());
-  const socket = useRef(null);
-  const ROOM_ID = `baby-room-${group.id}`; // Usar el ID del grupo
-
-  const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+  const mediasoupService = useRef(null);
+  const ROOM_ID = `baby-room-${group.id}`;
 
   useEffect(() => {
+    // Inicializar el servicio y la conexión
+    mediasoupService.current = new MediasoupService(ROOM_ID);
+
     const start = async () => {
-      const hasPermissions = await requestPermissions();
-      if (!hasPermissions) {
-        setStatus('Permisos denegados');
-        return;
+      try {
+        // 1. Pedir permisos y obtener stream local
+        setStatus('Pidiendo permisos...');
+        const stream = await getLocalStream();
+
+        // Log para depurar las pistas obtenidas
+        if (stream) {
+          console.log('Stream obtenido. Analizando pistas...');
+          console.log('Todas las pistas (stream.getTracks()):', stream.getTracks());
+          console.log('Número de pistas de video:', stream.getVideoTracks().length);
+          console.log('Número de pistas de audio:', stream.getAudioTracks().length);
+        } else {
+          console.log('Error: getLocalStream() devolvió un stream nulo.');
+        }
+
+        if (!stream) {
+          throw new Error('No se pudo obtener el stream local.');
+        }
+        const videoTrack = stream.getVideoTracks()[0];
+        console.log('Camera video track:', videoTrack);
+        console.log('enabled:', videoTrack.enabled, 'muted:', videoTrack.muted, 'readyState:', videoTrack.readyState);
+        const audioTrack = stream.getAudioTracks()[0];
+        if (!videoTrack || !audioTrack) {
+          throw new Error('El stream obtenido no contiene las pistas de audio/video necesarias.');
+        }
+        // --- FIN DE LA VALIDACIÓN ---
+
+        setLocalStream(stream);
+
+        // 2. Conectar al servidor de señalización
+        setStatus('Conectando al servidor...');
+        await mediasoupService.current.connect();
+
+        // 3. Unirse a la sala y cargar el 'Device'
+        setStatus('Uniéndose a la sala...');
+        await mediasoupService.current.joinRoom();
+
+        // 4. Crear el transporte de envío
+        setStatus('Creando transporte...');
+        await mediasoupService.current.createSendTransport();
+
+        // 5. Empezar a producir (enviar) el stream de video y audio
+        // Ahora usamos las variables que ya validamos.
+        setStatus('Transmitiendo...');
+        await mediasoupService.current.produce(videoTrack);
+        await mediasoupService.current.produce(audioTrack);
+        setStatus('En vivo');
+
+      } catch (error) {
+        console.error('Error en el proceso de inicio de cámara:', error);
+        // Mostramos el error en la UI para que sea más fácil de depurar.
+        setStatus(`Error: ${error.message}`);
       }
-
-      setStatus('Iniciando cámara...');
-      const stream = await mediaDevices.getUserMedia({
-        audio: true,
-        video: { width: 640, height: 480, frameRate: 30 , facingMode: 'environment' },
-      });
-      setLocalStream(stream);
-      setStatus('Cámara activa. Conectando al servidor...');
-
-      socket.current = io(SIGNALING_SERVER_URL);
-      setupSocketListeners(stream);
     };
 
     start();
 
+    // Función de limpieza al desmontar el componente
     return () => {
+      console.log('Limpiando CameraScreen...');
       localStream?.getTracks().forEach((track) => track.stop());
-      socket.current?.disconnect();
-      peerConnections.current.forEach(pc => pc.close());
+      mediasoupService.current?.close();
     };
   }, []);
 
-  const setupSocketListeners = (stream) => {
-    socket.current?.on('connect', () => {
-      setStatus('Conectado. Esperando viewers...');
-      socket.current?.emit('join-room', {group: ROOM_ID, socektId: socket.current.id, role: 'camera'});
-      socket.current?.emit('add-camera', {group: ROOM_ID, socektId: socket.current.id, role: 'camera'});
-    });
-
-    socket.current?.on('peer-joined', ({ peerId }) => {
-      setStatus(`Monitor ${peerId} se unió. Creando oferta...`);
-      createPeerConnection(peerId, stream);
-    });
-
-    socket.current?.on('answer', async ({ sdp, sourcePeerId }) => {
-      setStatus(`Respuesta recibida de ${sourcePeerId}.`);
-      const pc = peerConnections.current.get(sourcePeerId);
-      if (pc) {
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-      }
-    });
-
-    socket.current?.on('ice-candidate', ({ candidate, sourcePeerId }) => {
-      const pc = peerConnections.current.get(sourcePeerId);
-      if (pc && candidate) {
-        pc.addIceCandidate(new RTCIceCandidate(candidate));
-      }
+  const getLocalStream = async () => {
+    const hasPermissions = await requestPermissions();
+    if (!hasPermissions) {
+      throw new Error('Permisos de cámara/micrófono denegados');
+    }
+    // Simplificamos las restricciones de video para máxima compatibilidad.
+    return await mediaDevices.getUserMedia({
+      audio: true,
+      video: true,
     });
   };
 
-  const createPeerConnection = async (peerId, stream) => {
-    const pc = new RTCPeerConnection(configuration);
-    peerConnections.current.set(peerId, pc);
-
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.current?.emit('ice-candidate', {
-          candidate: event.candidate,
-          targetPeerId: peerId,
-        });
-      }
-    };
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    socket.current?.emit('offer', { sdp: offer, targetPeerId: peerId });
-  };
-  
   const requestPermissions = async () => {
-    // ... (función de permisos sin cambios)
     if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        ]);
-        return (
-          granted['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED &&
-          granted['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED
-        );
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+      ]);
+      return (
+        granted['android.permission.CAMERA'] === 'granted' &&
+        granted['android.permission.RECORD_AUDIO'] === 'granted'
+      );
     }
     return true;
   };
 
+  const stopTransmitting = () => {
+    mediasoupService.current?.close();
+    navigation.goBack();
+  };
+
   return (
-    <SafeAreaView style={cameraStyles.container}>
-      {/* Botón de volver minimalista */}
-      <TouchableOpacity style={cameraStyles.backButton} onPress={() => navigation.goBack()}>
-        <Text style={cameraStyles.backButtonText}>‹</Text>
+    <SafeAreaView style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.backButtonText}>‹</Text>
       </TouchableOpacity>
-      
-      <Text style={cameraStyles.title}>{group.name}</Text>
-      <Text style={cameraStyles.statusText}>{status}</Text>
+      <Text style={styles.title}>{group.name}</Text>
+      <Text style={styles.statusText}>{status}</Text>
       {localStream && (
         <>
           <RTCView
             streamURL={localStream.toURL()}
-            style={cameraStyles.video}
+            style={styles.video}
             objectFit={'cover'}
             mirror={true}
           />
@@ -140,39 +135,16 @@ const CameraScreen = ({ navigation, route }) => {
   );
 };
 
-const cameraStyles = StyleSheet.create({
+// Estilos (sin cambios significativos, puedes usar los tuyos)
+const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black', alignItems: 'center', justifyContent: 'center' },
-  backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 10,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  backButtonText: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: '300',
-  },
-  title: {
-    position: 'absolute',
-    top: 80,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 10,
-    borderRadius: 5,
-    zIndex: 1,
-  },
+  backButton: { position: 'absolute', top: 40, left: 20, zIndex: 10 },
+  backButtonText: { fontSize: 32, color: '#fff' },
+  title: { position: 'absolute', top: 90, fontSize: 20, fontWeight: 'bold', color: 'white', backgroundColor: 'rgba(0,0,0,0.7)', padding: 10, borderRadius: 5, zIndex: 1 },
   statusText: { position: 'absolute', top: 40, color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, zIndex: 1 },
   video: { width: '100%', height: '100%' },
+  stopButton: { position: 'absolute', bottom: 40, backgroundColor: 'red', padding: 15, borderRadius: 10 },
+  stopButtonText: { color: 'white', fontWeight: 'bold' }
 });
-
-const stopTransmitting = () => {
-}
 
 export default CameraScreen;
