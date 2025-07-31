@@ -9,7 +9,7 @@ dist/
 
 # Environment variables
 .env
-signalingServerUrl.js
+siganlingServerUrl.js
 network_security_config.xml
 
 # Logs
