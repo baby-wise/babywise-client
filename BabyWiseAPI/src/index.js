@@ -5,19 +5,11 @@ import { Server } from 'socket.io';
 import mongoose from 'mongoose'
 import dotenv from 'dotenv';
 dotenv.config()
-import {router as bucketRoutes} from './routes/bucket.routes.js'
 import B2 from 'backblaze-b2'
-import * as firebaseAdmin  from 'firebase-admin';
-import { readFileSync } from 'node:fs' //Para leer archivos
-
-//FireBase configuration
-const admin = firebaseAdmin.default;
-const serviceAccount = JSON.parse(readFileSync('./src/firebase.json', 'utf8'));
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
-console.log('Firebase Admin SDK inicializado correctamente.');
+import { admin } from './config/firebaseConfig.js';
+import {router as bucketRoutes} from './routes/bucket.routes.js'
+import { router as userRoutes } from './routes/users.routes.js';
+import { router as groupRoutes } from './routes/group.routes.js';
 
 //Configuracion del servidor
 const app = express();
@@ -128,6 +120,8 @@ export const b2 = new B2({
 
 //Rutas permitidas
 app.use(bucketRoutes)
+app.use(userRoutes)
+app.use(groupRoutes)
 
 server.listen(PORT, () => {
     console.log(`Servidor de señalización escuchando en el puerto ${PORT}`);
