@@ -7,6 +7,17 @@ import dotenv from 'dotenv';
 dotenv.config()
 import {router as bucketRoutes} from './routes/bucket.routes.js'
 import B2 from 'backblaze-b2'
+import * as firebaseAdmin  from 'firebase-admin';
+import { readFileSync } from 'node:fs' //Para leer archivos
+
+//FireBase configuration
+const admin = firebaseAdmin.default;
+const serviceAccount = JSON.parse(readFileSync('./src/firebase.json', 'utf8'));
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+console.log('Firebase Admin SDK inicializado correctamente.');
 
 //Configuracion del servidor
 const app = express();
@@ -105,7 +116,7 @@ io.on('connection', (socket) => {
 });
 
 // Conexión a MongoDB
-mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGO_PW}@babywise.aengkd2.mongodb.net/?retryWrites=true&w=majority&appName=${process.env.MONGO_APP_NAME}`)
+mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGO_PW}@babywise.aengkd2.mongodb.net/${process.env.MONGO_DB_NAME}?retryWrites=true&w=majority&appName=${process.env.MONGO_APP_NAME}`)
   .then(() => console.log("Conectado a MongoDB"))
   .catch((error) => console.log("Error de conexión a MongoDB:", error));
 

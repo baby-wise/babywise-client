@@ -1,3 +1,6 @@
+#Fire base
+firebase.json
+
 # Node modules
 node_modules/
 
@@ -7,6 +10,7 @@ dist/
 # Environment variables
 .env
 signalingServerUrl.js
+network_security_config.xml
 
 # Logs
 npm-debug.log*
