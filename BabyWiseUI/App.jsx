@@ -1,10 +1,8 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Platform } from 'react-native';
 import HomeGroupsScreen from './src/screens/HomeGroupsScreen';
 import GroupOptionsScreen from './src/screens/GroupOptionsScreen';
-import ViewerSelectorScreen from './src/screens/ViewerSelectorScreen';
 import ViewerScreen from './src/screens/ViewerScreen';
 import CameraScreen from './src/screens/CameraScreen';
 
@@ -53,11 +51,6 @@ const App = () => {
           name="GroupOptions" 
           component={GroupOptionsScreen} 
           options={({ route }) => ({ title: `${route.params?.group?.name || 'Group'} Options` })}
-        />
-        <Stack.Screen 
-          name="ViewerSelector" 
-          component={ViewerSelectorScreen} 
-          options={{ title: 'Select Cameras' }}
         />
         <Stack.Screen 
           name="Viewer" 

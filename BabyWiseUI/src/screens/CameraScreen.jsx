@@ -8,7 +8,7 @@ import axios from 'axios';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 const CameraScreen = ({ route }) => {
-  const { group } = route.params;
+  const { group, cameraName } = route.params;
   const navigation = useNavigation();
   const [token, setToken] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
@@ -32,12 +32,12 @@ const CameraScreen = ({ route }) => {
         const res = await axios.get(`${SIGNALING_SERVER_URL}/getToken`, {
           params: {
             roomName: ROOM_ID,
-            participantName: `camera-${Date.now()}`,
+            participantName: `camera-${cameraName}`,
           },
         });
         if (isMounted) {
           setToken(res.data.token);
-          setStatus('Conectando a LiveKit...');
+          setStatus('Conectando...');
         }
       } catch (err) {
         setStatus(`Error: ${err.message}`);
@@ -49,7 +49,7 @@ const CameraScreen = ({ route }) => {
       isMounted = false;
       AudioSession.stopAudioSession();
     };
-  }, []);
+  }, [cameraName]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,29 +70,29 @@ const CameraScreen = ({ route }) => {
             adaptiveStream: { pixelDensity: 'screen' },
           }}
         >
-          <RoomView />
+          <RoomView setStatus={setStatus} />
         </LiveKitRoom>
       )}
     </SafeAreaView>
   );
 };
 
-const RoomView = () => {
+const RoomView = ({ setStatus }) => {
   const tracks = useTracks([Track.Source.Camera]);
-  const renderTrack = ({ item }) => {
-    if (isTrackReference(item)) {
-      return <VideoTrack trackRef={item} style={styles.video} />;
-    } else {
-      return <View style={styles.video} />;
+  // Mostrar solo el track local (de esta cámara)
+  const localTrack = tracks.find(t => t.participant.isLocal);
+  useEffect(() => {
+    if (localTrack) {
+      setStatus('En vivo');
     }
-  };
+  }, [localTrack, setStatus]);
   return (
     <View style={styles.tracksContainer}>
-      <FlatList
-        data={tracks}
-        renderItem={renderTrack}
-        keyExtractor={item => (isTrackReference(item) ? item.participant.identity : Math.random().toString())}
-      />
+      {localTrack ? (
+        <VideoTrack trackRef={localTrack} style={styles.video} />
+      ) : (
+        <Text style={{ color: 'white', marginTop: 20 }}>Esperando transmisión local...</Text>
+      )}
     </View>
   );
 };
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   tracksContainer: {
     flex: 1,
     width: '100%',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
 });
 

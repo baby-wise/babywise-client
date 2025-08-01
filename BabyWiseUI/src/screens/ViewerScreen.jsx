@@ -63,7 +63,7 @@ const ViewerScreen = ({ route, navigation }) => {
           token={token}
           connect={true}
           audio={true}
-          video={true}
+          video={false}
           options={{
             adaptiveStream: { pixelDensity: 'screen' },
           }}
@@ -75,22 +75,51 @@ const ViewerScreen = ({ route, navigation }) => {
   );
 };
 
+
 const RoomView = () => {
   const tracks = useTracks([Track.Source.Camera]);
-  const renderTrack = ({ item }) => {
-    if (isTrackReference(item)) {
-      return <VideoTrack trackRef={item} style={styles.video} />;
-    } else {
-      return <View style={styles.video} />;
+  // Filtrar solo participantes que son cámaras
+  const cameraTracks = tracks.filter(t => t.participant.identity && t.participant.identity.startsWith('camera-'));
+  const cameraParticipants = Array.from(new Set(cameraTracks.map(t => t.participant.identity)));
+  const [selectedCamera, setSelectedCamera] = useState(cameraParticipants[0] || null);
+
+  useEffect(() => {
+    if (cameraParticipants.length > 0 && !selectedCamera) {
+      setSelectedCamera(cameraParticipants[0]);
     }
-  };
+    if (cameraParticipants.length === 0 && selectedCamera) {
+      setSelectedCamera(null);
+    }
+  }, [cameraParticipants.length]);
+
+  const selectedTrack = cameraTracks.find(t => t.participant.identity === selectedCamera);
+
   return (
     <View style={styles.tracksContainer}>
-      <FlatList
-        data={tracks}
-        renderItem={renderTrack}
-        keyExtractor={item => (isTrackReference(item) ? item.participant.identity : Math.random().toString())}
-      />
+      {cameraParticipants.length > 1 && (
+        <FlatList
+          data={cameraParticipants}
+          keyExtractor={item => item}
+          horizontal
+          style={{ marginBottom: 10 }}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.cameraItem, selectedCamera === item && styles.cameraItemSelected]}
+              onPress={() => setSelectedCamera(item)}
+            >
+              <Text style={styles.cameraLabel}>{item.replace('camera-', '')}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+      {selectedTrack ? (
+        <>
+          <VideoTrack trackRef={selectedTrack} style={styles.video} />
+          <Text style={styles.cameraNameLabel}>{selectedCamera.replace('camera-', '')}</Text>
+        </>
+      ) : (
+        <Text style={{ color: 'white', marginTop: 20 }}>Esperando transmisión de cámara...</Text>
+      )}
     </View>
   );
 };
@@ -105,6 +134,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   backButton: {
     position: 'absolute',
@@ -142,6 +172,31 @@ const styles = StyleSheet.create({
     color: 'red',
     textAlign: 'center',
     padding: 10,
+  },
+  cameraItem: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+    marginHorizontal: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ccc',
+  },
+  cameraItemSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  cameraLabel: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: 'bold',
+  },
+  cameraNameLabel: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 12,
+    textAlign: 'center',
   },
 });
 
