@@ -13,10 +13,9 @@ const newUser = async (req,res)=>{
 
 }
 
-async function findUserByUID (UID){
-    console.log(UID)
+async function getUserById(UID){
     const user = await User_DB.findOne({UID})
     return user
 }
 
-export {users, newUser, findUserByUID}
+export {users, newUser, getUserById}

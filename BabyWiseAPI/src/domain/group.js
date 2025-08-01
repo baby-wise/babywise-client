@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { User_DB } from "./user.js";
 
 class Group {
-    constructor({ name, users, cameras, viewers, admins }) {
+    constructor({_id, name, users, cameras, viewers, admins }) {
         this.name = name;
         this.users = users || [];
         this.cameras = cameras || [];
@@ -19,7 +19,7 @@ class Group {
 
         for (const listName of memberLists) {
             this[listName] = this[listName].filter(
-                (member) => member.toString() !== memberToRemove.toString()
+                (member) => member._id.toString() !== memberToRemove._id.toString()
             );
         }
     }
