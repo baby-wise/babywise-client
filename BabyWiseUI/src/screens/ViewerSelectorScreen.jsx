@@ -1,113 +1,122 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, StyleSheet, Text, View, TouchableOpacity, Switch } from 'react-native';
-import { io as ioViewer } from 'socket.io-client';
+import React, { useState } from 'react';
+import { SafeAreaView, StyleSheet, Text, View, TouchableOpacity, FlatList } from 'react-native';
+import { LiveKitRoom, useTracks, AudioSession, registerGlobals, isTrackReference } from '@livekit/react-native';
+import { Track } from 'livekit-client';
+import axios from 'axios';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
-import DropDownPicker from 'react-native-dropdown-picker';
 
 const ViewerSelectorScreen = ({ navigation, route }) => {
   const { group } = route.params;
+  const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
-  const [cameras, setCameras] = useState([]);
-  const socket = useRef(null);
-  const ROOM_ID = `baby-room-${group.id}`; // Usar el ID del grupo
+  const [token, setToken] = useState(null);
+  const ROOM_ID = `baby-room-${group.id}`;
+  let wsUrl;
+  try {
+    const urlObj = new URL(SIGNALING_SERVER_URL);
+    wsUrl = `ws://${urlObj.hostname}:7880`;
+  } catch {
+    wsUrl = SIGNALING_SERVER_URL.replace(/^http/, 'ws').replace(/:\d+$/, ':7880');
+  }
 
-  // Variables para el selector de cámaras
-  const [selectedCameras, setSelectedCameras] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [multiple, setMultiple] = useState(false);
-  const [dropdownItems, setDropdownItems] = useState([]);
-
-  useEffect(() => {
-    // Este socket es temporal y solo para obtener la lista de cámaras.
-    socket.current = ioViewer(SIGNALING_SERVER_URL);
-    
-    socket.current.on('connect', () => {
-      setStatus('Conectado. Solicitando cámaras disponibles...');
-      socket.current?.emit('get-cameras-list', { roomId: ROOM_ID });
-    });
-
-    socket.current.on('cameras-list', (cameras) => {
-      setStatus(`${cameras.length > 0 ? 'Seleccione una cámara' : 'No hay cámaras disponibles'}`);
-      console.log('Cámaras recibidas:', cameras);
-      setCameras(cameras);
-    });
-
-    // Limpiamos este socket temporal cuando el componente se desmonta.
+  registerGlobals();
+  React.useEffect(() => {
+    AudioSession.startAudioSession();
     return () => {
-      socket.current?.disconnect();
+      AudioSession.stopAudioSession();
     };
   }, []);
 
-  useEffect(() => {
-    // Filtramos defensivamente para asegurarnos de que cada cámara tenga un ID.
-    // Esto previene el error de "key" si el servidor envía datos malformados.
-    const validCameras = cameras.filter(camera => camera && camera.id);
-
-    const items = validCameras.map(camera => ({
-      label: camera.name || camera.id, // Usamos el nombre, o el ID como fallback.
-      value: camera.id,                // El valor siempre será un ID válido.
-    }));
-    setDropdownItems(items);
-
-    if (items.length > 0 && !multiple) {
-      setSelectedCameras(items[0].value);
-    } else {
-      setSelectedCameras([]);
-    }
-  }, [cameras, multiple]); // Se ejecuta cuando 'cameras' o 'multiple' cambian
+  // Fetch token for subscription only
+  React.useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const res = await axios.get(`${SIGNALING_SERVER_URL}/getToken`, {
+          params: {
+            roomName: ROOM_ID,
+            participantName: `viewer-${Date.now()}`,
+          },
+        });
+        setToken(res.data.token);
+        setStatus('Conectado, buscando cámaras...');
+      } catch (err) {
+        setStatus(`Error obteniendo token: ${err.message}`);
+      }
+    };
+    fetchToken();
+  }, [ROOM_ID]);
 
   const startViewing = () => {
-    if (!selectedCameras || (Array.isArray(selectedCameras) && selectedCameras.length === 0)) {
+    if (!selectedParticipant) {
       setStatus('Por favor selecciona una cámara');
       return;
     }
-    
-    // Navegamos a la pantalla de visualización, pasando solo la información del grupo.
-    // El ViewerScreen se encargará de todo el proceso de conexión de Mediasoup.
-    navigation.navigate('Viewer', { 
-      group,
-      // Ya no pasamos el socket ni el roomId.
-    });
+    navigation.navigate('Viewer', { group, participantIdentity: selectedParticipant });
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Botón de volver minimalista */}
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <Text style={styles.backButtonText}>‹</Text>
       </TouchableOpacity>
-      
       <Text style={styles.title}>Seleccionar Cámara</Text>
       <Text style={styles.groupName}>{group.name}</Text>
       <Text style={styles.statusText}>{status}</Text>
-      
       <View style={styles.selectorContainer}>
-        <Text style={styles.controlLabel}>Modo selección múltiple</Text>
-        <Switch value={multiple} onValueChange={setMultiple} />
-
-        <DropDownPicker
-          open={open}
-          value={selectedCameras}
-          items={dropdownItems}
-          setOpen={setOpen}
-          setValue={setSelectedCameras}
-          setItems={setDropdownItems}
-          multiple={multiple}
-          min={0}
-          max={multiple ? 5 : 1}
-          placeholder="Selecciona una o más cámaras"
-          style={styles.dropdown}
-        />
-
+        {token ? (
+          <LiveKitRoom
+            serverUrl={wsUrl}
+            token={token}
+            connect={true}
+            audio={false}
+            video={false}
+            options={{ adaptiveStream: { pixelDensity: 'screen' } }}
+          >
+            <ParticipantList
+              selectedParticipant={selectedParticipant}
+              setSelectedParticipant={setSelectedParticipant}
+              setStatus={setStatus}
+            />
+          </LiveKitRoom>
+        ) : (
+          <Text style={{ color: '#333', marginBottom: 20 }}>Obteniendo token...</Text>
+        )}
         <TouchableOpacity
           onPress={startViewing}
           style={styles.startButton}
-          disabled={cameras.length === 0}
+          disabled={!selectedParticipant}
         >
           <Text style={styles.startButtonText}>Iniciar Visualización</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+  );
+}
+
+const ParticipantList = ({ selectedParticipant, setSelectedParticipant, setStatus }) => {
+  const tracks = useTracks([Track.Source.Camera]);
+  // Agrupa por participante
+  const participants = Array.from(new Set(tracks.map(t => t.participant.identity)));
+  React.useEffect(() => {
+    if (participants.length > 0) {
+      setStatus('Seleccione una cámara');
+    } else {
+      setStatus('No hay cámaras disponibles');
+    }
+  }, [participants, setStatus]);
+  return (
+    <FlatList
+      data={participants}
+      keyExtractor={item => item}
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          style={[styles.cameraItem, selectedParticipant === item && styles.cameraItemSelected]}
+          onPress={() => setSelectedParticipant(item)}
+        >
+          <Text style={styles.cameraLabel}>{item}</Text>
+        </TouchableOpacity>
+      )}
+    />
   );
 };
 
@@ -192,6 +201,25 @@ const styles = StyleSheet.create({
   startButtonText: {
     color: 'white',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cameraItem: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+    marginBottom: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ccc',
+  },
+  cameraItemSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  cameraLabel: {
+    fontSize: 16,
+    color: '#333',
     fontWeight: 'bold',
   },
 });

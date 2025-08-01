@@ -1,105 +1,99 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { RTCView, MediaStream } from 'react-native-webrtc';
-import ConsumerService from '../services/ConsumerService';
 
-const ViewerScreen = ({ route }) => {
-  const { group, selectedPeerId } = route.params;
-  // Use a ref for the stream to keep a stable instance.
-  const mediaStreamRef = useRef(new MediaStream());
-  // Use state to trigger re-renders when the stream changes.
-  const [streamVersion, setStreamVersion] = useState(0);
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
+import { LiveKitRoom, useTracks, VideoTrack, AudioSession, registerGlobals, isTrackReference } from '@livekit/react-native';
+import { Track } from 'livekit-client';
+import axios from 'axios';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
+
+const ViewerScreen = ({ route, navigation }) => {
+  const { group } = route.params;
+  const [token, setToken] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
-  const consumerService = useRef(null);
+  const [error, setError] = useState(null);
   const ROOM_ID = `baby-room-${group.id}`;
+  // Construye la URL WebSocket correctamente, evitando doble puerto
+  let wsUrl;
+  try {
+    const urlObj = new URL(SIGNALING_SERVER_URL);
+    wsUrl = `ws://${urlObj.hostname}:7880`;
+  } catch {
+    wsUrl = SIGNALING_SERVER_URL.replace(/^http/, 'ws').replace(/:\d+$/, ':7880');
+  }
 
+  registerGlobals();
   useEffect(() => {
-    consumerService.current = new ConsumerService(ROOM_ID);
-
-    const start = async () => {
+    let isMounted = true;
+    const fetchToken = async () => {
+      setStatus('Obteniendo token...');
       try {
-        // 1. Conectar al servidor de señalización
-        setStatus('Conectando al servidor...');
-        await consumerService.current.connect();
-
-        // 2. Unirse a la sala, cargar el 'Device' y obtener productores existentes
-        setStatus('Uniéndose a la sala...');
-        const { producerIds } = await consumerService.current.joinRoom(selectedPeerId);
-
-        // 3. Crear el transporte de recepción
-        setStatus('Creando transporte...');
-        await consumerService.current.createRecvTransport();
-
-        if (producerIds && producerIds.length > 0) {
-          setStatus(`Encontrados ${producerIds.length} productores. Consumiendo...`);
-          await Promise.all(producerIds.map(id => consumeProducer(id)));
-        } else {
-          setStatus('Esperando a que la cámara comience a transmitir...');
+        const res = await axios.get(`${SIGNALING_SERVER_URL}/getToken`, {
+          params: {
+            roomName: ROOM_ID,
+            participantName: `viewer-${Date.now()}`,
+          },
+        });
+        if (isMounted) {
+          setToken(res.data.token);
+          setStatus('Conectando a LiveKit...');
         }
-        
-      } catch (error) {
-        console.error('Error en el proceso de inicio del visor:', error);
-        setStatus(`Error: ${error.message}`);
+      } catch (err) {
+        setStatus(`Error: ${err.message}`);
       }
     };
-
-    const consumeProducer = async (producerId) => {
-      try {
-        const consumer = await consumerService.current.consume(producerId);
-        console.log('Consumer creado:', consumer);
-        
-        const { track } = consumer;
-
-        if (track) {
-          console.log(`[consumeProducer] Track recibido: kind=${track.kind}, id=${track.id}`);
-          // Add the track to the existing stream object.
-          mediaStreamRef.current.addTrack(track);
-          // Force a re-render by updating state.
-          setStreamVersion(prev => prev + 1);
-          setStatus('Recibiendo stream...');
-        }
-      } catch (error) {
-        console.error(`Error al consumir productor ${producerId}:`, error);
-        setStatus(`Error al consumir productor: ${error.message}`);
-      }
-    };
-
-    start();
-
-    // Función de limpieza
+    fetchToken();
+    AudioSession.startAudioSession();
     return () => {
-      console.log('Cleaning up ViewerScreen...');
-      consumerService.current?.close();
-      // Stop all tracks and clear the stream.
-      mediaStreamRef.current?.getTracks().forEach(track => track.stop());
-      mediaStreamRef.current = new MediaStream();
-      setStreamVersion(0); // Reset version on cleanup.
+      isMounted = false;
+      AudioSession.stopAudioSession();
     };
-  }, [group.id, selectedPeerId]);
-
-  const mediaStream = mediaStreamRef.current;
+  }, []);
 
   return (
-    <View style={styles.container}>
-      {mediaStream && mediaStream.getVideoTracks().length > 0 ? (
-        <RTCView
-          key={streamVersion} // Force re-render of RTCView when stream changes
-          streamURL={mediaStream.toURL()}
-          style={styles.video}
-          objectFit={'cover'}
-        />
-      ) : (
-        <>
-          <Text style={styles.statusText}>{status}</Text>
-          <Text style={styles.warningText}>
-            {status === 'Recibiendo stream...' ? 'Recibiendo solo audio...' : 'No se está recibiendo video. Verifica la transmisión.'}
-          </Text>
-        </>
+    <SafeAreaView style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack()}>
+        <Text style={styles.backButtonText}>‹</Text>
+      </TouchableOpacity>
+      <Text style={styles.title}>{group.name}</Text>
+      <Text style={styles.statusText}>{status}</Text>
+      {error && <Text style={{ color: 'red' }}>{error}</Text>}
+      {token && (
+        <LiveKitRoom
+          serverUrl={wsUrl}
+          token={token}
+          connect={true}
+          audio={true}
+          video={true}
+          options={{
+            adaptiveStream: { pixelDensity: 'screen' },
+          }}
+        >
+          <RoomView />
+        </LiveKitRoom>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
+const RoomView = () => {
+  const tracks = useTracks([Track.Source.Camera]);
+  const renderTrack = ({ item }) => {
+    if (isTrackReference(item)) {
+      return <VideoTrack trackRef={item} style={styles.video} />;
+    } else {
+      return <View style={styles.video} />;
+    }
+  };
+  return (
+    <View style={styles.tracksContainer}>
+      <FlatList
+        data={tracks}
+        renderItem={renderTrack}
+        keyExtractor={item => (isTrackReference(item) ? item.participant.identity : Math.random().toString())}
+      />
+    </View>
+  );
+};
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -107,9 +101,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#000',
   },
+  tracksContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
+  },
+  backButtonText: {
+    fontSize: 32,
+    color: '#fff',
+  },
+  title: {
+    position: 'absolute',
+    top: 90,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 10,
+    borderRadius: 5,
+    zIndex: 1,
+  },
   video: {
     width: '100%',
-    height: '100%',
+    height: 300,
+    marginVertical: 10,
   },
   statusText: {
     color: 'white',
@@ -121,7 +142,7 @@ const styles = StyleSheet.create({
     color: 'red',
     textAlign: 'center',
     padding: 10,
-  }
+  },
 });
 
 export default ViewerScreen;

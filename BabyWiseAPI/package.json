@@ -12,11 +12,12 @@
   "description": "",
   "dependencies": {
     "backblaze-b2": "^1.7.1",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "mediasoup": "^3.17.1",
     "mongoose": "^8.16.4",
     "multer": "^2.0.2",
+    "livekit-server-sdk": "^2.1.2",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

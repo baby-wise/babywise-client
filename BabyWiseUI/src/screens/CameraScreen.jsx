@@ -1,117 +1,55 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, StyleSheet, Text, View, Platform, PermissionsAndroid, TouchableOpacity } from 'react-native';
-import { RTCView, mediaDevices } from 'react-native-webrtc';
-import ProducerService from '../services/ProducerService';
 
-const CameraScreen = ({ navigation, route }) => {
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
+import { LiveKitRoom, useTracks, VideoTrack, AudioSession, registerGlobals, isTrackReference } from '@livekit/react-native';
+import { Track } from 'livekit-client';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
+
+const CameraScreen = ({ route }) => {
   const { group } = route.params;
-  const [localStream, setLocalStream] = useState(null);
+  const navigation = useNavigation();
+  const [token, setToken] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
-  const producerService = useRef(null);
+  const [error, setError] = useState(null);
   const ROOM_ID = `baby-room-${group.id}`;
+  // Construye la URL WebSocket correctamente, evitando doble puerto
+  let wsUrl;
+  try {
+    const urlObj = new URL(SIGNALING_SERVER_URL);
+    wsUrl = `ws://${urlObj.hostname}:7880`;
+  } catch {
+    wsUrl = SIGNALING_SERVER_URL.replace(/^http/, 'ws').replace(/:\d+$/, ':7880');
+  }
 
+  registerGlobals();
   useEffect(() => {
-    // Inicializar el servicio y la conexión
-    producerService.current = new ProducerService(ROOM_ID);
-
-    const start = async () => {
+    let isMounted = true;
+    const fetchToken = async () => {
+      setStatus('Obteniendo token...');
       try {
-        // 1. Pedir permisos y obtener stream local
-        setStatus('Pidiendo permisos...');
-        const stream = await getLocalStream();
-
-        // Log para depurar las pistas obtenidas
-        if (stream) {
-          console.log('Stream obtenido. Analizando pistas...');
-          console.log('Todas las pistas (stream.getTracks()):', stream.getTracks());
-          console.log('Número de pistas de video:', stream.getVideoTracks().length);
-          console.log('Número de pistas de audio:', stream.getAudioTracks().length);
-        } else {
-          console.log('Error: getLocalStream() devolvió un stream nulo.');
+        const res = await axios.get(`${SIGNALING_SERVER_URL}/getToken`, {
+          params: {
+            roomName: ROOM_ID,
+            participantName: `camera-${Date.now()}`,
+          },
+        });
+        if (isMounted) {
+          setToken(res.data.token);
+          setStatus('Conectando a LiveKit...');
         }
-
-        if (!stream) {
-          throw new Error('No se pudo obtener el stream local.');
-        }
-        const videoTrack = stream.getVideoTracks()[0];
-        console.log('Camera video track:', videoTrack);
-        console.log('enabled:', videoTrack.enabled, 'muted:', videoTrack.muted, 'readyState:', videoTrack.readyState);
-        const audioTrack = stream.getAudioTracks()[0];
-        if (!videoTrack || !audioTrack) {
-          throw new Error('El stream obtenido no contiene las pistas de audio/video necesarias.');
-        }
-        // --- FIN DE LA VALIDACIÓN ---
-
-        setLocalStream(stream);
-
-        // 2. Conectar al servidor de señalización
-        setStatus('Conectando al servidor...');
-        await producerService.current.connect();
-
-        // 3. Unirse a la sala y cargar el 'Device'
-        setStatus('Uniéndose a la sala...');
-        await producerService.current.joinRoom();
-
-        // 4. Crear el transporte de envío
-        setStatus('Creando transporte...');
-        await producerService.current.createSendTransport();
-
-        // 5. Empezar a producir (enviar) el stream de video y audio
-        // Ahora usamos las variables que ya validamos.
-        setStatus('Transmitiendo...');
-        console.log('Produciendo video track:', videoTrack);
-        await producerService.current.produce(videoTrack);
-        console.log('Produciendo audio track:', audioTrack);
-        await producerService.current.produce(audioTrack);
-        setStatus('En vivo');
-
-      } catch (error) {
-        console.error('Error en el proceso de inicio de cámara:', error);
-        // Mostramos el error en la UI para que sea más fácil de depurar.
-        setStatus(`Error: ${error.message}`);
+      } catch (err) {
+        setStatus(`Error: ${err.message}`);
       }
     };
-
-    start();
-
-    // Función de limpieza al desmontar el componente
+    fetchToken();
+    AudioSession.startAudioSession();
     return () => {
-      console.log('Limpiando CameraScreen...');
-      localStream?.getTracks().forEach((track) => track.stop());
-      producerService.current?.close();
+      isMounted = false;
+      AudioSession.stopAudioSession();
     };
   }, []);
-
-  const getLocalStream = async () => {
-    const hasPermissions = await requestPermissions();
-    if (!hasPermissions) {
-      throw new Error('Permisos de cámara/micrófono denegados');
-    }
-    // Simplificamos las restricciones de video para máxima compatibilidad.
-    return await mediaDevices.getUserMedia({
-      audio: true,
-      video: { width: 640, height: 480, frameRate: 30 , facingMode: 'user' },
-    });
-  };
-
-  const requestPermissions = async () => {
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.CAMERA,
-        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-      ]);
-      return (
-        granted['android.permission.CAMERA'] === 'granted' &&
-        granted['android.permission.RECORD_AUDIO'] === 'granted'
-      );
-    }
-    return true;
-  };
-
-  const stopTransmitting = () => {
-    mediasoupService.current?.close();
-    navigation.goBack();
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -120,33 +58,92 @@ const CameraScreen = ({ navigation, route }) => {
       </TouchableOpacity>
       <Text style={styles.title}>{group.name}</Text>
       <Text style={styles.statusText}>{status}</Text>
-      {localStream && (
-        <>
-          <RTCView
-            streamURL={localStream.toURL()}
-            style={styles.video}
-            objectFit={'cover'}
-            mirror={true}
-          />
-          <TouchableOpacity style={styles.stopButton} onPress={stopTransmitting}>
-            <Text style={styles.stopButtonText}>Dejar de transmitir</Text>
-          </TouchableOpacity>
-        </>
+      {error && <Text style={{ color: 'red' }}>{error}</Text>}
+      {token && (
+        <LiveKitRoom
+          serverUrl={wsUrl}
+          token={token}
+          connect={true}
+          audio={true}
+          video={true}
+          options={{
+            adaptiveStream: { pixelDensity: 'screen' },
+          }}
+        >
+          <RoomView />
+        </LiveKitRoom>
       )}
     </SafeAreaView>
   );
 };
 
-// Estilos (sin cambios significativos, puedes usar los tuyos)
+const RoomView = () => {
+  const tracks = useTracks([Track.Source.Camera]);
+  const renderTrack = ({ item }) => {
+    if (isTrackReference(item)) {
+      return <VideoTrack trackRef={item} style={styles.video} />;
+    } else {
+      return <View style={styles.video} />;
+    }
+  };
+  return (
+    <View style={styles.tracksContainer}>
+      <FlatList
+        data={tracks}
+        renderItem={renderTrack}
+        keyExtractor={item => (isTrackReference(item) ? item.participant.identity : Math.random().toString())}
+      />
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'black', alignItems: 'center', justifyContent: 'center' },
-  backButton: { position: 'absolute', top: 40, left: 20, zIndex: 10 },
-  backButtonText: { fontSize: 32, color: '#fff' },
-  title: { position: 'absolute', top: 90, fontSize: 20, fontWeight: 'bold', color: 'white', backgroundColor: 'rgba(0,0,0,0.7)', padding: 10, borderRadius: 5, zIndex: 1 },
-  statusText: { position: 'absolute', top: 40, color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, zIndex: 1 },
-  video: { width: '100%', height: '100%' },
-  stopButton: { position: 'absolute', bottom: 40, backgroundColor: 'red', padding: 15, borderRadius: 10 },
-  stopButtonText: { color: 'white', fontWeight: 'bold' }
+  container: {
+    flex: 1,
+    backgroundColor: 'black',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
+  },
+  backButtonText: {
+    fontSize: 32,
+    color: '#fff',
+  },
+  title: {
+    position: 'absolute',
+    top: 90,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 10,
+    borderRadius: 5,
+    zIndex: 1,
+  },
+  statusText: {
+    position: 'absolute',
+    top: 40,
+    color: 'white',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 10,
+    borderRadius: 5,
+    zIndex: 1,
+  },
+  video: {
+    width: '100%',
+    height: 300,
+    marginVertical: 10,
+  },
+  tracksContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+  },
 });
 
 export default CameraScreen;
