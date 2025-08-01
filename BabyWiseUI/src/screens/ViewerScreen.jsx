@@ -1,38 +1,38 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { RTCView } from 'react-native-webrtc';
-import MediasoupService from '../services/mediaSoupService';
+import { RTCView, MediaStream } from 'react-native-webrtc';
+import ConsumerService from '../services/ConsumerService';
 
 const ViewerScreen = ({ route }) => {
-  const { group } = route.params;
-  const [remoteStreams, setRemoteStreams] = useState(new Map());
+  const { group, selectedPeerId } = route.params;
+  // Use a ref for the stream to keep a stable instance.
+  const mediaStreamRef = useRef(new MediaStream());
+  // Use state to trigger re-renders when the stream changes.
+  const [streamVersion, setStreamVersion] = useState(0);
   const [status, setStatus] = useState('Inicializando...');
-  const mediasoupService = useRef(null);
+  const consumerService = useRef(null);
   const ROOM_ID = `baby-room-${group.id}`;
 
   useEffect(() => {
-    mediasoupService.current = new MediasoupService(ROOM_ID);
+    consumerService.current = new ConsumerService(ROOM_ID);
 
     const start = async () => {
       try {
         // 1. Conectar al servidor de señalización
         setStatus('Conectando al servidor...');
-        await mediasoupService.current.connect();
+        await consumerService.current.connect();
 
         // 2. Unirse a la sala, cargar el 'Device' y obtener productores existentes
         setStatus('Uniéndose a la sala...');
-        const { producerIds } = await mediasoupService.current.joinRoom();
+        const { producerIds } = await consumerService.current.joinRoom(selectedPeerId);
 
         // 3. Crear el transporte de recepción
         setStatus('Creando transporte...');
-        await mediasoupService.current.createRecvTransport();
-        
-        // 4. Consumir los productores que ya existen en la sala
+        await consumerService.current.createRecvTransport();
+
         if (producerIds && producerIds.length > 0) {
           setStatus(`Encontrados ${producerIds.length} productores. Consumiendo...`);
-          for (const producerId of producerIds) {
-            await consumeProducer(producerId);
-          }
+          await Promise.all(producerIds.map(id => consumeProducer(id)));
         } else {
           setStatus('Esperando a que la cámara comience a transmitir...');
         }
@@ -45,34 +45,22 @@ const ViewerScreen = ({ route }) => {
 
     const consumeProducer = async (producerId) => {
       try {
-        const consumer = await mediasoupService.current.consume(producerId);
-        const { track, kind } = consumer;
-        if (kind === 'video') {
-          console.log('Track de video:', track);
-          console.log('Track readyState:', track.readyState);
-          const audioTrack = Array.from(remoteStreams.values())
-              .flatMap(stream => stream.getAudioTracks())[0];
-          const newStream = audioTrack ? new MediaStream([track, audioTrack]) : new MediaStream([track]);
-          setRemoteStreams(prevStreams => {
-            const newStreams = new Map(prevStreams);
-            newStreams.set(producerId, newStream);
-            return newStreams;
-          });
-          setStatus('Recibiendo stream de video...');
-        } else if (kind === 'audio') {
-          // Solo cambia el status si no hay video
-          setRemoteStreams(prevStreams => {
-            if ([...prevStreams.values()].some(s => s.getVideoTracks().length > 0)) {
-              return prevStreams;
-            }
-            return prevStreams;
-          });
-          if (![...remoteStreams.values()].some(s => s.getVideoTracks().length > 0)) {
-            setStatus('Recibiendo stream de audio...');
-          }
+        const consumer = await consumerService.current.consume(producerId);
+        console.log('Consumer creado:', consumer);
+        
+        const { track } = consumer;
+
+        if (track) {
+          console.log(`[consumeProducer] Track recibido: kind=${track.kind}, id=${track.id}`);
+          // Add the track to the existing stream object.
+          mediaStreamRef.current.addTrack(track);
+          // Force a re-render by updating state.
+          setStreamVersion(prev => prev + 1);
+          setStatus('Recibiendo stream...');
         }
       } catch (error) {
         console.error(`Error al consumir productor ${producerId}:`, error);
+        setStatus(`Error al consumir productor: ${error.message}`);
       }
     };
 
@@ -80,27 +68,33 @@ const ViewerScreen = ({ route }) => {
 
     // Función de limpieza
     return () => {
-      mediasoupService.current?.close();
+      console.log('Cleaning up ViewerScreen...');
+      consumerService.current?.close();
+      // Stop all tracks and clear the stream.
+      mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = new MediaStream();
+      setStreamVersion(0); // Reset version on cleanup.
     };
-  }, []);
+  }, [group.id, selectedPeerId]);
 
-  const videoStream = Array.from(remoteStreams.values()).find(
-    stream => stream.getVideoTracks().length > 0
-  );
-
-  console.log('RTCView streamURL:', videoStream ? videoStream.toURL() : 'NO STREAM');
-  console.log('Video tracks:', videoStream ? videoStream.getVideoTracks() : []);
+  const mediaStream = mediaStreamRef.current;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.statusText}>{status}</Text>
-      {videoStream && (
+      {mediaStream && mediaStream.getVideoTracks().length > 0 ? (
         <RTCView
-          key={videoStream.id || Math.random()} // fuerza re-render si cambia el stream
-          streamURL={videoStream.toURL()}
+          key={streamVersion} // Force re-render of RTCView when stream changes
+          streamURL={mediaStream.toURL()}
           style={styles.video}
           objectFit={'cover'}
         />
+      ) : (
+        <>
+          <Text style={styles.statusText}>{status}</Text>
+          <Text style={styles.warningText}>
+            {status === 'Recibiendo stream...' ? 'Recibiendo solo audio...' : 'No se está recibiendo video. Verifica la transmisión.'}
+          </Text>
+        </>
       )}
     </View>
   );
@@ -115,15 +109,19 @@ const styles = StyleSheet.create({
   },
   video: {
     width: '100%',
-    height: '100%', // Prueba con toda la pantalla
-    backgroundColor: '#111',
+    height: '100%',
   },
   statusText: {
     color: 'white',
-    position: 'absolute',
-    top: 40,
+    textAlign: 'center',
+    padding: 10,
     fontSize: 18,
   },
+  warningText: {
+    color: 'red',
+    textAlign: 'center',
+    padding: 10,
+  }
 });
 
 export default ViewerScreen;

@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaView, StyleSheet, Text, View, Platform, PermissionsAndroid, TouchableOpacity } from 'react-native';
 import { RTCView, mediaDevices } from 'react-native-webrtc';
-import MediasoupService from '../services/mediaSoupService'; // Importamos nuestro servicio
+import ProducerService from '../services/ProducerService';
 
 const CameraScreen = ({ navigation, route }) => {
   const { group } = route.params;
   const [localStream, setLocalStream] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
-  const mediasoupService = useRef(null);
+  const producerService = useRef(null);
   const ROOM_ID = `baby-room-${group.id}`;
 
   useEffect(() => {
     // Inicializar el servicio y la conexión
-    mediasoupService.current = new MediasoupService(ROOM_ID);
+    producerService.current = new ProducerService(ROOM_ID);
 
     const start = async () => {
       try {
@@ -46,21 +46,23 @@ const CameraScreen = ({ navigation, route }) => {
 
         // 2. Conectar al servidor de señalización
         setStatus('Conectando al servidor...');
-        await mediasoupService.current.connect();
+        await producerService.current.connect();
 
         // 3. Unirse a la sala y cargar el 'Device'
         setStatus('Uniéndose a la sala...');
-        await mediasoupService.current.joinRoom();
+        await producerService.current.joinRoom();
 
         // 4. Crear el transporte de envío
         setStatus('Creando transporte...');
-        await mediasoupService.current.createSendTransport();
+        await producerService.current.createSendTransport();
 
         // 5. Empezar a producir (enviar) el stream de video y audio
         // Ahora usamos las variables que ya validamos.
         setStatus('Transmitiendo...');
-        await mediasoupService.current.produce(videoTrack);
-        await mediasoupService.current.produce(audioTrack);
+        console.log('Produciendo video track:', videoTrack);
+        await producerService.current.produce(videoTrack);
+        console.log('Produciendo audio track:', audioTrack);
+        await producerService.current.produce(audioTrack);
         setStatus('En vivo');
 
       } catch (error) {
@@ -76,7 +78,7 @@ const CameraScreen = ({ navigation, route }) => {
     return () => {
       console.log('Limpiando CameraScreen...');
       localStream?.getTracks().forEach((track) => track.stop());
-      mediasoupService.current?.close();
+      producerService.current?.close();
     };
   }, []);
 
@@ -88,7 +90,7 @@ const CameraScreen = ({ navigation, route }) => {
     // Simplificamos las restricciones de video para máxima compatibilidad.
     return await mediaDevices.getUserMedia({
       audio: true,
-      video: true,
+      video: { width: 640, height: 480, frameRate: 30 , facingMode: 'user' },
     });
   };
 

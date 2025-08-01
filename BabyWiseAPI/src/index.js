@@ -50,11 +50,9 @@ const rooms = new Map(); // Mapa de roomId -> Room
 
 // --- Lógica de Socket.IO para Señalización ---
 io.on('connection', (socket) => {
-  console.log(`Cliente conectado: ${socket.id}`);
 
   socket.on('get-router-rtp-capabilities', async ({ roomId }, callback) => {
     try {
-      console.log(`-> Recibida petición 'get-router-rtp-capabilities' para la sala: ${roomId}`);
       
       // Lógica modificada: Si la sala no existe, la creamos aquí.
       let room = rooms.get(roomId);
@@ -64,18 +62,14 @@ io.on('connection', (socket) => {
         room = await Room.create({ worker, roomId });
         rooms.set(roomId, room);
       }
-
       const rtpCapabilities = room.getRtpCapabilities();
       callback(rtpCapabilities);
-
     } catch (error) {
-      console.error('Error en get-router-rtp-capabilities:', error);
       callback({ error: error.message });
     }
   });
 
   socket.on('disconnect', () => {
-    console.log(`Cliente desconectado: ${socket.id}`);
     // Limpiar el peer de cualquier sala en la que estuviera
     rooms.forEach(room => {
       if (room.getPeer(socket.id)) {
@@ -89,10 +83,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(roomId);
     let cameras = [];
     if (room) {
-      console.log(`-> Petición de lista de cámaras para la sala: ${roomId}. Sala encontrada.`);
       cameras = room.getProducerListForPeer();
-    } else {
-      console.log(`-> Petición de lista de cámaras para la sala: ${roomId}. La sala no existe todavía.`);
     }
     // Enviamos la lista de vuelta al cliente que la solicitó.
     socket.emit('cameras-list', cameras);
@@ -102,7 +93,7 @@ io.on('connection', (socket) => {
   // --- Eventos de Mediasoup ---
 
   // 1. El cliente pide unirse a una sala
-  socket.on('join-room', async ({ roomId }, callback) => {
+  socket.on('join-room', async ({ roomId, peerId }, callback) => {
     try {
       const room = rooms.get(roomId);
       if (!room) {
@@ -111,8 +102,17 @@ io.on('connection', (socket) => {
       const peer = new Peer(socket.id, 'user-' + socket.id);
       room.addPeer(peer);
 
-      // Envía los IDs de productores reales
-      const producerIds = room.getAllProducerIds();
+      let producerIds;
+      if (peerId) {
+        // Solo los producerIds del peer seleccionado
+        const selectedPeer = room.getPeer(peerId);
+        producerIds = selectedPeer
+          ? Array.from(selectedPeer.producers.keys())
+          : [];
+      } else {
+        // Todos los producerIds de la sala (comportamiento anterior)
+        producerIds = room.getAllProducerIds();
+      }
       callback({ producerIds });
     } catch (error) {
       console.error('Error en join-room:', error);
@@ -176,8 +176,7 @@ io.on('connection', (socket) => {
         peerId: socket.id,
         transportId,
         kind,
-        rtpParameters,
-        paused: false
+        rtpParameters
       });
 
       // Informar al cliente del ID del productor para que pueda finalizar la creación
@@ -200,6 +199,7 @@ io.on('connection', (socket) => {
         consumerTransport: transport,
         producerId,
         rtpCapabilities,
+        paused: true
       });
       
       if (consumer) {
@@ -215,14 +215,18 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('resume-consumer', async ({ roomId, consumerId }) => {
+  socket.on('resume-consumer', async ({ roomId, consumerId }, callback) => {
     const room = rooms.get(roomId);
     const peer = room.getPeer(socket.id);
-    if (!room || !peer) return;
+    if (!room || !peer) return callback({ error: 'Room or peer not found' });
     
     const consumer = peer.consumers.get(consumerId);
     if (consumer) {
       await consumer.resume();
+      console.log('Consumer resumed');
+      callback({ resumed: true });
+    } else {
+      callback({ error: 'Consumer not found' });
     }
   });
 });
