@@ -17,16 +17,60 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 const httpServer = createServer(app);
 
+
+// En memoria: agents activos por room/cámara
+const activeAgents = {};
+
+// --- LiveKit Webhook Receiver ---
+import { WebhookReceiver } from 'livekit-server-sdk';
+const apiKey = process.env.LIVEKIT_API_KEY;
+const apiSecret = process.env.LIVEKIT_API_SECRET;
+const livekitHost = process.env.LIVEKIT_HOST;
+const receiver = new WebhookReceiver(apiKey, apiSecret);
+
+// Necesario para recibir el body crudo
+app.use('/webhook', express.raw({ type: 'application/webhook+json' }));
+
+app.post('/webhook', async (req, res) => {
+  try {
+    const event = await receiver.receive(req.body, req.get('Authorization'));
+    console.log('[Webhook] Evento recibido:', event.event);
+    // Solo nos interesa track_published de cámaras
+    if (event.event === 'track_published' && event.participant && event.participant.identity && event.participant.identity.startsWith('camera-')) {
+      console.log('[Webhook] Evento track_published de cámara detectado');
+      const roomName = event.room.name;
+      const cameraIdentity = event.participant.identity;
+      const track = event.track;
+      if (track && track.type === 'video') {
+        console.log(`[Webhook] Track de video detectado para room ${roomName}, cámara ${cameraIdentity}`);
+        const agentKey = `${roomName}:${cameraIdentity}`;
+        if (!activeAgents[agentKey]) {
+          activeAgents[agentKey] = true;
+          console.log(`[Webhook] Lanzando agent para room ${roomName}, cámara ${cameraIdentity}`);
+          runEmbeddedAgent(roomName, cameraIdentity, livekitHost, apiKey, apiSecret);
+        }
+      }
+    }
+    res.status(200).send('ok');
+  } catch (err) {
+    console.error('[Webhook] Error procesando webhook:', err);
+    res.status(400).send('invalid webhook');
+  }
+});
+
+// TODO: Implementar lógica real de agent embebido para backend (Node.js)
+//       La suscripción a tracks de video debe hacerse usando una librería compatible con Node.js o el SDK server-side.
+//       Por ahora, solo se deja el placeholder para lanzar el agent.
+function runEmbeddedAgent(roomName, cameraIdentity, livekitHost, apiKey, apiSecret) {
+  console.log(`[Agent] (placeholder) Agent lanzado para room ${roomName}, cámara ${cameraIdentity}`);
+}
+
 // --- LiveKit Token Generation Endpoint ---
-app.get('/getToken', (req, res) => {
+app.get('/getToken', async (req, res) => {
   const { roomName, participantName } = req.query;
   if (!roomName || !participantName) {
     return res.status(400).send('Missing roomName or participantName query parameters');
   }
-
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
-  const livekitHost = process.env.LIVEKIT_HOST;
 
   if (!apiKey || !apiSecret || !livekitHost) {
     return res.status(500).send('LiveKit server environment variables not configured.');
