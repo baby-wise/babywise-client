@@ -12,14 +12,7 @@ const ViewerScreen = ({ route, navigation }) => {
   const [status, setStatus] = useState('Inicializando...');
   const [error, setError] = useState(null);
   const ROOM_ID = `baby-room-${group.id}`;
-  // Construye la URL WebSocket correctamente, evitando doble puerto
-  let wsUrl;
-  try {
-    const urlObj = new URL(SIGNALING_SERVER_URL);
-    wsUrl = `ws://${urlObj.hostname}:7880`;
-  } catch {
-    wsUrl = SIGNALING_SERVER_URL.replace(/^http/, 'ws').replace(/:\d+$/, ':7880');
-  }
+  let wsUrl = 'wss://babywise-jqbqqsgq.livekit.cloud';
 
   registerGlobals();
   useEffect(() => {

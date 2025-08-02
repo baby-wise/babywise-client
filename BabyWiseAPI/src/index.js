@@ -1,5 +1,4 @@
-
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken, WebhookReceiver, EgressClient, TrackType } from 'livekit-server-sdk';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -7,6 +6,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import B2 from 'backblaze-b2';
 import { router as bucketRoutes } from './routes/bucket.routes.js';
+import { WebSocketServer } from 'ws';
 
 dotenv.config();
 
@@ -17,20 +17,40 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 const httpServer = createServer(app);
 
-
-// En memoria: agents activos por room/cámara
-const activeAgents = {};
-
-// --- LiveKit Webhook Receiver ---
-import { WebhookReceiver } from 'livekit-server-sdk';
 const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;
-const livekitHost = process.env.LIVEKIT_HOST;
+const livekitHost = process.env.LIVEKIT_URL;
+const livekitEgressUrl = 'https://' + livekitHost;
 const receiver = new WebhookReceiver(apiKey, apiSecret);
+const egressClient = new EgressClient(livekitEgressUrl, apiKey, apiSecret);
+const wsAudioPath = '/audio-egress';
+const wss = new WebSocketServer({ server: httpServer, path: wsAudioPath });
+
+wss.on('connection', (ws, req) => {
+  console.log('[WS] Nueva conexión de egress para análisis de audio');
+  ws.on('message', (data, isBinary) => {
+    if (isBinary) {
+      // Aquí recibís frames PCM de audio
+      // TODO: pasar a tu proceso/modelo de IA para análisis de llanto
+      // Por ejemplo: analizarBufferPCM(data)
+      console.log('[WS] Frame de audio recibido:', data.length, 'bytes');
+    } else {
+      // Mensajes de control (mute/unmute, etc)
+      try {
+        const msg = JSON.parse(data.toString());
+        console.log('[WS] Mensaje de control:', msg);
+      } catch {
+        console.error('[WS] Error al procesar mensaje de control');
+      }
+    }
+  });
+  ws.on('close', () => {
+    console.log('[WS] Conexión de egress cerrada');
+  });
+});
 
 // Necesario para recibir el body crudo
 app.use('/webhook', express.raw({ type: 'application/webhook+json' }));
-
 app.post('/webhook', async (req, res) => {
   try {
     const event = await receiver.receive(req.body, req.get('Authorization'));
@@ -39,17 +59,19 @@ app.post('/webhook', async (req, res) => {
     if (event.event === 'track_published' && event.participant && event.participant.identity && event.participant.identity.startsWith('camera-')) {
       console.log('[Webhook] Evento track_published de cámara detectado');
       const roomName = event.room.name;
-      const cameraIdentity = event.participant.identity;
       const track = event.track;
-      if (track && track.type === 'video') {
-        console.log(`[Webhook] Track de video detectado para room ${roomName}, cámara ${cameraIdentity}`);
-        const agentKey = `${roomName}:${cameraIdentity}`;
-        if (!activeAgents[agentKey]) {
-          activeAgents[agentKey] = true;
-          console.log(`[Webhook] Lanzando agent para room ${roomName}, cámara ${cameraIdentity}`);
-          runEmbeddedAgent(roomName, cameraIdentity, livekitHost, apiKey, apiSecret);
-        }
+      // Lanzar TrackEgress a WebSocket para audio
+      if (track && track.type === TrackType.AUDIO) {
+        const wsUrl = 'wss://' + process.env.SERVER_ANNOUNCED_URL + wsAudioPath;
+        egressClient.startTrackEgress(roomName, wsUrl, track.sid)
+          .then(info => {
+            console.log('[Egress] TrackEgress lanzado:', info.egressId);
+          })
+          .catch(err => {
+            console.error('[Egress] Error lanzando TrackEgress:', err);
+          });
       }
+      // (Opcional) lógica para video o composite egress aquí
     }
     res.status(200).send('ok');
   } catch (err) {
@@ -58,14 +80,6 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// TODO: Implementar lógica real de agent embebido para backend (Node.js)
-//       La suscripción a tracks de video debe hacerse usando una librería compatible con Node.js o el SDK server-side.
-//       Por ahora, solo se deja el placeholder para lanzar el agent.
-function runEmbeddedAgent(roomName, cameraIdentity, livekitHost, apiKey, apiSecret) {
-  console.log(`[Agent] (placeholder) Agent lanzado para room ${roomName}, cámara ${cameraIdentity}`);
-}
-
-// --- LiveKit Token Generation Endpoint ---
 app.get('/getToken', async (req, res) => {
   const { roomName, participantName } = req.query;
   if (!roomName || !participantName) {
@@ -86,7 +100,6 @@ app.get('/getToken', async (req, res) => {
     canPublish: true,
     canSubscribe: true,
   };
-
   at.addGrant(videoGrant);
 
   at.toJwt().then(token => {
@@ -98,7 +111,6 @@ app.get('/getToken', async (req, res) => {
   });
 });
 
-// --- Database and Server Initialization ---
 (async () => {
   try {
     // Connect to MongoDB
@@ -114,10 +126,8 @@ app.get('/getToken', async (req, res) => {
   }
 })();
 
-// --- Express Routes ---
 app.use(bucketRoutes);
 
-// --- Backblaze Instance ---
 export const b2 = new B2({
   applicationKeyId: process.env.B2_KEY_ID,
   applicationKey: process.env.B2_APP_KEY,
