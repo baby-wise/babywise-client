@@ -57,15 +57,33 @@ wss.on('connection', (ws, req) => {
     // Duración estimada (asume 48000 Hz, 1 canal)
     const estimatedDuration = (int16.length / 48000).toFixed(2);
     console.log(`[WS] flushAudioBuffer: duración estimada: ${estimatedDuration} segundos`);
-    // Convertir Int16 PCM a Float32 normalizado para wav-encoder
-    const float32 = new Float32Array(int16.length);
-    for (let i = 0; i < int16.length; i++) {
-      float32[i] = int16[i] / 32768;
+    // Detectar si el buffer es estéreo (muestras par) y separar canales
+    let audioData;
+    if (int16.length % 2 === 0) {
+      // Estéreo
+      const left = new Float32Array(int16.length / 2);
+      const right = new Float32Array(int16.length / 2);
+      for (let i = 0, j = 0; i < int16.length; i += 2, j++) {
+        left[j] = int16[i] / 32768;
+        right[j] = int16[i + 1] / 32768;
+      }
+      audioData = {
+        sampleRate: 48000,
+        channelData: [left, right]
+      };
+      console.log('[WS] flushAudioBuffer: guardando como estéreo');
+    } else {
+      // Mono
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / 32768;
+      }
+      audioData = {
+        sampleRate: 48000,
+        channelData: [float32]
+      };
+      console.log('[WS] flushAudioBuffer: guardando como mono');
     }
-    const audioData = {
-      sampleRate: 24000,
-      channelData: [float32]
-    };
     wav.encode(audioData).then(wavBuffer => {
       fs.writeFileSync(wavPath, Buffer.from(wavBuffer));
       console.log(`[WS] Archivo WAV guardado: ${wavPath}`);
