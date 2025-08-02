@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   SafeAreaView, 
   StyleSheet, 
@@ -25,6 +25,81 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [cryingDetection, setCryingDetection] = useState(false);
   const [audioVideoRecording, setAudioVideoRecording] = useState(false);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // HARDCODED: Simulación de base de datos local para settings
+  const [localSettingsDB, setLocalSettingsDB] = useState({});
+
+  // Cargar settings al montar el componente
+  useEffect(() => {
+    loadGroupSettings();
+  }, []);
+
+  // HARDCODED: Función para cargar settings (simulando llamada a backend)
+  const loadGroupSettings = async () => {
+    setIsLoadingSettings(true);
+    try {
+      console.log(`HARDCODED: Cargando settings para grupo: ${group.id}`);
+      
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Si no existen settings para este grupo, usar defaults
+      const groupSettings = localSettingsDB[group.id] || {
+        cryDetection: false,
+        audioVideoRecording: false,
+        updatedAt: new Date().toISOString()
+      };
+      
+      setCryingDetection(groupSettings.cryDetection);
+      setAudioVideoRecording(groupSettings.audioVideoRecording);
+      console.log('HARDCODED: Settings cargados:', groupSettings);
+      
+    } catch (error) {
+      console.error('HARDCODED: Error al cargar settings:', error);
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  // HARDCODED: Función para guardar settings (simulando llamada a backend)
+  const saveGroupSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      console.log(`HARDCODED: Guardando settings para grupo: ${group.id}`, {
+        cryDetection: cryingDetection,
+        audioVideoRecording: audioVideoRecording
+      });
+      
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Actualizar "base de datos" local
+      const newSettings = {
+        cryDetection: cryingDetection,
+        audioVideoRecording: audioVideoRecording,
+        updatedAt: new Date().toISOString()
+      };
+      
+      setLocalSettingsDB(prev => ({
+        ...prev,
+        [group.id]: newSettings
+      }));
+      
+      console.log('HARDCODED: Settings guardados exitosamente:', newSettings);
+      console.log('HARDCODED: Estado actual de la "base de datos":', { ...localSettingsDB, [group.id]: newSettings });
+      
+      showSuccessToast('Settings actualizados correctamente');
+      setShowSettingsModal(false);
+      
+    } catch (error) {
+      console.error('HARDCODED: Error al guardar settings:', error);
+      Alert.alert('Error', 'Error simulado al guardar settings');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
 
   const goToViewer = () => {
     navigation.navigate('ViewerSelector', { group });
@@ -215,34 +290,58 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Configuración</Text>
             
-            {/* Toggle para detección de llanto */}
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Detección de llanto</Text>
-              <TouchableOpacity 
-                style={[styles.toggle, cryingDetection && styles.toggleActive]}
-                onPress={() => setCryingDetection(!cryingDetection)}
-              >
-                <View style={[styles.toggleCircle, cryingDetection && styles.toggleCircleActive]} />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Toggle para grabación de audio y video */}
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Grabación de audio y video</Text>
-              <TouchableOpacity 
-                style={[styles.toggle, audioVideoRecording && styles.toggleActive]}
-                onPress={() => setAudioVideoRecording(!audioVideoRecording)}
-              >
-                <View style={[styles.toggleCircle, audioVideoRecording && styles.toggleCircleActive]} />
-              </TouchableOpacity>
-            </View>
+            {isLoadingSettings ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#4CAF50" />
+                <Text style={styles.loadingText}>Cargando configuración...</Text>
+              </View>
+            ) : (
+              <>
+                {/* Toggle para detección de llanto */}
+                <View style={styles.settingItem}>
+                  <Text style={styles.settingLabel}>Detección de llanto</Text>
+                  <TouchableOpacity 
+                    style={[styles.toggle, cryingDetection && styles.toggleActive]}
+                    onPress={() => setCryingDetection(!cryingDetection)}
+                    disabled={isSavingSettings}
+                  >
+                    <View style={[styles.toggleCircle, cryingDetection && styles.toggleCircleActive]} />
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Toggle para grabación de audio y video */}
+                <View style={styles.settingItem}>
+                  <Text style={styles.settingLabel}>Grabación de audio y video</Text>
+                  <TouchableOpacity 
+                    style={[styles.toggle, audioVideoRecording && styles.toggleActive]}
+                    onPress={() => setAudioVideoRecording(!audioVideoRecording)}
+                    disabled={isSavingSettings}
+                  >
+                    <View style={[styles.toggleCircle, audioVideoRecording && styles.toggleCircleActive]} />
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.addButton]} 
+                style={[styles.modalButton, styles.cancelButton]} 
                 onPress={() => setShowSettingsModal(false)}
+                disabled={isSavingSettings}
               >
-                <Text style={styles.addButtonText}>Guardar</Text>
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.addButton]} 
+                onPress={saveGroupSettings}
+                disabled={isSavingSettings || isLoadingSettings}
+              >
+                {isSavingSettings ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.addButtonText}>Guardar</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -466,6 +565,26 @@ const styles = StyleSheet.create({
   },
   toggleCircleActive: {
     transform: [{ translateX: 24 }],
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+  cancelButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginRight: 8,
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
