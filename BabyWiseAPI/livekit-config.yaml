@@ -1,8 +1,0 @@
-port: 7880
-log_level: info
-keys:
-  devkey: secret
-webhook:
-  api_key: devkey
-  urls:
-    - 'http://localhost:3001/webhook'

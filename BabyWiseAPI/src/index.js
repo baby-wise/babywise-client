@@ -1,4 +1,8 @@
 import { AccessToken, WebhookReceiver, EgressClient, TrackType } from 'livekit-server-sdk';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import wav from 'wav-encoder';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -28,14 +32,63 @@ const wss = new WebSocketServer({ server: httpServer, path: wsAudioPath });
 
 wss.on('connection', (ws, req) => {
   console.log('[WS] Nueva conexión de egress para análisis de audio');
+  let audioBuffers = [];
+  let lastFlush = Date.now();
+  const FLUSH_MS = 6000; // 6 segundos
+
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const audioDir = path.join(__dirname, 'temp', 'audio');
+  if (!fs.existsSync(audioDir)) {
+    console.log('[WS] Creando directorio temporal para audio:', audioDir);
+    fs.mkdirSync(audioDir, { recursive: true });
+  }
+
+  function flushAudioBuffer() {
+    if (audioBuffers.length === 0) return;
+    const pcmData = Buffer.concat(audioBuffers);
+    const baseName = `audio-${Date.now()}`;
+    const wavPath = path.join(audioDir, `${baseName}.wav`);
+    // Logs de diagnóstico
+    console.log(`[WS] flushAudioBuffer: buffer total ${pcmData.length} bytes`);
+    const int16 = new Int16Array(pcmData.buffer, pcmData.byteOffset, pcmData.length / 2);
+    console.log(`[WS] flushAudioBuffer: muestras int16: ${int16.length}`);
+    console.log(`[WS] flushAudioBuffer: primeros 10 valores:`, Array.from(int16.slice(0, 10)));
+    // Duración estimada (asume 48000 Hz, 1 canal)
+    const estimatedDuration = (int16.length / 48000).toFixed(2);
+    console.log(`[WS] flushAudioBuffer: duración estimada: ${estimatedDuration} segundos`);
+    // Convertir Int16 PCM a Float32 normalizado para wav-encoder
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) {
+      float32[i] = int16[i] / 32768;
+    }
+    const audioData = {
+      sampleRate: 24000,
+      channelData: [float32]
+    };
+    wav.encode(audioData).then(wavBuffer => {
+      fs.writeFileSync(wavPath, Buffer.from(wavBuffer));
+      console.log(`[WS] Archivo WAV guardado: ${wavPath}`);
+      // Aquí podrías llamar a tu IA con wavPath
+    }).catch(err => {
+      console.error('[WS] Error al guardar WAV:', err);
+    });
+    audioBuffers = [];
+    lastFlush = Date.now();
+  }
+
+  const flushInterval = setInterval(() => {
+    if (Date.now() - lastFlush >= FLUSH_MS) {
+      flushAudioBuffer();
+    }
+  }, 1000);
+
   ws.on('message', (data, isBinary) => {
     if (isBinary) {
-      // Aquí recibís frames PCM de audio
-      // TODO: pasar a tu proceso/modelo de IA para análisis de llanto
-      // Por ejemplo: analizarBufferPCM(data)
-      console.log('[WS] Frame de audio recibido:', data.length, 'bytes');
+      audioBuffers.push(data);
+      // Log opcional para debug
+      // console.log('[WS] Frame de audio recibido:', data.length, 'bytes');
     } else {
-      // Mensajes de control (mute/unmute, etc)
       try {
         const msg = JSON.parse(data.toString());
         console.log('[WS] Mensaje de control:', msg);
@@ -45,6 +98,8 @@ wss.on('connection', (ws, req) => {
     }
   });
   ws.on('close', () => {
+    flushAudioBuffer();
+    clearInterval(flushInterval);
     console.log('[WS] Conexión de egress cerrada');
   });
 });
