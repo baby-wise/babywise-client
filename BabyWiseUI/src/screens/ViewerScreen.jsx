@@ -90,20 +90,23 @@ const RoomView = () => {
   return (
     <View style={styles.tracksContainer}>
       {cameraParticipants.length > 1 && (
-        <FlatList
-          data={cameraParticipants}
-          keyExtractor={item => item}
-          horizontal
-          style={{ marginBottom: 10 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.cameraItem, selectedCamera === item && styles.cameraItemSelected]}
-              onPress={() => setSelectedCamera(item)}
-            >
-              <Text style={styles.cameraLabel}>{item.replace('camera-', '')}</Text>
-            </TouchableOpacity>
-          )}
-        />
+        <View style={styles.cameraButtonsRow}>
+          <FlatList
+            data={cameraParticipants}
+            keyExtractor={item => item}
+            horizontal
+            contentContainerStyle={{ alignItems: 'center', paddingVertical: 0 }}
+            style={{ maxHeight: 48, marginBottom: 8 }}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.cameraItem, selectedCamera === item && styles.cameraItemSelected]}
+                onPress={() => setSelectedCamera(item)}
+              >
+                <Text style={styles.cameraLabel}>{item.replace('camera-', '')}</Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
       )}
       {selectedTrack ? (
         <>
@@ -152,8 +155,12 @@ const styles = StyleSheet.create({
   },
   video: {
     width: '100%',
-    height: 300,
-    marginVertical: 10,
+    height: 260,
+    marginTop: 10,
+    marginBottom: 0,
+    alignSelf: 'center',
+    borderRadius: 12,
+    backgroundColor: '#222',
   },
   statusText: {
     color: 'white',
@@ -166,14 +173,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 10,
   },
+  cameraButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    marginTop: 8,
+    marginBottom: 0,
+  },
   cameraItem: {
-    padding: 12,
-    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
     backgroundColor: '#eee',
-    marginHorizontal: 8,
+    marginHorizontal: 6,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#ccc',
+    minHeight: 36,
+    minWidth: 36,
   },
   cameraItemSelected: {
     backgroundColor: '#007AFF',

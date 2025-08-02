@@ -49,15 +49,8 @@ wss.on('connection', (ws, req) => {
     const pcmData = Buffer.concat(audioBuffers);
     const baseName = `audio-${Date.now()}`;
     const wavPath = path.join(audioDir, `${baseName}.wav`);
-    // Logs de diagnóstico
-    console.log(`[WS] flushAudioBuffer: buffer total ${pcmData.length} bytes`);
     const int16 = new Int16Array(pcmData.buffer, pcmData.byteOffset, pcmData.length / 2);
-    console.log(`[WS] flushAudioBuffer: muestras int16: ${int16.length}`);
-    console.log(`[WS] flushAudioBuffer: primeros 10 valores:`, Array.from(int16.slice(0, 10)));
-    // Duración estimada (asume 48000 Hz, 1 canal)
-    const estimatedDuration = (int16.length / 48000).toFixed(2);
-    console.log(`[WS] flushAudioBuffer: duración estimada: ${estimatedDuration} segundos`);
-    // Detectar si el buffer es estéreo (muestras par) y separar canales
+
     let audioData;
     if (int16.length % 2 === 0) {
       // Estéreo
@@ -104,8 +97,6 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (data, isBinary) => {
     if (isBinary) {
       audioBuffers.push(data);
-      // Log opcional para debug
-      // console.log('[WS] Frame de audio recibido:', data.length, 'bytes');
     } else {
       try {
         const msg = JSON.parse(data.toString());
