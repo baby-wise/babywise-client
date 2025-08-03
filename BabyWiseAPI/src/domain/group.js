@@ -3,6 +3,7 @@ import { User_DB } from "./user.js";
 
 class Group {
     constructor({_id, name, users, cameras, viewers, admins }) {
+        this._id = _id.toString()
         this.name = name;
         this.users = users || [];
         this.cameras = cameras || [];
