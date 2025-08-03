@@ -2,6 +2,7 @@
   "name": "babywiseapi",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "dev": "nodemon ./src/index.js",
     "start": "node ./src/index.js"
@@ -14,6 +15,7 @@
     "backblaze-b2": "^1.7.1",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "firebase-admin": "^13.4.0",
     "mongoose": "^8.16.4",
     "multer": "^2.0.2",
     "socket.io": "^4.8.1"

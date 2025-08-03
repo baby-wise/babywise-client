@@ -5,8 +5,11 @@ import { Server } from 'socket.io';
 import mongoose from 'mongoose'
 import dotenv from 'dotenv';
 dotenv.config()
-import {router as bucketRoutes} from './routes/bucket.routes.js'
 import B2 from 'backblaze-b2'
+import { admin } from './config/firebaseConfig.js';
+import {router as bucketRoutes} from './routes/bucket.routes.js'
+import { router as userRoutes } from './routes/users.routes.js';
+import { router as groupRoutes } from './routes/group.routes.js';
 
 //Configuracion del servidor
 const app = express();
@@ -105,7 +108,7 @@ io.on('connection', (socket) => {
 });
 
 // Conexión a MongoDB
-mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGO_PW}@babywise.aengkd2.mongodb.net/?retryWrites=true&w=majority&appName=${process.env.MONGO_APP_NAME}`)
+mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGO_PW}@babywise.aengkd2.mongodb.net/${process.env.MONGO_DB_NAME}?retryWrites=true&w=majority&appName=${process.env.MONGO_APP_NAME}`)
   .then(() => console.log("Conectado a MongoDB"))
   .catch((error) => console.log("Error de conexión a MongoDB:", error));
 
@@ -117,6 +120,8 @@ export const b2 = new B2({
 
 //Rutas permitidas
 app.use(bucketRoutes)
+app.use(userRoutes)
+app.use(groupRoutes)
 
 server.listen(PORT, () => {
     console.log(`Servidor de señalización escuchando en el puerto ${PORT}`);

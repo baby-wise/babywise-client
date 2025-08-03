@@ -7,7 +7,8 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "dev": "npx react-native start"
   },
   "dependencies": {
     "@react-native-firebase/app": "^22.4.0",
