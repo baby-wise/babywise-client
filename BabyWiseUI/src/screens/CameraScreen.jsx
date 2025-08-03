@@ -62,6 +62,7 @@ const CameraScreen = ({ route }) => {
           video={true}
           options={{
             adaptiveStream: { pixelDensity: 'screen' },
+            autoSubscribe: false, 
           }}
         >
           <RoomView setStatus={setStatus} />
@@ -71,19 +72,53 @@ const CameraScreen = ({ route }) => {
   );
 };
 
+import { useRemoteParticipants, useRoomContext } from '@livekit/react-native';
+
 const RoomView = ({ setStatus }) => {
-  const tracks = useTracks([Track.Source.Camera]);
-  // Mostrar solo el track local (de esta cámara)
-  const localTrack = tracks.find(t => t.participant.isLocal);
+  const room = useRoomContext();
+  const videoTracks = useTracks([Track.Source.Camera]);
+  const localVideoTrack = videoTracks.find(t => t.participant.isLocal);
+  const remoteParticipants = useRemoteParticipants();
+
+  // Suscribirse solo al audio de los viewers
   useEffect(() => {
-    if (localTrack) {
+    if (!room) return;
+    // Para tracks publicados después de conectar
+    const handleTrackPublished = (publication, participant) => {
+      if (participant.identity && participant.identity.startsWith('viewer')) {
+        if (publication.kind === 'audio') {
+          publication.setSubscribed(true);
+        }
+      }
+    };
+    room.on('trackPublished', handleTrackPublished);
+
+    // Para tracks publicados antes de conectar
+    remoteParticipants.forEach((participant) => {
+      if (participant.identity && participant.identity.startsWith('viewer')) {
+        participant.trackPublications.forEach((publication) => {
+          if (publication.kind === 'audio') {
+            publication.setSubscribed(true);
+          }
+        });
+      }
+    });
+
+    return () => {
+      room.off('trackPublished', handleTrackPublished);
+    };
+  }, [room, remoteParticipants]);
+
+  useEffect(() => {
+    if (localVideoTrack) {
       setStatus('En vivo');
     }
-  }, [localTrack, setStatus]);
+  }, [localVideoTrack, setStatus]);
+
   return (
     <View style={styles.tracksContainer}>
-      {localTrack ? (
-        <VideoTrack trackRef={localTrack} style={styles.video} />
+      {localVideoTrack ? (
+        <VideoTrack trackRef={localVideoTrack} style={styles.video} />
       ) : (
         <Text style={{ color: 'white', marginTop: 20 }}>Esperando transmisión local...</Text>
       )}

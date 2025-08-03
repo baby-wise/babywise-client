@@ -59,6 +59,7 @@ const ViewerScreen = ({ route, navigation }) => {
           video={false}
           options={{
             adaptiveStream: { pixelDensity: 'screen' },
+            autoSubscribe: false,
           }}
         >
           <RoomView />
@@ -69,12 +70,46 @@ const ViewerScreen = ({ route, navigation }) => {
 };
 
 
+import { useRemoteParticipants, useRoomContext } from '@livekit/react-native';
+
 const RoomView = () => {
+  const room = useRoomContext();
   const tracks = useTracks([Track.Source.Camera]);
+  const remoteParticipants = useRemoteParticipants();
   // Filtrar solo participantes que son cámaras
   const cameraTracks = tracks.filter(t => t.participant.identity && t.participant.identity.startsWith('camera-'));
   const cameraParticipants = Array.from(new Set(cameraTracks.map(t => t.participant.identity)));
   const [selectedCamera, setSelectedCamera] = useState(cameraParticipants[0] || null);
+
+  // Suscribirse solo a audio y video de cámaras
+  useEffect(() => {
+    if (!room) return;
+    // Para tracks publicados después de conectar
+    const handleTrackPublished = (publication, participant) => {
+      if (participant.identity && participant.identity.startsWith('camera')) {
+        // Suscribirse a audio y video
+        if (publication.kind === 'audio' || publication.kind === 'video') {
+          publication.setSubscribed(true);
+        }
+      }
+    };
+    room.on('trackPublished', handleTrackPublished);
+
+    // Para tracks publicados antes de conectar
+    remoteParticipants.forEach((participant) => {
+      if (participant.identity && participant.identity.startsWith('camera')) {
+        participant.trackPublications.forEach((publication) => {
+          if (publication.kind === 'audio' || publication.kind === 'video') {
+            publication.setSubscribed(true);
+          }
+        });
+      }
+    });
+
+    return () => {
+      room.off('trackPublished', handleTrackPublished);
+    };
+  }, [room, remoteParticipants]);
 
   useEffect(() => {
     if (cameraParticipants.length > 0 && !selectedCamera) {
