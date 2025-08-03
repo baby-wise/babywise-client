@@ -26,7 +26,7 @@ class Group {
 
     isAdmin(member) {
         return this.admins.some(
-            (admin) => admin.toString() === member.toString()
+            (admin) => admin._id.toString() === member._id.toString()
         );
     }
 
