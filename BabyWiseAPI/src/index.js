@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
+import { Server } from 'socket.io';
 import B2 from 'backblaze-b2';
 import { admin } from './config/firebaseConfig.js';
 import { router as bucketRoutes } from './routes/bucket.routes.js';
