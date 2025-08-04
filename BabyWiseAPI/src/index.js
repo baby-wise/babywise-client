@@ -8,11 +8,23 @@ import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
+<<<<<<< HEAD
 import B2 from 'backblaze-b2';
 import { router as bucketRoutes } from './routes/bucket.routes.js';
 import { WebSocketServer } from 'ws';
 
 dotenv.config();
+=======
+import { Server } from 'socket.io';
+import mongoose from 'mongoose'
+import dotenv from 'dotenv';
+dotenv.config()
+import B2 from 'backblaze-b2'
+import { admin } from './config/firebaseConfig.js';
+import {router as bucketRoutes} from './routes/bucket.routes.js'
+import { router as userRoutes } from './routes/users.routes.js';
+import { router as groupRoutes } from './routes/group.routes.js';
+>>>>>>> main
 
 const app = express();
 app.use(cors());
@@ -113,6 +125,7 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+<<<<<<< HEAD
 // Necesario para recibir el body crudo
 app.use('/webhook', express.raw({ type: 'application/webhook+json' }));
 app.post('/webhook', async (req, res) => {
@@ -143,6 +156,12 @@ app.post('/webhook', async (req, res) => {
     res.status(400).send('invalid webhook');
   }
 });
+=======
+// Conexión a MongoDB
+mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGO_PW}@babywise.aengkd2.mongodb.net/${process.env.MONGO_DB_NAME}?retryWrites=true&w=majority&appName=${process.env.MONGO_APP_NAME}`)
+  .then(() => console.log("Conectado a MongoDB"))
+  .catch((error) => console.log("Error de conexión a MongoDB:", error));
+>>>>>>> main
 
 app.get('/getToken', async (req, res) => {
   const { roomName, participantName } = req.query;
@@ -158,6 +177,7 @@ app.get('/getToken', async (req, res) => {
     identity: participantName,
   });
 
+<<<<<<< HEAD
   const videoGrant = {
     room: roomName,
     roomJoin: true,
@@ -165,6 +185,12 @@ app.get('/getToken', async (req, res) => {
     canSubscribe: true,
   };
   at.addGrant(videoGrant);
+=======
+//Rutas permitidas
+app.use(bucketRoutes)
+app.use(userRoutes)
+app.use(groupRoutes)
+>>>>>>> main
 
   at.toJwt().then(token => {
     console.log('access token', token);
