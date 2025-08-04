@@ -101,13 +101,29 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     }
   };
 
+
+  // Modal para ingresar nombre de la cámara
+  const [showCameraNameModal, setShowCameraNameModal] = useState(false);
+  const [cameraName, setCameraName] = useState('');
+
   const goToViewer = () => {
-    navigation.navigate('ViewerSelector', { group });
+    navigation.navigate('Viewer', { group });
   };
 
   const goToCamera = () => {
-    navigation.navigate('Camera', { group });
+    setShowCameraNameModal(true);
   };
+
+  const handleCameraName = () => {
+    if (!cameraName.trim()) {
+      Alert.alert('Error', 'Por favor ingresa un nombre para la cámara');
+      return;
+    }
+    setShowCameraNameModal(false);
+    navigation.navigate('Camera', { group, cameraName: cameraName.trim() });
+    setCameraName('');
+  };
+
 
   // Función para mostrar toast
   const showSuccessToast = (message) => {
@@ -215,14 +231,12 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         >
           <Text style={styles.optionButtonText}>Ver Cámaras</Text>
         </TouchableOpacity>
-        
         <TouchableOpacity 
           style={styles.optionButton} 
           onPress={goToCamera}
         >
           <Text style={styles.optionButtonText}>Ser Cámara</Text>
         </TouchableOpacity>
-        
         <TouchableOpacity 
           style={[styles.optionButton, styles.membersButton]} 
           onPress={addMembers}
@@ -230,6 +244,44 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           <Text style={styles.optionButtonText}>Agregar Miembros</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Modal para ingresar nombre de la cámara */}
+      <Modal
+        visible={showCameraNameModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCameraNameModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Nombre de la cámara</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ej: Habitación bebé, Living, etc."
+              placeholderTextColor="#999"
+              value={cameraName}
+              onChangeText={setCameraName}
+              autoFocus={true}
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => setShowCameraNameModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.addButton]} 
+                onPress={handleCameraName}
+              >
+                <Text style={styles.addButtonText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal para agregar miembro */}
       <Modal

@@ -9,6 +9,8 @@ import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
+import com.livekit.reactnative.LiveKitReactNative
+import com.livekit.reactnative.audio.AudioType
 
 class MainApplication : Application(), ReactApplication {
 
@@ -32,6 +34,7 @@ class MainApplication : Application(), ReactApplication {
     get() = getDefaultReactHost(applicationContext, reactNativeHost)
 
   override fun onCreate() {
+    LiveKitReactNative.setup(this, AudioType.CommunicationAudioType())
     super.onCreate()
     loadReactNative(this)
   }

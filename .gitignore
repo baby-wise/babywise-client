@@ -94,8 +94,9 @@ package-lock.json
 **/Pods/
 /vendor/bundle/
 
-# Temporary files created by Metro to check the health of the file watcher
+# Temporary files
 .metro-health-check*
+temp/
 
 # testing
 /coverage

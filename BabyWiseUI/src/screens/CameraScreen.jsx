@@ -1,165 +1,151 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, StyleSheet, Text, View, Platform, PermissionsAndroid, TouchableOpacity } from 'react-native';
-import { RTCPeerConnection, RTCView, mediaDevices, RTCIceCandidate, RTCSessionDescription } from 'react-native-webrtc';
-import { io  } from 'socket.io-client';
-import styles from '../styles/Styles';
+
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
+import { LiveKitRoom, useTracks, VideoTrack, AudioSession, registerGlobals, isTrackReference } from '@livekit/react-native';
+import { Track } from 'livekit-client';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
-// --- CONFIGURACIÓN ---
-
-const CameraScreen = ({ navigation, route }) => {
-  const { group } = route.params;
-  const [localStream, setLocalStream] = useState(null);
+const CameraScreen = ({ route }) => {
+  const { group, cameraName } = route.params;
+  const navigation = useNavigation();
+  const [token, setToken] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
-  const peerConnections = useRef(new Map());
-  const socket = useRef(null);
-  const ROOM_ID = `baby-room-${group.id}`; // Usar el ID del grupo
+  const [error, setError] = useState(null);
+  const ROOM_ID = `baby-room-${group.id}`;
+  // Construye la URL WebSocket correctamente, evitando doble puerto
+  let wsUrl = 'wss://babywise-jqbqqsgq.livekit.cloud'
 
-  const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
+  registerGlobals();
   useEffect(() => {
-    const start = async () => {
-      const hasPermissions = await requestPermissions();
-      if (!hasPermissions) {
-        setStatus('Permisos denegados');
-        return;
-      }
-
-      setStatus('Iniciando cámara...');
-      const stream = await mediaDevices.getUserMedia({
-        audio: true,
-        video: { width: 640, height: 480, frameRate: 30 , facingMode: 'environment' },
-      });
-      setLocalStream(stream);
-      setStatus('Cámara activa. Conectando al servidor...');
-
-      socket.current = io(SIGNALING_SERVER_URL);
-      setupSocketListeners(stream);
-    };
-
-    start();
-
-    return () => {
-      localStream?.getTracks().forEach((track) => track.stop());
-      socket.current?.disconnect();
-      peerConnections.current.forEach(pc => pc.close());
-    };
-  }, []);
-
-  const setupSocketListeners = (stream) => {
-    socket.current?.on('connect', () => {
-      setStatus('Conectado. Esperando viewers...');
-      socket.current?.emit('join-room', {group: ROOM_ID, socektId: socket.current.id, role: 'camera'});
-      socket.current?.emit('add-camera', {group: ROOM_ID, socektId: socket.current.id, role: 'camera'});
-    });
-
-    socket.current?.on('peer-joined', ({ peerId }) => {
-      setStatus(`Monitor ${peerId} se unió. Creando oferta...`);
-      createPeerConnection(peerId, stream);
-    });
-
-    socket.current?.on('answer', async ({ sdp, sourcePeerId }) => {
-      setStatus(`Respuesta recibida de ${sourcePeerId}.`);
-      const pc = peerConnections.current.get(sourcePeerId);
-      if (pc) {
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-      }
-    });
-
-    socket.current?.on('ice-candidate', ({ candidate, sourcePeerId }) => {
-      const pc = peerConnections.current.get(sourcePeerId);
-      if (pc && candidate) {
-        pc.addIceCandidate(new RTCIceCandidate(candidate));
-      }
-    });
-  };
-
-  const createPeerConnection = async (peerId, stream) => {
-    const pc = new RTCPeerConnection(configuration);
-    peerConnections.current.set(peerId, pc);
-
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.current?.emit('ice-candidate', {
-          candidate: event.candidate,
-          targetPeerId: peerId,
-        });
-      }
-    };
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    socket.current?.emit('offer', { sdp: offer, targetPeerId: peerId });
-  };
-  
-  const requestPermissions = async () => {
-    // ... (función de permisos sin cambios)
-    if (Platform.OS === 'android') {
+    let isMounted = true;
+    const fetchToken = async () => {
+      setStatus('Obteniendo token...');
       try {
-        const granted = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        ]);
-        return (
-          granted['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED &&
-          granted['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED
-        );
+        const res = await axios.get(`${SIGNALING_SERVER_URL}/getToken`, {
+          params: {
+            roomName: ROOM_ID,
+            participantName: `camera-${cameraName}`,
+          },
+        });
+        if (isMounted) {
+          setToken(res.data.token);
+          setStatus('Conectando...');
+        }
       } catch (err) {
-        console.warn(err);
-        return false;
+        setStatus(`Error: ${err.message}`);
       }
-    }
-    return true;
-  };
+    };
+    fetchToken();
+    AudioSession.startAudioSession();
+    return () => {
+      isMounted = false;
+      AudioSession.stopAudioSession();
+    };
+  }, [cameraName]);
 
   return (
-    <SafeAreaView style={cameraStyles.container}>
-      {/* Botón de volver minimalista */}
-      <TouchableOpacity style={cameraStyles.backButton} onPress={() => navigation.goBack()}>
-        <Text style={cameraStyles.backButtonText}>‹</Text>
+    <SafeAreaView style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.backButtonText}>‹</Text>
       </TouchableOpacity>
-      
-      <Text style={cameraStyles.title}>{group.name}</Text>
-      <Text style={cameraStyles.statusText}>{status}</Text>
-      {localStream && (
-        <>
-          <RTCView
-            streamURL={localStream.toURL()}
-            style={cameraStyles.video}
-            objectFit={'cover'}
-            mirror={true}
-          />
-          <TouchableOpacity style={styles.stopButton} onPress={stopTransmitting}>
-            <Text style={styles.stopButtonText}>Dejar de transmitir</Text>
-          </TouchableOpacity>
-        </>
+      <Text style={styles.title}>{group.name}</Text>
+      <Text style={styles.statusText}>{status}</Text>
+      {error && <Text style={{ color: 'red' }}>{error}</Text>}
+      {token && (
+        <LiveKitRoom
+          serverUrl={wsUrl}
+          token={token}
+          connect={true}
+          audio={true}
+          video={true}
+          options={{
+            adaptiveStream: { pixelDensity: 'screen' },
+            autoSubscribe: false, 
+          }}
+        >
+          <RoomView setStatus={setStatus} />
+        </LiveKitRoom>
       )}
     </SafeAreaView>
   );
 };
 
-const cameraStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'black', alignItems: 'center', justifyContent: 'center' },
+import { useRemoteParticipants, useRoomContext } from '@livekit/react-native';
+
+const RoomView = ({ setStatus }) => {
+  const room = useRoomContext();
+  const videoTracks = useTracks([Track.Source.Camera]);
+  const localVideoTrack = videoTracks.find(t => t.participant.isLocal);
+  const remoteParticipants = useRemoteParticipants();
+
+  // Suscribirse solo al audio de los viewers
+  useEffect(() => {
+    if (!room) return;
+    // Para tracks publicados después de conectar
+    const handleTrackPublished = (publication, participant) => {
+      if (participant.identity && participant.identity.startsWith('viewer')) {
+        if (publication.kind === 'audio') {
+          publication.setSubscribed(true);
+        }
+      }
+    };
+    room.on('trackPublished', handleTrackPublished);
+
+    // Para tracks publicados antes de conectar
+    remoteParticipants.forEach((participant) => {
+      if (participant.identity && participant.identity.startsWith('viewer')) {
+        participant.trackPublications.forEach((publication) => {
+          if (publication.kind === 'audio') {
+            publication.setSubscribed(true);
+          }
+        });
+      }
+    });
+
+    return () => {
+      room.off('trackPublished', handleTrackPublished);
+    };
+  }, [room, remoteParticipants]);
+
+  useEffect(() => {
+    if (localVideoTrack) {
+      setStatus('En vivo');
+    }
+  }, [localVideoTrack, setStatus]);
+
+  return (
+    <View style={styles.tracksContainer}>
+      {localVideoTrack ? (
+        <VideoTrack trackRef={localVideoTrack} style={styles.video} />
+      ) : (
+        <Text style={{ color: 'white', marginTop: 20 }}>Esperando transmisión local...</Text>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'black',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   backButton: {
     position: 'absolute',
-    top: 20,
-    left: 10,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    top: 40,
+    left: 20,
     zIndex: 10,
   },
   backButtonText: {
     fontSize: 32,
     color: '#fff',
-    fontWeight: '300',
   },
   title: {
     position: 'absolute',
-    top: 80,
+    top: 90,
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
@@ -168,11 +154,25 @@ const cameraStyles = StyleSheet.create({
     borderRadius: 5,
     zIndex: 1,
   },
-  statusText: { position: 'absolute', top: 40, color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, zIndex: 1 },
-  video: { width: '100%', height: '100%' },
+  statusText: {
+    position: 'absolute',
+    top: 40,
+    color: 'white',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 10,
+    borderRadius: 5,
+    zIndex: 1,
+  },
+  video: {
+    width: '100%',
+    height: 300,
+    marginVertical: 10,
+  },
+  tracksContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center'
+  },
 });
-
-const stopTransmitting = () => {
-}
 
 export default CameraScreen;
