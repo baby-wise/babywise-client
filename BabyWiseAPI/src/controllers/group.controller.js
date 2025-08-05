@@ -1,6 +1,8 @@
 import { error } from "console"
 import { Group_DB, Group } from "../domain/group.js"
 import { getUserById } from "./user.controller.js"
+import { InvitationCode, InvitationCode_DB } from "../domain/invitation.js"
+import {v4 as uuidv4} from "uuid"
 
 const groups = async (req,res)=>{
     try {
@@ -34,11 +36,13 @@ const newGroup = async (req,res)=>{
 }
 
 const addMember  = async (req,res)=>{
-    const {UID, groupId} = req.body
-    const groupDB = await getGroupById(groupId)
+    const {UID, inviteCode} = req.body
+    const invitationCodeDB = await InvitationCode_DB.findOne({code: inviteCode}) || ''
     const userDB = await getUserById(UID)
-
-    if(groupDB && userDB){//Verifico que exista el grupo y el usuario
+    const invitationCode = new InvitationCode(invitationCodeDB)
+    
+    if(invitationCodeDB && userDB && !invitationCode.used){//Verifico que exista la invitacion y que exista el usuario
+        const groupDB = await getGroupById(invitationCodeDB.groupId)
         const group = new Group(groupDB)
 
         if(!group.users.some(u => u._id.toString() == userDB._id.toString())){//Verifico que el usuario no esta ya en ese grupo
@@ -47,12 +51,13 @@ const addMember  = async (req,res)=>{
                 {_id: groupDB._id},
                 {$set: {users: group.users}}
             )
+            await InvitationCode_DB.deleteOne({code: invitationCodeDB.code})
             res.status(200).json(group)
         }else{
             res.status(304).json(group)
         }
     }else{
-        res.status(404).json({error: "Group or user not found"})
+        res.status(404).json({error: "Invalid invitation code"})
     }
 }
 
@@ -133,9 +138,25 @@ const getGroupsForUser  = async (req,res)=>{
     }
 }
 
+const getInviteCode = async (req, res) => {
+    const {groupId} = req.body
+
+    const groupDB = await getGroupById(groupId)
+    if(groupDB){//Verifico que exista el grupo
+       const code = uuidv4().split('-')[0]
+
+        const invitationCode = new InvitationCode({code: code, groupId: groupId})
+        const invitationCodeDB = new InvitationCode_DB(invitationCode)
+        await invitationCodeDB.save()
+        res.status(200).json(invitationCode.code)
+    }else{
+        res.status(404).json({error: "Group not found"})
+    }
+}
+
 async function getGroupById(groupId) {
     const group = await Group_DB.findById(groupId)
     return group
 }
 
-export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser}
+export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, getInviteCode}
