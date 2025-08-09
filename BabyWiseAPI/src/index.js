@@ -92,6 +92,8 @@ wss.on('connection', (ws, req) => {
     wav.encode(audioData).then(wavBuffer => {
       fs.writeFileSync(wavPath, Buffer.from(wavBuffer));
       console.log(`[WS] Archivo WAV guardado: ${wavPath}`);
+      // TODO mandar archivo a la api de ia, obtener resultado y triggerar notificaciones
+
     }).catch(err => {
       console.error('[WS] Error al guardar WAV:', err);
     });
@@ -265,10 +267,8 @@ app.get('/getToken', async (req, res) => {
   try {
     // Conexión a MongoDB
     mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGO_PW}@babywise.aengkd2.mongodb.net/${process.env.MONGO_DB_NAME}?retryWrites=true&w=majority&appName=${process.env.MONGO_APP_NAME}`)
-      .then(() => console.log("Conectado a MongoDB"))
-      .catch((error) => console.log("Error de conexión a MongoDB:", error));
-
-    console.log("-> Connected to MongoDB");
+      .then(() => console.log("-> Conectado a MongoDB"))
+      .catch((error) => console.log("-> Error de conexión a MongoDB:", error));
 
     // Start the HTTP server
     httpServer.listen(PORT, () => {

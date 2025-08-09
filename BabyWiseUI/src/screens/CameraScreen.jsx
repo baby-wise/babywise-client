@@ -58,11 +58,15 @@ const CameraScreen = ({ route }) => {
           serverUrl={wsUrl}
           token={token}
           connect={true}
-          audio={true}
+          audio={{
+            echoCancellation: true
+          }}
           video={true}
           options={{
-            adaptiveStream: { pixelDensity: 'screen' },
-            autoSubscribe: false, 
+            adaptiveStream: { pixelDensity: 'screen' }
+          }}
+          connectOptions={{
+            autoSubscribe: false
           }}
         >
           <RoomView setStatus={setStatus} />

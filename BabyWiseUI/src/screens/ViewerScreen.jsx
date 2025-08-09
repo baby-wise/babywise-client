@@ -58,8 +58,10 @@ const ViewerScreen = ({ route, navigation }) => {
           audio={true}
           video={false}
           options={{
-            adaptiveStream: { pixelDensity: 'screen' },
-            autoSubscribe: false,
+            adaptiveStream: { pixelDensity: 'screen' }
+          }}
+          connectOptions={{
+            autoSubscribe: false
           }}
         >
           <RoomView />
@@ -70,16 +72,18 @@ const ViewerScreen = ({ route, navigation }) => {
 };
 
 
-import { useRemoteParticipants, useRoomContext } from '@livekit/react-native';
+import { useRemoteParticipants, useRoomContext, useLocalParticipant } from '@livekit/react-native';
 
 const RoomView = () => {
   const room = useRoomContext();
   const tracks = useTracks([Track.Source.Camera]);
   const remoteParticipants = useRemoteParticipants();
+  const localParticipant = useLocalParticipant().localParticipant;
   // Filtrar solo participantes que son cámaras
   const cameraTracks = tracks.filter(t => t.participant.identity && t.participant.identity.startsWith('camera-'));
   const cameraParticipants = Array.from(new Set(cameraTracks.map(t => t.participant.identity)));
   const [selectedCamera, setSelectedCamera] = useState(cameraParticipants[0] || null);
+  const [isTalking, setIsTalking] = useState(false);
 
   // Suscribirse solo a audio y video de cámaras
   useEffect(() => {
@@ -120,6 +124,67 @@ const RoomView = () => {
     }
   }, [cameraParticipants.length]);
 
+  // Push-to-talk handlers
+
+  // Helper para obtener el primer publication del Map
+  const getFirstAudioPub = () => {
+    const pubs = localParticipant?.audioTrackPublications;
+    if (pubs) {
+      const arr = Array.from(pubs.values());
+      return arr.length > 0 ? arr[0] : undefined;
+    }
+    return undefined;
+  };
+
+  const handlePressIn = () => {
+    const pub = getFirstAudioPub();
+    if (pub) {
+      console.log('[PushToTalk] Unmuting local audio track');
+      try {
+        pub.unmute();
+        setIsTalking(true);
+      } catch (e) {
+        console.error('[PushToTalk] Error al desmutear:', e);
+      }
+    } else {
+      console.warn('[PushToTalk] No se encontró publication para desmutear');
+    }
+  };
+
+  const handlePressOut = () => {
+    const pub = getFirstAudioPub();
+    if (pub && typeof pub.mute === 'function') {
+      console.log('[PushToTalk] Muting local audio track');
+      try {
+        pub.mute();
+        setIsTalking(false);
+      } catch (e) {
+        console.error('[PushToTalk] Error al mutear:', e);
+      }
+    } else {
+      console.warn('[PushToTalk] No se encontró publication para mutear');
+    }
+  };
+
+  // Mutear cualquier audioTrackPublication local apenas se publique
+  useEffect(() => {
+    const pubs = localParticipant?.audioTrackPublications;
+    if (pubs) {
+      Array.from(pubs.values()).forEach(pub => {
+        if (pub && !pub.isMuted) {
+          console.log('[PushToTalk] Muting local audio track (auto on publish)', pub);
+          try {
+            pub.mute();
+          } catch (e) {
+            console.error('[PushToTalk] Error al mutear en auto-mute:', e);
+          }
+        }
+      });
+    } else {
+      console.warn('[PushToTalk] No se encontró publication para auto-mute');
+    }
+  }, [localParticipant?.audioTrackPublications?.size]);
+
   const selectedTrack = cameraTracks.find(t => t.participant.identity === selectedCamera);
 
   return (
@@ -151,6 +216,22 @@ const RoomView = () => {
       ) : (
         <Text style={{ color: 'white', marginTop: 20 }}>Esperando transmisión de cámara...</Text>
       )}
+      <TouchableOpacity
+        style={{
+          marginTop: 24,
+          backgroundColor: isTalking ? '#007AFF' : '#aaa',
+          padding: 18,
+          borderRadius: 32,
+          alignSelf: 'center',
+        }}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>
+          {isTalking ? 'Hablando...' : 'Mantener para hablar'}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
