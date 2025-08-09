@@ -7,7 +7,8 @@ import axios from 'axios';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 const ViewerScreen = ({ route, navigation }) => {
-  const { group } = route.params;
+  // userName puede venir directo o anidado desde GroupOptions
+  const { group, userName } = route.params || {};
   const [token, setToken] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
   const [error, setError] = useState(null);
@@ -23,7 +24,7 @@ const ViewerScreen = ({ route, navigation }) => {
         const res = await axios.get(`${SIGNALING_SERVER_URL}/getToken`, {
           params: {
             roomName: ROOM_ID,
-            participantName: `viewer-${Date.now()}`,
+            participantName: `viewer-${userName || Date.now()}`,
           },
         });
         if (isMounted) {
@@ -40,7 +41,7 @@ const ViewerScreen = ({ route, navigation }) => {
       isMounted = false;
       AudioSession.stopAudioSession();
     };
-  }, []);
+  }, [userName]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -84,6 +85,48 @@ const RoomView = () => {
   const cameraParticipants = Array.from(new Set(cameraTracks.map(t => t.participant.identity)));
   const [selectedCamera, setSelectedCamera] = useState(cameraParticipants[0] || null);
   const [isTalking, setIsTalking] = useState(false);
+  const [speakingViewers, setSpeakingViewers] = useState([]); // array de identities
+  // Escuchar eventos de mute/unmute de viewers
+  useEffect(() => {
+    if (!room) return;
+    // Handler para mute/unmute
+    const handleTrackMuted = (publication, participant) => {
+      if (participant.identity && participant.identity.startsWith('viewer')) {
+        setSpeakingViewers(prev => prev.filter(id => id !== participant.identity));
+      }
+    };
+    const handleTrackUnmuted = (publication, participant) => {
+      if (participant.identity && participant.identity.startsWith('viewer')) {
+        setSpeakingViewers(prev => {
+          if (!prev.includes(participant.identity)) {
+            return [...prev, participant.identity];
+          }
+          return prev;
+        });
+      }
+    };
+    room.on('trackMuted', handleTrackMuted);
+    room.on('trackUnmuted', handleTrackUnmuted);
+    // Inicializar con los viewers que ya están desmuteados
+    remoteParticipants.forEach((participant) => {
+      if (participant.identity && participant.identity.startsWith('viewer')) {
+        participant.trackPublications.forEach((pub) => {
+          if (pub.kind === 'audio' && !pub.isMuted) {
+            setSpeakingViewers(prev => {
+              if (!prev.includes(participant.identity)) {
+                return [...prev, participant.identity];
+              }
+              return prev;
+            });
+          }
+        });
+      }
+    });
+    return () => {
+      room.off('trackMuted', handleTrackMuted);
+      room.off('trackUnmuted', handleTrackUnmuted);
+    };
+  }, [room, remoteParticipants]);
 
   // Suscribirse solo a audio y video de cámaras
   useEffect(() => {
@@ -206,6 +249,16 @@ const RoomView = () => {
               </TouchableOpacity>
             )}
           />
+        </View>
+      )}
+      {/* Mostrar nombres de viewers hablando */}
+      {speakingViewers.length > 0 && (
+        <View style={{ marginBottom: 12, alignItems: 'center' }}>
+          <Text style={{ color: '#00FF00', fontWeight: 'bold', fontSize: 18 }}>
+            {speakingViewers.length === 1
+              ? `Hablando: ${speakingViewers[0].replace('viewer-', '')}`
+              : `Hablando: ${speakingViewers.map(id => id.replace('viewer-', '')).join(', ')}`}
+          </Text>
         </View>
       )}
       {selectedTrack ? (

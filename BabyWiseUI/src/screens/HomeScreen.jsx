@@ -157,6 +157,13 @@ const HomeScreen = ({ setRole }) => {
     }
   };
 
+  const getUserName = () => {
+    if (!email.current) return 'anonimo';
+    // Si querés usar el nombre de Google, deberías guardar el nombre en el estado al loguear
+    // Por ahora, usamos la parte antes del @ del email
+    return email.current.split('@')[0];
+  };
+
   const goToViewer = async () => {
     console.log('goToViewer called');
     console.log('isLoggedIn state:', isLoggedIn);
@@ -164,7 +171,7 @@ const HomeScreen = ({ setRole }) => {
     
     if (isLoggedIn && email.current) {
       console.log('Navigating to viewer screen');
-      setRole('viewer');
+      setRole({ role: 'viewer', userName: getUserName() });
     } else {
       console.log('User not authenticated, calling signIn');
       await signIn();

@@ -305,13 +305,19 @@ const HomeGroupsScreen = ({ navigation }) => {
     setNewGroupName('');
   };
 
+  // Helper para obtener nombre de usuario legible
+  const getUserName = () => {
+    if (!email.current) return 'anonimo';
+    return email.current.split('@')[0];
+  };
+
   const joinGroup = (group) => {
     if (!isLoggedIn) {
       Alert.alert('Iniciar Sesión', 'Debes iniciar sesión para unirte a un grupo');
       return;
     }
-    // Navegar a la pantalla del grupo
-    navigation.navigate('GroupOptions', { group });
+    // Navegar a la pantalla del grupo, pasando el nombre de usuario
+    navigation.navigate('GroupOptions', { group, userName: getUserName() });
   };
 
   const googleText = isLoggedIn ? 'Cerrar Sesión' : 'Iniciar Sesión con Google';

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 const GroupOptionsScreen = ({ navigation, route }) => {
-  const { group } = route.params;
+  const { group, userName } = route.params || {};
   
   // Estados para el modal de agregar miembro
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -107,7 +107,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [cameraName, setCameraName] = useState('');
 
   const goToViewer = () => {
-    navigation.navigate('Viewer', { group });
+    navigation.navigate('Viewer', { group, userName });
   };
 
   const goToCamera = () => {
@@ -120,7 +120,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       return;
     }
     setShowCameraNameModal(false);
-    navigation.navigate('Camera', { group, cameraName: cameraName.trim() });
+    navigation.navigate('Camera', { group, cameraName: cameraName.trim(), userName });
     setCameraName('');
   };
 
