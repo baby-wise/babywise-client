@@ -41,13 +41,24 @@ const io = new Server(httpServer, {
 });
 let clients = [];
 
-// Socket connection for TrackEgress data input
-wss.on('connection', (ws, req) => {
-  console.log('[WS] Nueva conexión de egress para análisis de audio');
-  let audioBuffers = [];
-  let lastFlush = Date.now();
-  const FLUSH_MS = 6000; // 6 segundos
+const audioBuffersByTrack = {};
 
+wss.on('connection', (ws, req) => {
+  // Extraer trackID y participant de la query string
+  const url = new URL(req.url, `ws://${req.headers.host}`);
+  const trackID = url.searchParams.get('trackID') || 'unknownTrack';
+  const participant = url.searchParams.get('participant') || 'unknownParticipant';
+  const bufferKey = `${trackID}_${participant}`;
+  console.log(`[WS] Nueva conexión de egress para análisis de audio: trackID=${trackID}, participant=${participant}`);
+
+  if (!audioBuffersByTrack[bufferKey]) {
+    audioBuffersByTrack[bufferKey] = {
+      buffers: [],
+      lastFlush: Date.now(),
+    };
+  }
+
+  const FLUSH_MS = 6000; // 6 segundos
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const audioDir = path.join(__dirname, 'temp', 'audio');
@@ -56,10 +67,11 @@ wss.on('connection', (ws, req) => {
     fs.mkdirSync(audioDir, { recursive: true });
   }
 
-  function flushAudioBuffer() {
-    if (audioBuffers.length === 0) return;
-    const pcmData = Buffer.concat(audioBuffers);
-    const baseName = `audio-${Date.now()}`;
+  function flushAudioBufferForKey(key) {
+    const entry = audioBuffersByTrack[key];
+    if (!entry || entry.buffers.length === 0) return;
+    const pcmData = Buffer.concat(entry.buffers);
+    const baseName = `audio-${key}-${Date.now()}`;
     const wavPath = path.join(audioDir, `${baseName}.wav`);
     const int16 = new Int16Array(pcmData.buffer, pcmData.byteOffset, pcmData.length / 2);
 
@@ -76,7 +88,7 @@ wss.on('connection', (ws, req) => {
         sampleRate: 48000,
         channelData: [left, right]
       };
-      console.log('[WS] flushAudioBuffer: guardando como estéreo');
+      console.log(`[WS] flushAudioBuffer: guardando como estéreo para ${key}`);
     } else {
       // Mono
       const float32 = new Float32Array(int16.length);
@@ -87,27 +99,29 @@ wss.on('connection', (ws, req) => {
         sampleRate: 48000,
         channelData: [float32]
       };
-      console.log('[WS] flushAudioBuffer: guardando como mono');
+      console.log(`[WS] flushAudioBuffer: guardando como mono para ${key}`);
     }
     wav.encode(audioData).then(wavBuffer => {
       fs.writeFileSync(wavPath, Buffer.from(wavBuffer));
       console.log(`[WS] Archivo WAV guardado: ${wavPath}`);
+      // TODO mandar archivo a la api de ia, obtener resultado y triggerar notificaciones
     }).catch(err => {
       console.error('[WS] Error al guardar WAV:', err);
     });
-    audioBuffers = [];
-    lastFlush = Date.now();
+    entry.buffers = [];
+    entry.lastFlush = Date.now();
   }
 
   const flushInterval = setInterval(() => {
-    if (Date.now() - lastFlush >= FLUSH_MS) {
-      flushAudioBuffer();
+    const entry = audioBuffersByTrack[bufferKey];
+    if (entry && Date.now() - entry.lastFlush >= FLUSH_MS) {
+      flushAudioBufferForKey(bufferKey);
     }
   }, 1000);
 
   ws.on('message', (data, isBinary) => {
     if (isBinary) {
-      audioBuffers.push(data);
+      audioBuffersByTrack[bufferKey].buffers.push(data);
     } else {
       try {
         const msg = JSON.parse(data.toString());
@@ -118,9 +132,10 @@ wss.on('connection', (ws, req) => {
     }
   });
   ws.on('close', () => {
-    flushAudioBuffer();
+    flushAudioBufferForKey(bufferKey);
     clearInterval(flushInterval);
-    console.log('[WS] Conexión de egress cerrada');
+    delete audioBuffersByTrack[bufferKey];
+    console.log(`[WS] Conexión de egress cerrada para ${bufferKey}`);
   });
 });
 
@@ -211,10 +226,11 @@ app.post('/webhook', async (req, res) => {
       const track = event.track;
       // Lanzar TrackEgress a WebSocket para audio
       if (track && track.type === TrackType.AUDIO) {
-        const wsUrl = 'wss://' + process.env.SERVER_ANNOUNCED_URL + wsAudioPath;
+        // Agregar trackID y participant como query params
+        const wsUrl = `wss://${process.env.SERVER_ANNOUNCED_URL}${wsAudioPath}?trackID=${encodeURIComponent(track.sid)}&participant=${encodeURIComponent(event.participant.identity)}`;
         egressClient.startTrackEgress(roomName, wsUrl, track.sid)
           .then(info => {
-            console.log('[Egress] TrackEgress lanzado:', info.egressId);
+            console.log('[Egress] TrackEgress lanzado:', info.egressId, 'URL:', wsUrl);
           })
           .catch(err => {
             console.error('[Egress] Error lanzando TrackEgress:', err);
@@ -265,10 +281,8 @@ app.get('/getToken', async (req, res) => {
   try {
     // Conexión a MongoDB
     mongoose.connect(`mongodb+srv://babywise2025:${process.env.MONGO_PW}@babywise.aengkd2.mongodb.net/${process.env.MONGO_DB_NAME}?retryWrites=true&w=majority&appName=${process.env.MONGO_APP_NAME}`)
-      .then(() => console.log("Conectado a MongoDB"))
-      .catch((error) => console.log("Error de conexión a MongoDB:", error));
-
-    console.log("-> Connected to MongoDB");
+      .then(() => console.log("-> Conectado a MongoDB"))
+      .catch((error) => console.log("-> Error de conexión a MongoDB:", error));
 
     // Start the HTTP server
     httpServer.listen(PORT, () => {
