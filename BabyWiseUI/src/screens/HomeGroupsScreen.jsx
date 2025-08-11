@@ -14,6 +14,7 @@ import {
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../config/firebase';
 import { signInWithCredential, GoogleAuthProvider, signOut } from '@react-native-firebase/auth';
+import { groupService, userService } from '../services/apiService';
 
 const HomeGroupsScreen = ({ navigation }) => {
   const email = useRef();
@@ -27,6 +28,11 @@ const HomeGroupsScreen = ({ navigation }) => {
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  
+  // Estados para unirse a grupo
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [isJoiningGroup, setIsJoiningGroup] = useState(false);
 
   useEffect(() => {
     // Configurar Google Sign-In
@@ -41,46 +47,57 @@ const HomeGroupsScreen = ({ navigation }) => {
     checkCurrentUser();
   }, []);
 
+  // Función para crear usuario en el backend si no existe
+  const createUserIfNeeded = async (userEmail, uid) => {
+    try {
+      console.log('Checking/creating user in backend:', { userEmail, uid });
+      
+      // Intentar crear el usuario en el backend
+      // Si ya existe, el backend debería manejarlo apropiadamente
+      const userData = {
+        user: {
+          email: userEmail,
+          UID: uid
+        }
+      };
+      
+      await userService.createUser(userData);
+      console.log('User created/verified in backend successfully');
+    } catch (error) {
+      // Si el error es porque el usuario ya existe, no es problema
+      console.log('User creation response:', error.message);
+      // Solo mostrar error si es un problema real de conectividad
+      if (!error.message?.includes('duplicate') && !error.message?.includes('exists')) {
+        console.error('Error creating user in backend:', error);
+      }
+    }
+  };
+
   // Función para cargar grupos del usuario
   const loadUserGroups = async (userEmail) => {
     setIsLoadingGroups(true);
     try {
-      /* 
-      // TODO: Reemplazar con llamada real al backend
-      // Esta función debería hacer una petición HTTP al backend:
-      // 
-      // const response = await fetch(`${API_BASE_URL}/groups/user`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${userToken}` // si usas tokens
-      //   },
-      //   body: JSON.stringify({
-      //     email: userEmail
-      //   })
-      // });
-      // 
-      // const groupsData = await response.json();
-      // 
-      // El backend debería devolver un array de objetos con esta estructura:
-      // [
-      //   { id: number, name: string, members: number },
-      //   { id: number, name: string, members: number },
-      //   ...
-      // ]
-      */
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setGroups([]);
+        return;
+      }
+
+      // Crear/verificar usuario en el backend primero
+      await createUserIfNeeded(userEmail, currentUser.uid);
+
+      // Obtener grupos del usuario usando el UID de Firebase
+      const userGroups = await groupService.getUserGroups(currentUser.uid);
       
-      // Datos hardcodeados por ahora - remover cuando se implemente el backend
-      const mockGroups = [
-        { id: 1, name: 'Casa Principal', members: 3 },
-        { id: 2, name: 'Casa de Verano', members: 2 },
-        { id: 3, name: 'Oficina', members: 5 }
-      ];
+      // Transformar los datos del backend al formato esperado por el frontend
+      const formattedGroups = userGroups.map((group, index) => ({
+        id: group._id || group.id || `group-${index}`, // Asegurar que siempre haya un ID único
+        name: group.name,
+        members: group.users ? group.users.length : 0,
+        _id: group._id // Mantener el _id original para uso interno
+      }));
       
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setGroups(mockGroups);
+      setGroups(formattedGroups);
     } catch (error) {
       console.error('Error loading user groups:', error);
       // TODO: Mostrar mensaje de error al usuario
@@ -229,48 +246,39 @@ const HomeGroupsScreen = ({ navigation }) => {
   const createNewGroup = async (groupName, userEmail) => {
     setIsCreatingGroup(true);
     try {
-      /* 
-      // TODO: Reemplazar con llamada real al backend
-      // Esta función debería hacer una petición HTTP al backend:
-      // 
-      // const response = await fetch(`${API_BASE_URL}/groups/create`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${userToken}` // si usas tokens
-      //   },
-      //   body: JSON.stringify({
-      //     name: groupName,
-      //     creatorEmail: userEmail
-      //   })
-      // });
-      // 
-      // const newGroup = await response.json();
-      // 
-      // El backend debería devolver el grupo creado con esta estructura:
-      // { id: number, name: string, members: number }
-      */
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      // Probar conectividad primero
+      console.log('Testing backend connectivity...');
+      const isConnected = await groupService.testConnection();
+      if (!isConnected) {
+        throw new Error('No se puede conectar al servidor. Verifica tu conexión.');
+      }
+
+      // Crear el grupo usando el servicio real
+      const newGroup = await groupService.createGroup(currentUser.uid, groupName);
       
-      // Simular creación del grupo - remover cuando se implemente el backend
-      const mockNewGroup = {
-        id: Date.now(), // ID temporal usando timestamp
-        name: groupName,
-        members: 1 // El creador es el primer miembro
+      // Transformar el grupo para el formato del frontend
+      const formattedGroup = {
+        id: newGroup._id,
+        name: newGroup.name,
+        members: newGroup.users ? newGroup.users.length : 1,
+        _id: newGroup._id
       };
       
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       // Agregar el nuevo grupo a la lista
-      setGroups(prevGroups => [...prevGroups, mockNewGroup]);
+      setGroups(prevGroups => [...prevGroups, formattedGroup]);
       
       // Mostrar toast de éxito
       showSuccessToast(`Grupo "${groupName}" creado exitosamente`);
       
-      return mockNewGroup;
+      return formattedGroup;
     } catch (error) {
       console.error('Error creating group:', error);
-      Alert.alert('Error', 'No se pudo crear el grupo. Inténtalo de nuevo.');
+      Alert.alert('Error', `No se pudo crear el grupo: ${error.message}`);
       throw error;
     } finally {
       setIsCreatingGroup(false);
@@ -283,6 +291,75 @@ const HomeGroupsScreen = ({ navigation }) => {
       return;
     }
     setShowCreateModal(true);
+  };
+
+  // Función para unirse a un grupo con código de invitación
+  const joinGroupWithCode = async (code) => {
+    setIsJoiningGroup(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      // Unirse al grupo usando el código de invitación
+      const updatedGroup = await groupService.addMember(currentUser.uid, code);
+      
+      // Transformar el grupo para el formato del frontend
+      const formattedGroup = {
+        id: updatedGroup._id,
+        name: updatedGroup.name,
+        members: updatedGroup.users ? updatedGroup.users.length : 1,
+        _id: updatedGroup._id
+      };
+      
+      // Agregar el grupo a la lista si no existe
+      setGroups(prevGroups => {
+        const exists = prevGroups.some(g => g.id === formattedGroup.id);
+        if (!exists) {
+          return [...prevGroups, formattedGroup];
+        }
+        return prevGroups;
+      });
+      
+      showSuccessToast(`Te has unido al grupo "${updatedGroup.name}"`);
+      setShowJoinModal(false);
+      setInviteCode('');
+      
+      return formattedGroup;
+    } catch (error) {
+      console.error('Error joining group:', error);
+      Alert.alert('Error', 'Código de invitación inválido o expirado');
+      throw error;
+    } finally {
+      setIsJoiningGroup(false);
+    }
+  };
+
+  const openJoinModal = () => {
+    if (!isLoggedIn) {
+      Alert.alert('Iniciar Sesión', 'Debes iniciar sesión para unirte a un grupo');
+      return;
+    }
+    setShowJoinModal(true);
+  };
+
+  const handleJoinGroup = async () => {
+    if (!inviteCode.trim()) {
+      Alert.alert('Error', 'Por favor ingresa un código de invitación');
+      return;
+    }
+    
+    try {
+      await joinGroupWithCode(inviteCode.trim());
+    } catch (error) {
+      // Error ya manejado en joinGroupWithCode
+    }
+  };
+
+  const cancelJoinGroup = () => {
+    setShowJoinModal(false);
+    setInviteCode('');
   };
 
   const handleCreateGroup = async () => {
@@ -320,12 +397,21 @@ const HomeGroupsScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Baby Monitor</Text>
       
-      <TouchableOpacity 
-        style={styles.createButton} 
-        onPress={createGroup}
-      >
-        <Text style={styles.createButtonText}>Crear Grupo</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.createButton]} 
+          onPress={createGroup}
+        >
+          <Text style={styles.actionButtonText}>Crear Grupo</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.joinButton]} 
+          onPress={openJoinModal}
+        >
+          <Text style={styles.actionButtonText}>Unirse a Grupo</Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>Mis Grupos</Text>
@@ -336,9 +422,9 @@ const HomeGroupsScreen = ({ navigation }) => {
             <Text style={styles.loadingText}>Cargando grupos...</Text>
           </View>
         ) : groups.length > 0 ? (
-          groups.map(group => (
+          groups.map((group, index) => (
             <TouchableOpacity
-              key={group.id}
+              key={group.id || group._id || `group-${index}`}
               style={styles.groupCard}
               onPress={() => joinGroup(group)}
             >
@@ -426,6 +512,51 @@ const HomeGroupsScreen = ({ navigation }) => {
         </View>
       </Modal>
 
+      {/* Modal para unirse a grupo */}
+      <Modal
+        visible={showJoinModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelJoinGroup}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Unirse a Grupo</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Código de invitación"
+              placeholderTextColor="#999"
+              value={inviteCode}
+              onChangeText={setInviteCode}
+              autoFocus={true}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={cancelJoinGroup}
+                disabled={isJoiningGroup}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.createButton, isJoiningGroup && styles.disabledButton]} 
+                onPress={handleJoinGroup}
+                disabled={isJoiningGroup}
+              >
+                {isJoiningGroup ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.createButtonText}>Unirse</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Toast de éxito */}
       {showToast && (
         <View style={styles.toastContainer}>
@@ -449,18 +580,34 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     textAlign: 'center',
   },
-  createButton: {
-    backgroundColor: '#007AFF', // Azul elegante que combina con la navegación
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 8,
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 30,
+    gap: 10,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 8,
     alignItems: 'center',
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+  },
+  createButton: {
+    backgroundColor: '#007AFF',
+  },
+  joinButton: {
+    backgroundColor: '#34C759',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   createButtonText: {
     color: '#fff',
