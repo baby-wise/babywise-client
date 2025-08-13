@@ -219,14 +219,12 @@ app.post('/webhook', async (req, res) => {
   try {
     const event = await receiver.receive(req.body, req.get('Authorization'));
     console.log('[Webhook] Evento recibido:', event.event);
-    // Solo nos interesa track_published de cámaras
+    // Iniciar TrackEgress para audio ante track_published y ParticipantEgress HLS ante participant_joined (rol cámara)
     if (event.event === 'track_published' && event.participant && event.participant.identity && event.participant.identity.startsWith('camera-')) {
       console.log('[Webhook] Evento track_published de cámara detectado');
       const roomName = event.room.name;
       const track = event.track;
-      // Lanzar TrackEgress a WebSocket para audio
       if (track && track.type === TrackType.AUDIO) {
-        // Agregar trackID y participant como query params
         const wsUrl = `wss://${process.env.SERVER_ANNOUNCED_URL}${wsAudioPath}?trackID=${encodeURIComponent(track.sid)}&participant=${encodeURIComponent(event.participant.identity)}`;
         egressClient.startTrackEgress(roomName, wsUrl, track.sid)
           .then(info => {
@@ -236,9 +234,45 @@ app.post('/webhook', async (req, res) => {
             console.error('[Egress] Error lanzando TrackEgress:', err);
           });
       }
-      // (Opcional) lógica para video o composite egress aquí
     }
+    
+    // Lanzar ParticipantEgress HLS a S3 (Backblaze) para cámaras al unirse
+    if (event.event === 'participant_joined' && event.participant && event.participant.identity && event.participant.identity.startsWith('camera-')) {
+      console.log('[Webhook] Evento participant_joined de cámara detectado');
+      const roomName = event.room.name;
+      const participantIdentity = event.participant.identity;
+      const { 
+        LK_EGRESS_S3_KEY_ID, 
+        LK_EGRESS_S3_APP_KEY, 
+        LK_EGRESS_S3_BUCKET_NAME,
+        B2_ENDPOINT 
+      } = process.env;
+      const outputs = {
+        segments: {
+          filenamePrefix: `${roomName}-${participantIdentity}-hls`,
+          playlistName: `${roomName}-${participantIdentity}.m3u8`,
+          livePlaylistName: `${roomName}-${participantIdentity}-live.m3u8`,
+          segmentDuration: 6,
+          output: {
+            case: 's3',
+            value: {
+              accessKey: LK_EGRESS_S3_KEY_ID || '',
+              secret: LK_EGRESS_S3_APP_KEY || '',
+              bucket: LK_EGRESS_S3_BUCKET_NAME || '',
+              endpoint: B2_ENDPOINT || '',
+              forcePathStyle: true,
+            },
+          },
+        },
+      }
+      
+      egressClient.startParticipantEgress(roomName, participantIdentity, outputs)
+        .then(info => {console.log('[Egress] ParticipantEgress HLS lanzado:', info.egressId);})
+        .catch(err => {console.error('[Egress] Error lanzando ParticipantEgress HLS:', err);});
+    }
+
     res.status(200).send('ok');
+
   } catch (err) {
     console.error('[Webhook] Error procesando webhook:', err);
     res.status(400).send('invalid webhook');
