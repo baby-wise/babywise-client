@@ -1,3 +1,4 @@
+import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { AccessToken, WebhookReceiver, EgressClient, TrackType } from 'livekit-server-sdk';
 import fs from 'fs';
 import path from 'path';
@@ -18,31 +19,45 @@ import { WebSocketServer } from 'ws';
 
 dotenv.config();
 
+// Server
 const app = express();
 app.use(cors());
 app.use(express.json());
-
 const PORT = process.env.PORT || 3001;
 const httpServer = createServer(app);
-
-const apiKey = process.env.LIVEKIT_API_KEY;
-const apiSecret = process.env.LIVEKIT_API_SECRET;
-const livekitHost = process.env.LIVEKIT_URL;
-const livekitEgressUrl = 'https://' + livekitHost;
-const receiver = new WebhookReceiver(apiKey, apiSecret);
-const egressClient = new EgressClient(livekitEgressUrl, apiKey, apiSecret);
-const wsAudioPath = '/audio-egress';
-const wss = new WebSocketServer({ server: httpServer, path: wsAudioPath });
 const io = new Server(httpServer, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
   },
 });
-let clients = [];
 
+// Livekit vars
+const apiKey = process.env.LIVEKIT_API_KEY;
+const apiSecret = process.env.LIVEKIT_API_SECRET;
+const livekitHost = process.env.LIVEKIT_URL;
+const livekitEgressUrl = 'https://' + livekitHost;
+
+// Livekit webhook and egress vars
+const receiver = new WebhookReceiver(apiKey, apiSecret);
+const egressClient = new EgressClient(livekitEgressUrl, apiKey, apiSecret);
+const wsAudioPath = '/audio-egress';
+const wss = new WebSocketServer({ server: httpServer, path: wsAudioPath });
+let clients = [];
 const audioBuffersByTrack = {};
 
+// Cloudflare R2 client
+const s3Client = new S3Client({
+  region: process.env.CF_REGION || 'auto',
+  endpoint: process.env.CF_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.CF_KEY_ID,
+    secretAccessKey: process.env.CF_KEY_SECRET,
+  },
+  forcePathStyle: true,
+});
+
+// WebSocket server for livekit audio track egress
 wss.on('connection', (ws, req) => {
   // Extraer trackID y participant de la query string
   const url = new URL(req.url, `ws://${req.headers.host}`);
@@ -63,7 +78,6 @@ wss.on('connection', (ws, req) => {
   const __dirname = path.dirname(__filename);
   const audioDir = path.join(__dirname, 'temp', 'audio');
   if (!fs.existsSync(audioDir)) {
-    console.log('[WS] Creando directorio temporal para audio:', audioDir);
     fs.mkdirSync(audioDir, { recursive: true });
   }
 
@@ -88,7 +102,6 @@ wss.on('connection', (ws, req) => {
         sampleRate: 48000,
         channelData: [left, right]
       };
-      console.log(`[WS] flushAudioBuffer: guardando como estéreo para ${key}`);
     } else {
       // Mono
       const float32 = new Float32Array(int16.length);
@@ -99,11 +112,9 @@ wss.on('connection', (ws, req) => {
         sampleRate: 48000,
         channelData: [float32]
       };
-      console.log(`[WS] flushAudioBuffer: guardando como mono para ${key}`);
     }
     wav.encode(audioData).then(wavBuffer => {
       fs.writeFileSync(wavPath, Buffer.from(wavBuffer));
-      console.log(`[WS] Archivo WAV guardado: ${wavPath}`);
       // TODO mandar archivo a la api de ia, obtener resultado y triggerar notificaciones
     }).catch(err => {
       console.error('[WS] Error al guardar WAV:', err);
@@ -151,61 +162,7 @@ io.on('connection', (socket) => {
         clients.push(clientInfo);
     });
 
-    socket.on('add-camera', (data) => {
-        const camerasId = clients
-            .filter((c) => c.role === 'camera' && c.group === data.group)
-            .map((c) => c.socket.id);
-        
-        const viewerSockets = clients
-            .filter(c => c.role === 'viewer' && c.group === data.group)
-            .map((c) => c.socket.id);
-        
-        viewerSockets.forEach(sId =>{
-            console.log(`Enviandole al ${sId} que hay una camara disponible`)
-            socket.to(sId).emit('cameras-list', camerasId)})
-    });
 
-    socket.on('get-cameras-list', (data) => {
-        const camerasId = clients
-            .filter((c) => c.role === 'camera' && c.group === data.group)
-            .map((c) => c.socket.id);
-        socket.emit('cameras-list', camerasId);
-    });
-
-    // Notificar a los otros en la sala que un nuevo par se ha unido
-    socket.on('start-stream', (data) => {
-            /*
-            Nota: Esto funciona igual a como lo teniamos antes pero se tiene que cambiar para que 
-            busque al cliente camara de ese grupo con ese socketId y mandarle solo a ese      
-            */
-        socket.to(data.group).emit('peer-joined', { peerId: socket.id });
-    });
-    
-    // Reenviar la oferta de WebRTC a los otros pares en la sala
-    socket.on('offer', (payload) => {
-        console.log(`Recibida oferta de ${socket.id}, reenviando a ${payload.targetPeerId}`);
-        io.to(payload.targetPeerId).emit('offer', {
-            sdp: payload.sdp,
-            sourcePeerId: socket.id,
-        });
-    });
-
-    // Reenviar la respuesta de WebRTC al par original
-    socket.on('answer', (payload) => {
-        console.log(`Recibida respuesta de ${socket.id}, reenviando a ${payload.targetPeerId}`);
-        io.to(payload.targetPeerId).emit('answer', {
-            sdp: payload.sdp,
-            sourcePeerId: socket.id,
-        });
-    });
-
-    // Reenviar los candidatos ICE
-    socket.on('ice-candidate', (payload) => {
-        io.to(payload.targetPeerId).emit('ice-candidate', {
-            candidate: payload.candidate,
-            sourcePeerId: socket.id,
-        });
-    });
 
     socket.on('disconnect', () => {
         console.log(`Cliente desconectado: ${socket.id}`);
@@ -242,24 +199,36 @@ app.post('/webhook', async (req, res) => {
       const roomName = event.room.name;
       const participantIdentity = event.participant.identity;
       const { 
-        LK_EGRESS_S3_KEY_ID, 
-        LK_EGRESS_S3_APP_KEY, 
-        LK_EGRESS_S3_BUCKET_NAME,
-        B2_ENDPOINT 
+        CF_KEY_ID, 
+        CF_KEY_SECRET, 
+        CF_BUCKET_NAME,
+        CF_ENDPOINT 
       } = process.env;
+
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const today = `${yyyy}-${mm}-${dd}`;
+      const time = `${hh}_${min}_${ss}`;
+      const pathPrefix = `recordings/${roomName}/${participantIdentity}/${today}/${time}`;
+
       const outputs = {
         segments: {
-          filenamePrefix: `${roomName}-${participantIdentity}-hls`,
-          playlistName: `${roomName}-${participantIdentity}.m3u8`,
-          livePlaylistName: `${roomName}-${participantIdentity}-live.m3u8`,
+          filenamePrefix: `${pathPrefix}/hls`,
+          playlistName: `${pathPrefix}/playlist.m3u8`,
+          livePlaylistName: `${pathPrefix}/playlist-live.m3u8`,
           segmentDuration: 6,
           output: {
             case: 's3',
             value: {
-              accessKey: LK_EGRESS_S3_KEY_ID || '',
-              secret: LK_EGRESS_S3_APP_KEY || '',
-              bucket: LK_EGRESS_S3_BUCKET_NAME || '',
-              endpoint: B2_ENDPOINT || '',
+              accessKey: CF_KEY_ID || '',
+              secret: CF_KEY_SECRET || '',
+              bucket: CF_BUCKET_NAME || '',
+              endpoint: CF_ENDPOINT || '',
               forcePathStyle: true,
             },
           },
@@ -303,13 +272,80 @@ app.get('/getToken', async (req, res) => {
   at.addGrant(videoGrant);
 
   at.toJwt().then(token => {
-    console.log('access token', token);
     res.json({ token });
   }).catch(err => {
     console.error('Error generating token:', err);
     res.status(500).send('Error generating token');
   });
 });
+
+
+// Endpoint para obtener lista grabaciones de un participant
+app.get('/recordings', async (req, res) => {
+  const { room } = req.query;
+  if (!room) {
+    return res.status(400).json({ error: 'room is required' });
+  }
+  const bucket = process.env.CF_BUCKET_NAME;
+  const prefix = `recordings/${room}/`;
+  try {
+    // recordingsByParticipant: { [participantIdentity]: { [fecha_hora]: {date, time, playlistUrl, key, duration} } }
+    let recordingsByParticipant = {};
+    let continuationToken = undefined;
+    do {
+      const params = {
+        Bucket: bucket,
+        Prefix: prefix,
+        MaxKeys: 1000,
+        ContinuationToken: continuationToken,
+      };
+      const resp = await s3Client.send(new ListObjectsV2Command(params));
+      for (const obj of resp.Contents || []) {
+        // Esperado: obj.Key = recordings/{room}/{participant}/{fecha}/{hora}/hls000.ts o playlist.m3u8
+        const keyParts = obj.Key.split('/');
+        const participantIdentity = keyParts[2];
+        const date = keyParts[3];
+        const time = keyParts[4];
+        if (!participantIdentity || !date || !time) continue;
+        if (!recordingsByParticipant[participantIdentity]) {
+          recordingsByParticipant[participantIdentity] = {};
+        }
+        const recId = `${date}_${time}`;
+        if (!recordingsByParticipant[participantIdentity][recId]) {
+          recordingsByParticipant[participantIdentity][recId] = {
+            date,
+            time,
+            playlistUrl: null,
+            key: null,
+            duration: 0,
+          };
+        }
+        if (obj.Key.endsWith('.m3u8') && !obj.Key.includes('-live')) {
+          recordingsByParticipant[participantIdentity][recId].playlistUrl = `${process.env.CF_PUBLIC_URL}/${obj.Key}`;
+          recordingsByParticipant[participantIdentity][recId].key = obj.Key;
+        }
+        if (obj.Key.endsWith('.ts')) {
+          recordingsByParticipant[participantIdentity][recId].duration += 6;
+        }
+      }
+      continuationToken = resp.IsTruncated ? resp.NextContinuationToken : undefined;
+    } while (continuationToken);
+    // Convertir a formato de respuesta: array de { participant, recordings: [ ... ] }
+    let result = [];
+    for (const [participant, recMap] of Object.entries(recordingsByParticipant)) {
+      const recordings = Object.values(recMap).filter(r => r.playlistUrl);
+      if (recordings.length > 0) {
+        result.push({ participant, recordings });
+      }
+    }
+    console.log(`[API] Grabaciones encontradas en el room ${room}: `, result);
+    res.json({ recordingsByParticipant: result });
+  } catch (err) {
+    console.error('[API] Error listando grabaciones:', err);
+    res.status(500).json({ error: 'Error listing recordings' });
+  }
+});
+
 
 (async () => {
   try {
