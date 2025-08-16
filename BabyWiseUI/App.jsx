@@ -5,6 +5,7 @@ import HomeGroupsScreen from './src/screens/HomeGroupsScreen';
 import GroupOptionsScreen from './src/screens/GroupOptionsScreen';
 import ViewerScreen from './src/screens/ViewerScreen';
 import CameraScreen from './src/screens/CameraScreen';
+import StatisticsScreen from './src/screens/StatisticsScreen';
 
 const Stack = createStackNavigator();
 
@@ -61,6 +62,11 @@ const App = () => {
           name="Camera" 
           component={CameraScreen} 
           options={{ title: 'Baby Monitor Camera' }}
+        />
+        <Stack.Screen 
+          name="Statistics" 
+          component={StatisticsScreen} 
+          options={({ route }) => ({ title: `${route.params?.group?.name || 'Group'} Statistics` })}
         />
       </Stack.Navigator>
     </NavigationContainer>

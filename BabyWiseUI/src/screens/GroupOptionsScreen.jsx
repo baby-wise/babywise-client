@@ -116,6 +116,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     setShowCameraNameModal(true);
   };
 
+  const goToStatistics = () => {
+    navigation.navigate('Statistics', { group });
+  };
+
   const handleCameraName = () => {
     if (!cameraName.trim()) {
       Alert.alert('Error', 'Por favor ingresa un nombre para la cámara');
@@ -195,6 +199,12 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           onPress={goToCamera}
         >
           <Text style={styles.optionButtonText}>Ser Cámara</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.optionButton, styles.statisticsButton]} 
+          onPress={goToStatistics}
+        >
+          <Text style={styles.optionButtonText}>Ver Estadísticas</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.optionButton, styles.membersButton]} 
