@@ -5,6 +5,8 @@ import HomeGroupsScreen from './src/screens/HomeGroupsScreen';
 import GroupOptionsScreen from './src/screens/GroupOptionsScreen';
 import ViewerScreen from './src/screens/ViewerScreen';
 import CameraScreen from './src/screens/CameraScreen';
+import RecordingsListScreen from './src/screens/RecordingsListScreen';
+import RecordingPlayerScreen from './src/screens/RecordingPlayerScreen';
 
 const Stack = createStackNavigator();
 
@@ -61,6 +63,16 @@ const App = () => {
           name="Camera" 
           component={CameraScreen} 
           options={{ title: 'Baby Monitor Camera' }}
+        />
+        <Stack.Screen 
+          name="RecordingsListScreen" 
+          component={RecordingsListScreen} 
+          options={{ title: 'Grabaciones' }}
+        />
+        <Stack.Screen 
+          name="RecordingPlayerScreen" 
+          component={RecordingPlayerScreen} 
+          options={{ title: 'Reproductor de grabación' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
