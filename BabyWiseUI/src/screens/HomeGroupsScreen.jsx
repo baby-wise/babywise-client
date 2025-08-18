@@ -16,6 +16,8 @@ import { auth } from '../config/firebase';
 import { signInWithCredential, GoogleAuthProvider, signOut } from '@react-native-firebase/auth';
 import { groupService, userService } from '../services/apiService';
 
+
+
 const HomeGroupsScreen = ({ navigation }) => {
   const email = useRef();
   const [isLoggedIn, setIsLoggedIn] = useState(false);

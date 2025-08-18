@@ -100,7 +100,10 @@ const getLLMResponseForUser = async (req, res) => {
     
     if (!UID) {
       console.log('UID not found in request');
-      return res.status(400).json({ error: "UID is required" });
+      return res.status(400).json({ 
+        success: false,
+        error: "UID is required" 
+      });
     }
 
     const currentDate = getCurrentDate();
@@ -114,6 +117,7 @@ const getLLMResponseForUser = async (req, res) => {
     if (existingResponse) {
       console.log(`Respuesta existente encontrada en cache para ${UID}`);
       return res.status(200).json({
+        success: true,
         response: existingResponse.response,
         date: existingResponse.date,
         cached: true
@@ -139,6 +143,7 @@ const getLLMResponseForUser = async (req, res) => {
     console.log(`Cache actual tiene ${Object.keys(llmResponseCache).length} entradas`);
 
     return res.status(201).json({
+      success: true,
       response: llmResponse,
       date: currentDate,
       cached: false
@@ -148,6 +153,7 @@ const getLLMResponseForUser = async (req, res) => {
     console.error('Error en getLLMResponseForUser:', error);
     
     return res.status(500).json({ 
+      success: false,
       error: "Error interno del servidor al generar respuesta LLM" 
     });
   }
