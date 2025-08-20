@@ -238,6 +238,17 @@ app.post('/webhook', async (req, res) => {
       }
       // (Opcional) lógica para video o composite egress aquí
     }
+    if(event.event === 'room_started'){
+      const roomName = event.room.name;
+      const dataToSend = {roomName: roomName}
+      await fetch(`http://${process.env.AGENT_URL}`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(dataToSend)
+      })
+    }
     res.status(200).send('ok');
   } catch (err) {
     console.error('[Webhook] Error procesando webhook:', err);
