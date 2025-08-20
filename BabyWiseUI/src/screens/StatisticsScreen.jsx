@@ -8,10 +8,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
-  Alert
+  Alert,
+  FlatList
 } from 'react-native';
-// import { LineChart } from 'react-native-chart-kit'; // Comentado temporalmente
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
+import ChartWebView from '../components/ChartWebView';
 
 
 const StatisticsScreen = ({ navigation, route }) => {
@@ -20,17 +21,19 @@ const StatisticsScreen = ({ navigation, route }) => {
   const [llmResponse, setLlmResponse] = useState('');
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [isLoadingLLM, setIsLoadingLLM] = useState(true);
+  // Control para desactivar el scroll vertical del padre mientras se hace scroll horizontal en la tarjeta
+  const [parentScrollEnabled, setParentScrollEnabled] = useState(true);
 
   const screenWidth = Dimensions.get('window').width;
 
-  // Referencias para sincronizar scrolls - moverlas fuera de renderChart
+  // Referencias para sincronizar scrolls
   const chartScrollRef = useRef(null);
-  const xAxisScrollRef = useRef(null);
+  const hoursScrollRef = useRef(null);
 
-  const handleScroll = (event) => {
+  const handleChartScroll = (event) => {
     const scrollX = event.nativeEvent.contentOffset.x;
-    if (xAxisScrollRef.current) {
-      xAxisScrollRef.current.scrollTo({ x: scrollX, animated: false });
+    if (hoursScrollRef.current) {
+      hoursScrollRef.current.scrollTo({ x: scrollX, animated: false });
     }
   };
 
@@ -130,220 +133,148 @@ const StatisticsScreen = ({ navigation, route }) => {
       );
     }
 
+    const chartHeight = 180;
+    const hourWidth = 50; // Ancho por cada hora
+    const totalWidth = hourWidth * 24; // 1200px total para 24 horas
     const maxCrying = Math.max(...eventsData.events.map(e => e.crying));
     const maxMovement = Math.max(...eventsData.events.map(e => e.movement));
     const maxValue = Math.max(maxCrying, maxMovement);
-    const chartHeight = 200;
     
-    // Calcular ancho para que se vean exactamente 8 horas
-    const visibleWidth = screenWidth - 80; // Ancho visible del gráfico
-    const hourWidth = visibleWidth / 8; // Ancho por hora para ver 8 horas
-    const totalChartWidth = eventsData.events.length * hourWidth; // Ancho total para 24 horas
-
-    // Función para convertir valor a posición Y
-    const getYPosition = (value) => {
-      return chartHeight - (value / maxValue) * chartHeight;
-    };
-
-    // Función para obtener posición X (espaciado uniforme)
-    const getXPosition = (index) => {
-      return index * hourWidth; // hourWidth por hora
-    };
-
-    // Generar puntos para las líneas
-    const cryingPoints = eventsData.events.map((event, index) => ({
-      x: getXPosition(index),
-      y: getYPosition(event.crying),
-      value: event.crying,
-      hour: event.hour
-    }));
-
-    const movementPoints = eventsData.events.map((event, index) => ({
-      x: getXPosition(index),
-      y: getYPosition(event.movement),
-      value: event.movement,
-      hour: event.hour
-    }));
-  
     return (
       <View style={styles.chartContainer}>
         <Text style={styles.chartTitle}>Actividad en las últimas 24 horas</Text>
         
-        <View style={styles.customChart}>
-          {/* Eje Y - Etiquetas */}
-          <View style={styles.yAxisLabels}>
-            {[maxValue, Math.floor(maxValue * 0.75), Math.floor(maxValue * 0.5), Math.floor(maxValue * 0.25), 0].map((value, index) => (
+        {/* Contenedor fijo para el gráfico */}
+        <View style={styles.chartFixedContainer}>
+          
+          {/* Etiquetas del eje Y - Fijas */}
+          <View style={styles.yAxisContainer}>
+            {[maxValue, Math.round(maxValue * 0.75), Math.round(maxValue * 0.5), Math.round(maxValue * 0.25), 0].map((value, index) => (
               <Text key={index} style={styles.yAxisLabel}>{value}</Text>
             ))}
           </View>
-
-          {/* Contenedor del gráfico con altura fija */}
-          <View style={styles.chartWrapper}>
-            {/* ScrollView horizontal SOLO para el gráfico */}
-            <ScrollView 
-              ref={chartScrollRef}
-              horizontal 
-              showsHorizontalScrollIndicator={true}
-              style={[styles.chartScrollView, { width: visibleWidth, height: chartHeight }]}
-              contentContainerStyle={{ width: totalChartWidth }}
-              bounces={false}
-              scrollEventThrottle={16}
-              onScroll={handleScroll}
-            >
-                <View style={[styles.chartArea, { height: chartHeight, width: totalChartWidth }]}>
-                  {/* Líneas de cuadrícula horizontales */}
-                  {[0, 0.25, 0.5, 0.75, 1].map((ratio, index) => (
-                    <View
-                      key={index}
+          
+          {/* ScrollView SOLO para el gráfico */}
+          <ScrollView 
+            ref={chartScrollRef}
+            horizontal={true}
+            showsHorizontalScrollIndicator={true}
+            style={styles.chartScrollView}
+            contentContainerStyle={[styles.chartContent, { width: totalWidth }]}
+            bounces={false}
+            scrollEventThrottle={16}
+            onScroll={handleChartScroll}
+          >
+            <View style={[styles.chartGraph, { width: totalWidth, height: chartHeight }]}>
+              {/* Líneas de cuadrícula horizontales */}
+              {[0.25, 0.5, 0.75, 1].map((ratio, i) => (
+                <View 
+                  key={i}
+                  style={[
+                    styles.gridLineHorizontal, 
+                    { 
+                      bottom: ratio * chartHeight,
+                      width: totalWidth
+                    }
+                  ]} 
+                />
+              ))}
+              
+              {/* Líneas verticales y datos por hora */}
+              {eventsData.events.map((event, index) => {
+                const x = index * hourWidth;
+                const cryingHeight = (event.crying / maxValue) * chartHeight;
+                const movementHeight = (event.movement / maxValue) * chartHeight;
+                
+                return (
+                  <View key={event.hour} style={[styles.hourColumn, { left: x, width: hourWidth }]}>
+                    {/* Línea vertical de cuadrícula */}
+                    <View style={[styles.gridLineVertical, { height: chartHeight }]} />
+                    
+                    {/* Barra de llantos */}
+                    <View 
                       style={[
-                        styles.gridLine,
-                        {
-                          top: ratio * chartHeight,
-                          width: totalChartWidth
+                        styles.cryingBar, 
+                        { 
+                          height: cryingHeight,
+                          bottom: 0,
+                          left: 15
                         }
-                      ]}
+                      ]} 
                     />
-                  ))}
-
-                {/* Líneas de cuadrícula verticales (cada hora) */}
-                {eventsData.events.map((event, index) => (
-                  <View
-                    key={`vgrid-${index}`}
-                    style={[
-                      styles.verticalGridLine,
-                      {
-                        left: index * hourWidth,
-                        height: chartHeight
-                      }
-                    ]}
-                  />
-                ))}
-
-                {/* Línea de llantos */}
-                <View style={styles.lineContainer}>
-                  {cryingPoints.map((point, index) => {
-                    if (index === 0) return null;
-                    const prevPoint = cryingPoints[index - 1];
-                    const length = Math.sqrt(
-                      Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2)
-                    );
-                    const angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x) * 180 / Math.PI;
                     
-                    return (
-                      <View
-                        key={index}
-                        style={[
-                          styles.lineSegment,
-                          styles.cryingLine,
-                          {
-                            left: prevPoint.x,
-                            top: prevPoint.y,
-                            width: length,
-                            transform: [{ rotate: `${angle}deg` }]
-                          }
-                        ]}
-                      />
-                    );
-                  })}
-                </View>
-
-                {/* Línea de movimientos */}
-                <View style={styles.lineContainer}>
-                  {movementPoints.map((point, index) => {
-                    if (index === 0) return null;
-                    const prevPoint = movementPoints[index - 1];
-                    const length = Math.sqrt(
-                      Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2)
-                    );
-                    const angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x) * 180 / Math.PI;
-                    
-                    return (
-                      <View
-                        key={index}
-                        style={[
-                          styles.lineSegment,
-                          styles.movementLine,
-                          {
-                            left: prevPoint.x,
-                            top: prevPoint.y,
-                            width: length,
-                            transform: [{ rotate: `${angle}deg` }]
-                          }
-                        ]}
-                      />
-                    );
-                  })}
-                </View>
-
-                {/* Puntos de datos - Llantos */}
-                {cryingPoints.map((point, index) => (
-                  <View
-                    key={`crying-${index}`}
-                    style={[
-                      styles.dataPoint,
-                      styles.cryingPoint,
-                      {
-                        left: point.x - 4,
-                        top: point.y - 4
-                      }
-                    ]}
-                  />
-                ))}
-
-                {/* Puntos de datos - Movimientos */}
-                {movementPoints.map((point, index) => (
-                  <View
-                    key={`movement-${index}`}
-                    style={[
-                      styles.dataPoint,
-                      styles.movementPoint,
-                      {
-                        left: point.x - 4,
-                        top: point.y - 4
-                      }
-                    ]}
-                  />
-                ))}
-              </View>
-            </ScrollView>
-            
-            {/* Eje X - Etiquetas de horas fijas alineadas con el gráfico */}
-          <View style={styles.xAxisContainer}>
-            <ScrollView
-                ref={xAxisScrollRef}
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                style={styles.xAxisScrollView}
-                contentContainerStyle={{ width: totalChartWidth }}
-                bounces={false}
-                scrollEnabled={false}
-              >
-                <View style={[styles.xAxisLabelsContainer, { width: totalChartWidth }]}>
-                  {eventsData.events.map((event, index) => (
-                    <Text
-                      key={`hour-${index}`}
+                    {/* Barra de movimientos */}
+                    <View 
                       style={[
-                        styles.xAxisHourLabel,
-                        {
-                          left: index * hourWidth - 8,
-                          width: 16
+                        styles.movementBar, 
+                        { 
+                          height: movementHeight,
+                          bottom: 0,
+                          left: 25
                         }
-                      ]}
-                    >
-                      {event.hour}h
-                    </Text>
-                  ))}
-                </View>
-              </ScrollView>
+                      ]} 
+                    />
+                    
+                    {/* Punto de llantos */}
+                    <View 
+                      style={[
+                        styles.cryingPoint, 
+                        { 
+                          bottom: cryingHeight - 3,
+                          left: 16
+                        }
+                      ]} 
+                    />
+                    
+                    {/* Punto de movimientos */}
+                    <View 
+                      style={[
+                        styles.movementPoint, 
+                        { 
+                          bottom: movementHeight - 3,
+                          left: 26
+                        }
+                      ]} 
+                    />
+                  </View>
+                );
+              })}
             </View>
-          </View>
-        </View>
-
-        {/* Información fija fuera del scroll */}
-        <View style={styles.xAxisInfo}>
-          <Text style={styles.xAxisInstructions}>← Desliza para ver todas las 24 horas (8 visibles) →</Text>
+          </ScrollView>
+          
+          {/* Etiquetas de horas - ScrollView separado sincronizado */}
+          <ScrollView 
+            ref={hoursScrollRef}
+            horizontal={true}
+            showsHorizontalScrollIndicator={false}
+            style={styles.hoursScrollView}
+            contentContainerStyle={[styles.hoursContent, { width: totalWidth }]}
+            bounces={false}
+            scrollEnabled={false}
+          >
+            <View style={[styles.hoursContainer, { width: totalWidth }]}>
+              {eventsData.events.map((event, index) => (
+                <Text 
+                  key={event.hour} 
+                  style={[
+                    styles.hourLabel, 
+                    { 
+                      left: index * hourWidth + 20,
+                      width: hourWidth
+                    }
+                  ]}
+                >
+                  {event.hour}h
+                </Text>
+              ))}
+            </View>
+          </ScrollView>
         </View>
         
+        {/* Instrucciones */}
+        <Text style={styles.instructionText}>← Desliza horizontalmente para ver todas las 24 horas →</Text>
+        
+        {/* Leyenda */}
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}>
             <View style={[styles.legendColor, { backgroundColor: 'rgba(255, 99, 132, 1)' }]} />
@@ -371,7 +302,7 @@ const StatisticsScreen = ({ navigation, route }) => {
         <Text style={styles.headerTitle}>Estadísticas</Text>
       </View>
 
-      <View style={styles.content}>
+  <ScrollView style={styles.content} showsVerticalScrollIndicator={false} scrollEnabled={parentScrollEnabled} nestedScrollEnabled={true}>
         {/* Título del grupo */}
         <Text style={styles.groupName}>{group.name}</Text>
 
@@ -382,7 +313,17 @@ const StatisticsScreen = ({ navigation, route }) => {
             <Text style={styles.loadingText}>Cargando datos...</Text>
           </View>
         ) : (
-          renderChart()
+          <View style={styles.chartContainer}>
+            {/* WebView chart: Chart.js con panning horizontal - altura fija para evitar crecimiento infinito */}
+            <ChartWebView
+              height={220}
+              labels={eventsData.events.map(e => `${e.hour}h`)}
+              datasets={[
+                { label: 'Llantos', data: eventsData.events.map(e => e.crying), borderColor: 'rgba(255,99,132,1)', backgroundColor: 'rgba(255,99,132,0.2)' },
+                { label: 'Movimientos', data: eventsData.events.map(e => e.movement), borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.2)' }
+              ]}
+            />
+          </View>
         )}
 
         {/* Análisis LLM - Sin ScrollView */}
@@ -397,7 +338,7 @@ const StatisticsScreen = ({ navigation, route }) => {
             <Text style={styles.analysisText} numberOfLines={6} ellipsizeMode="tail">{llmResponse}</Text>
           )}
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -456,7 +397,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 15,
     padding: 15,
-    marginBottom: 25,
+  marginBottom: 25,
+  minHeight: 220,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -473,14 +415,126 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 15,
   },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
+  chartFixedContainer: {
+    height: 250,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    backgroundColor: '#fafafa',
+    overflow: 'hidden',
+  },
+  yAxisContainer: {
+    position: 'absolute',
+    left: 5,
+    top: 10,
+    height: 180,
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    width: 25,
+    zIndex: 2,
+  },
+  yAxisLabel: {
+    fontSize: 10,
+    color: '#666',
+    fontWeight: '500',
+    backgroundColor: 'rgba(250, 250, 250, 0.8)',
+    paddingHorizontal: 2,
+  },
+  chartScrollView: {
+    marginLeft: 30,
+    marginTop: 10,
+    height: 180,
+    backgroundColor: '#fafafa',
+  },
+  chartContent: {
+    paddingRight: 20,
+  },
+  chartGraph: {
+    position: 'relative',
+    backgroundColor: 'transparent',
+  },
+  gridLineHorizontal: {
+    position: 'absolute',
+    height: 1,
+    backgroundColor: '#e8e8e8',
+    left: 0,
+  },
+  hourColumn: {
+    position: 'absolute',
+    top: 0,
+    height: '100%',
+  },
+  gridLineVertical: {
+    position: 'absolute',
+    width: 1,
+    backgroundColor: '#e0e0e0',
+    left: 25,
+    top: 0,
+  },
+  cryingBar: {
+    position: 'absolute',
+    width: 8,
+    backgroundColor: 'rgba(255, 99, 132, 0.7)',
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+  },
+  movementBar: {
+    position: 'absolute',
+    width: 8,
+    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+  },
+  cryingPoint: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 99, 132, 1)',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  movementPoint: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(54, 162, 235, 1)',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  hoursScrollView: {
+    height: 30,
+    marginLeft: 30,
+    backgroundColor: '#fafafa',
+  },
+  hoursContent: {
+    paddingRight: 20,
+  },
+  hoursContainer: {
+    position: 'relative',
+    height: 30,
+  },
+  hourLabel: {
+    position: 'absolute',
+    fontSize: 10,
+    color: '#666',
+    fontWeight: '600',
+    textAlign: 'center',
+    top: 5,
+  },
+  instructionText: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 10,
+    marginBottom: 10,
   },
   legendContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 15,
+    marginTop: 10,
     gap: 20,
   },
   legendItem: {
@@ -523,191 +577,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: '#555',
     textAlign: 'left',
-  },
-  tempChartContainer: {
-    padding: 15,
-  },
-  tempChartTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  dataTable: {
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#f5f5f5',
-    paddingVertical: 10,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  headerCell: {
-    flex: 1,
-    textAlign: 'center',
-    fontWeight: '600',
-    color: '#333',
-  },
-  cell: {
-    flex: 1,
-    textAlign: 'center',
-    color: '#666',
-  },
-  cryingCell: {
-    color: 'rgba(255, 99, 132, 1)',
-    fontWeight: '600',
-  },
-  movementCell: {
-    color: 'rgba(54, 162, 235, 1)',
-    fontWeight: '600',
-  },
-  customChart: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginVertical: 20,
-  },
-  yAxisLabels: {
-    height: 200,
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingRight: 10,
-    width: 30,
-  },
-  yAxisLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'right',
-  },
-  chartScrollView: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  chartArea: {
-    position: 'relative',
-    backgroundColor: '#fafafa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  gridLine: {
-    position: 'absolute',
-    height: 1,
-    backgroundColor: '#e8e8e8',
-  },
-  verticalGridLine: {
-    position: 'absolute',
-    width: 1,
-    backgroundColor: '#e0e0e0',
-  },
-  lineContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  lineSegment: {
-    position: 'absolute',
-    height: 3,
-    transformOrigin: 'left center',
-  },
-  cryingLine: {
-    backgroundColor: 'rgba(255, 99, 132, 1)',
-  },
-  movementLine: {
-    backgroundColor: 'rgba(54, 162, 235, 1)',
-  },
-  dataPoint: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 2,
-    backgroundColor: '#fff',
-  },
-  cryingPoint: {
-    borderColor: 'rgba(255, 99, 132, 1)',
-  },
-  movementPoint: {
-    borderColor: 'rgba(54, 162, 235, 1)',
-  },
-  chartScrollContainer: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  chartWrapper: {
-    width: '100%',
-  },
-  xAxisContainer: {
-    marginLeft: 30,
-    height: 25,
-    overflow: 'hidden',
-  },
-  xAxisScrollView: {
-    height: 25,
-  },
-  xAxisLabelsContainer: {
-    height: 25,
-    position: 'relative',
-  },
-  xAxisHourLabel: {
-    position: 'absolute',
-    fontSize: 10,
-    color: '#666',
-    fontWeight: '500',
-    textAlign: 'center',
-    top: 2,
-  },
-  hourLabel: {
-    position: 'absolute',
-    fontSize: 10,
-    color: '#666',
-    fontWeight: '500',
-    width: 20,
-    textAlign: 'center',
-  },
-  xAxisInfo: {
-    marginLeft: 30,
-    marginTop: 10,
-  },
-  xAxisInstructions: {
-    fontSize: 12,
-    color: '#888',
-    textAlign: 'center',
-    fontStyle: 'italic',
-    marginBottom: 5,
-  },
-  timeRangeLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  timeRangeLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
-  },
-  xAxisLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginLeft: 30,
-    marginTop: 10,
-  },
-  xAxisLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
   },
 });
 
