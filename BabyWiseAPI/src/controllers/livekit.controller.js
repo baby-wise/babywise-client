@@ -102,6 +102,18 @@ const handleMediaServerEvent = async (req, res) => {
         dispatchHLSParticipantEgress(event);
     }
 
+    if(event.event === 'room_started'){
+      const roomName = event.room.name;
+      const dataToSend = {roomName: roomName}
+      await fetch(`http://${process.env.AGENT_URL}`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(dataToSend)
+      })
+    }
+
     res.status(200).send('ok');
 
   } catch (err) {
