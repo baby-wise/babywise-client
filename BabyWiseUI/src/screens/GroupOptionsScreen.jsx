@@ -10,14 +10,16 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
+import { groupService } from '../services/apiService';
+import { auth } from '../config/firebase';
 
 const GroupOptionsScreen = ({ navigation, route }) => {
   const { group, userName } = route.params || {};
   
   // Estados para el modal de agregar miembro
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-  const [memberEmail, setMemberEmail] = useState('');
-  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   
@@ -136,77 +138,34 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     }, 3000);
   };
 
-  // Función para agregar miembro al grupo
-  const addMemberToGroup = async (groupId, email) => {
-    setIsAddingMember(true);
+  // Función para generar código de invitación
+  const generateInviteCode = async () => {
+    setIsGeneratingCode(true);
     try {
-      /* 
-      // TODO: Reemplazar con llamada real al backend
-      // Esta función debería hacer una petición HTTP al backend:
-      // 
-      // const response = await fetch(`${API_BASE_URL}/groups/${groupId}/members`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${userToken}` // si usas tokens
-      //   },
-      //   body: JSON.stringify({
-      //     email: email
-      //   })
-      // });
-      // 
-      // const result = await response.json();
-      // 
-      // El backend debería devolver información del miembro agregado:
-      // { success: true, member: { email: string, name: string } }
-      // o un error si el usuario no existe o ya es miembro
-      */
-      
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mostrar toast de éxito
-      showSuccessToast(`Miembro ${email} agregado exitosamente`);
-      
-      return { success: true };
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      const code = await groupService.getInviteCode(group._id || group.id);
+      setInviteCode(code);
+      showSuccessToast('Código de invitación generado');
     } catch (error) {
-      console.error('Error adding member:', error);
-      Alert.alert('Error', 'No se pudo agregar el miembro. Inténtalo de nuevo.');
-      throw error;
+      console.error('Error generating invite code:', error);
+      Alert.alert('Error', 'No se pudo generar el código de invitación');
     } finally {
-      setIsAddingMember(false);
+      setIsGeneratingCode(false);
     }
   };
 
   const addMembers = () => {
     setShowAddMemberModal(true);
-  };
-
-  const handleAddMember = async () => {
-    if (!memberEmail.trim()) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
-      return;
-    }
-    
-    // Validación básica de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(memberEmail.trim())) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
-      return;
-    }
-    
-    try {
-      await addMemberToGroup(group.id, memberEmail.trim());
-      setShowAddMemberModal(false);
-      setMemberEmail('');
-    } catch (error) {
-      // Error ya manejado en addMemberToGroup
-    }
+    generateInviteCode(); // Generar código automáticamente al abrir modal
   };
 
   const cancelAddMember = () => {
     setShowAddMemberModal(false);
-    setMemberEmail('');
+    setInviteCode('');
   };
 
   return (
@@ -298,38 +257,49 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Agregar Miembro</Text>
+            <Text style={styles.modalTitle}>Código de Invitación</Text>
             
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Email del miembro"
-              placeholderTextColor="#999"
-              value={memberEmail}
-              onChangeText={setMemberEmail}
-              autoFocus={true}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <Text style={styles.modalDescription}>
+              Comparte este código con la persona que deseas agregar al grupo:
+            </Text>
+            
+            {isGeneratingCode ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#3E5F8A" />
+                <Text style={styles.loadingText}>Generando código...</Text>
+              </View>
+            ) : (
+              <View style={styles.codeContainer}>
+                <Text style={styles.inviteCode}>{inviteCode}</Text>
+                <TouchableOpacity 
+                  style={styles.copyButton}
+                  onPress={() => {
+                    // TODO: Implementar copia al portapapeles
+                    showSuccessToast('Código copiado al portapapeles');
+                  }}
+                >
+                  <Text style={styles.copyButtonText}>Copiar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 style={[styles.modalButton, styles.cancelButton]} 
                 onPress={cancelAddMember}
-                disabled={isAddingMember}
               >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                <Text style={styles.cancelButtonText}>Cerrar</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.modalButton, styles.addButton, isAddingMember && styles.disabledButton]} 
-                onPress={handleAddMember}
-                disabled={isAddingMember}
+                style={[styles.modalButton, styles.addButton]} 
+                onPress={generateInviteCode}
+                disabled={isGeneratingCode}
               >
-                {isAddingMember ? (
+                {isGeneratingCode ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.addButtonText}>Agregar</Text>
+                  <Text style={styles.addButtonText}>Nuevo Código</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -643,6 +613,47 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  codeContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  inviteCode: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#3E5F8A',
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+    letterSpacing: 2,
+  },
+  copyButton: {
+    backgroundColor: '#E8F4FD',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+  },
+  copyButtonText: {
+    color: '#3E5F8A',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    marginVertical: 30,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#666',
   },
 });
 

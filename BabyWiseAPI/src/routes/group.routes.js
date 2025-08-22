@@ -4,12 +4,12 @@ import { groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroups
 const router = express.Router();
 
 router.get('/groups', groups)
-router.post('/secure/new-group',newGroup) //Agregarle el athentication
-router.post('/secure/add-member',addMember)
-router.post('/secure/remove-member',removeMember)
-router.get('/secure/is-admin-member',isAdmin)
-router.post('/secure/add-admin-member',addAdmin)
-router.get('/groups-for-user',getGroupsForUser)
-router.get('/secure/invitation-code', getInviteCode)
+router.post('/secure/new-group',authenticateToken,newGroup) //Agregarle el athentication
+router.post('/secure/add-member',authenticateToken,addMember)
+router.post('/secure/remove-member',authenticateToken,removeMember)
+router.post('/secure/is-admin-member',authenticateToken,isAdmin)
+router.post('/secure/add-admin-member',authenticateToken,addAdmin)
+router.post('/groups-for-user', authenticateToken, getGroupsForUser)
+router.post('/secure/invitation-code', authenticateToken, getInviteCode)
 
 export {router}
