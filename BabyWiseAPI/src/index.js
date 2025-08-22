@@ -1,4 +1,4 @@
-import { AccessToken, WebhookReceiver, EgressClient, TrackType } from 'livekit-server-sdk';
+import { AccessToken, AgentDispatchClient , WebhookReceiver, EgressClient, TrackType } from 'livekit-server-sdk';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -240,14 +240,15 @@ app.post('/webhook', async (req, res) => {
     }
     if(event.event === 'room_started'){
       const roomName = event.room.name;
-      const dataToSend = {roomName: roomName}
-      await fetch(`http://${process.env.AGENT_URL}`, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(dataToSend)
-      })
+      const agentName = 'BabyWise_Agent';
+      const agentDispatchClient = new AgentDispatchClient(`https://${process.env.LIVEKIT_URL}`, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
+
+      // create a dispatch request for an agent named "test-agent" to join "my-room"
+      const dispatch = await agentDispatchClient.createDispatch(roomName, agentName);
+      console.log('created dispatch', dispatch);
+
+      const dispatches = await agentDispatchClient.listDispatch(roomName);
+      console.log(`there are ${dispatches.length} dispatches in ${roomName}`);
     }
     res.status(200).send('ok');
   } catch (err) {
