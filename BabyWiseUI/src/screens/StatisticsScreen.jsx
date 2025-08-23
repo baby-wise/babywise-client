@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import ChartWebView from '../components/ChartWebView';
+import ChatPanel from '../components/ChatPanel';
 
 
 const StatisticsScreen = ({ navigation, route }) => {
@@ -112,7 +113,7 @@ const StatisticsScreen = ({ navigation, route }) => {
       console.log('data = ' + JSON.stringify(data));
       
       if (data.success) {
-        setLlmResponse(data.response);
+  setLlmResponse(data.response);
       } else {
         setLlmResponse('No se pudo generar el análisis en este momento.');
       }
@@ -326,17 +327,17 @@ const StatisticsScreen = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* Análisis LLM - Sin ScrollView */}
-        <View style={styles.analysisContainer}>
-          <Text style={styles.analysisTitle}>Análisis Inteligente</Text>
-          {isLoadingLLM ? (
+        {/* Chat area (always starts empty; user initiates conversation) */}
+        <View style={{ marginBottom: 20 }}>
+          {isLoadingLLM && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#3E5F8A" />
               <Text style={styles.loadingText}>Generando análisis...</Text>
             </View>
-          ) : (
-            <Text style={styles.analysisText} numberOfLines={6} ellipsizeMode="tail">{llmResponse}</Text>
           )}
+          <View style={{ height: 360 }}>
+            <ChatPanel groupId={group.id} />
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

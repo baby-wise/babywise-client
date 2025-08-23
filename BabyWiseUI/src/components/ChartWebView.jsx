@@ -38,9 +38,10 @@ const ChartWebView = ({ labels = [], datasets = [], height = 220 }) => {
             const canvas = document.getElementById('chart');
             const ctx = canvas.getContext('2d');
 
-            // width per point; using 90 like before for better spacing (tweak if needed)
-            const pointWidth = 90;
-            const totalWidth = Math.max(pointWidth * labels.length, window.innerWidth);
+            // compute width per point so approx 8 hours are visible in the viewport
+            const viewportWidth = Math.max(window.innerWidth || 320, 320);
+            const pointWidth = Math.max(24, Math.floor(viewportWidth / 8));
+            const totalWidth = Math.max(pointWidth * labels.length, viewportWidth);
             const ratio = window.devicePixelRatio || 1;
             // Set canvas drawing buffer to device pixels and CSS to logical pixels to avoid scaling
             canvas.width = Math.round(totalWidth * ratio);
@@ -57,9 +58,16 @@ const ChartWebView = ({ labels = [], datasets = [], height = 220 }) => {
                 responsive: false,
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
-                elements: { point: { radius: 4 }, line: { tension: 0.3, borderWidth: 2 } },
-                plugins: { zoom: { pan: { enabled: true, mode: 'x' }, zoom: { enabled: false } } },
-                scales: { x: { display: true, grid: { display: false } }, y: { beginAtZero: true } }
+                elements: { point: { radius: 9 }, line: { tension: 0.25, borderWidth: 5 } },
+                plugins: {
+                  zoom: { pan: { enabled: true, mode: 'x' }, zoom: { enabled: false } },
+                  legend: { display: true, position: 'top', labels: { font: { size: 28 } } },
+                  tooltip: { enabled: false }
+                },
+                scales: {
+                  x: { display: true, grid: { display: false }, ticks: { font: { size: 24 }, maxRotation: 0, minRotation: 0 } },
+                  y: { beginAtZero: true, ticks: { font: { size: 24 } } }
+                }
               }
             });
           }
