@@ -15,6 +15,7 @@ import { router as bucketRoutes } from './routes/bucket.routes.js';
 import { router as userRoutes } from './routes/users.routes.js';
 import { router as groupRoutes } from './routes/group.routes.js';
 import { router as llmRoutes } from './routes/llm.routes.js';
+import eventsRoutes from './routes/events.routes.js';
 import { WebSocketServer } from 'ws';
 
 dotenv.config();
@@ -298,6 +299,7 @@ app.use(bucketRoutes);
 app.use(userRoutes);
 app.use(groupRoutes);
 app.use(llmRoutes);
+app.use('/api/events', eventsRoutes);
 
 export const b2 = new B2({
   applicationKeyId: process.env.B2_KEY_ID,

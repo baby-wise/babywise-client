@@ -1,6 +1,7 @@
-// Cache en memoria para simular respuestas guardadas (sin MongoDB)
-// Estructura: { "UID-YYYY-MM-DD": { response, date, prompt, createdAt } }
-const llmResponseCache = {};
+// NOTE: per front-end request, we do NOT persist responses server-side here.
+// This controller always generates a fresh response based on the incoming
+// conversation and the group's events. In the future, events should be
+// fetched from the database using the UID. For now we hardcode them.
 
 // Función helper para obtener la fecha actual en formato YYYY-MM-DD
 const getCurrentDate = () => {
@@ -13,29 +14,64 @@ const getCacheKey = (UID, date) => {
   return `${UID}-${date}`;
 };
 
-// Función helper para generar prompt (hardcodeado por ahora)
-const generatePrompt = (UID) => {
+// Función helper para generar prompt dinámico usando UID, conversation y el último mensaje
+const generatePrompt = (UID, conversation = [], userMessage = '') => {
   const currentDate = getCurrentDate();
-  
-  // TODO: Aquí se implementará la lógica real para obtener datos del bebé de la BD
-  return `Actúa como un asistente experto en cuidado infantil y desarrollo de bebés. 
 
-Basándome en los datos de monitoreo del bebé del usuario ${UID} para la fecha ${currentDate}, proporciona un resumen personalizado y recomendaciones.
+  // Hardcoded data copied from the front-end (so crying vs movement is explicit).
+  // TODO: in the future fetch real events from DB using UID instead of hardcoding.
+  const hardcodedData = {
+    groupId: UID,
+    events: [
+      { hour: 0, crying: 3, movement: 5 },
+      { hour: 1, crying: 2, movement: 3 },
+      { hour: 2, crying: 4, movement: 2 },
+      { hour: 3, crying: 1, movement: 4 },
+      { hour: 4, crying: 2, movement: 6 },
+      { hour: 5, crying: 1, movement: 8 },
+      { hour: 6, crying: 0, movement: 12 },
+      { hour: 7, crying: 1, movement: 15 },
+      { hour: 8, crying: 2, movement: 14 },
+      { hour: 9, crying: 0, movement: 18 },
+      { hour: 10, crying: 1, movement: 16 },
+      { hour: 11, crying: 3, movement: 8 },
+      { hour: 12, crying: 1, movement: 12 },
+      { hour: 13, crying: 0, movement: 20 },
+      { hour: 14, crying: 2, movement: 17 },
+      { hour: 15, crying: 5, movement: 6 },
+      { hour: 16, crying: 3, movement: 10 },
+      { hour: 17, crying: 1, movement: 19 },
+      { hour: 18, crying: 4, movement: 9 },
+      { hour: 19, crying: 2, movement: 11 },
+      { hour: 20, crying: 3, movement: 7 },
+      { hour: 21, crying: 1, movement: 5 },
+      { hour: 22, crying: 2, movement: 4 },
+      { hour: 23, crying: 1, movement: 3 }
+    ],
+    period: '24h',
+    generatedAt: new Date().toISOString()
+  };
 
-Datos simulados del día de hoy:
-- Patrones de sueño: 3 siestas (9:00-10:30, 13:00-14:30, 17:00-18:00), sueño nocturno de 20:00 a 06:30
-- Alimentación: 6 tomas, última toma a las 18:30
-- Actividad: Períodos de juego activos entre comidas
-- Estado general: Tranquilo, sin episodios de llanto prolongado
+  // Include the exact hardcoded object in the prompt so the LLM clearly sees which fields are crying vs movement
+  const eventsSummary = `Eventos simulados (${currentDate}): ${JSON.stringify(hardcodedData)}`;
 
-Por favor genera un resumen que incluya:
-1. 🍼 Estado de alimentación y recomendaciones
-2. 😴 Análisis de patrones de sueño
-3. 👶 Observaciones sobre desarrollo y bienestar
-4. 💡 Recomendaciones personalizadas para los próximos días
-5. ⚠️ Cualquier punto de atención si lo hay
+  // Conversation formatting: include role and text for clarity
+  const conversationText = (conversation || []).map(m => `(${m.role}) ${m.text}`).join('\n');
 
-Mantén un tono cálido, profesional y tranquilizador para los padres. Responde en español.`;
+  // Prompt instructions: be concise and answer taking into account conversation + events
+  return `Eres un asistente experto en cuidado infantil. Responde de forma concisa y en español (máximo 4-6 frases).
+
+Toma en cuenta:
+- Fecha de referencia: ${currentDate}
+- Eventos disponibles: ${eventsSummary}
+
+Conversación previa:
+${conversationText}
+
+Pregunta actual del usuario:
+${userMessage}
+
+Instrucción: usando la conversación y los eventos, responde brevemente a la pregunta del usuario. No generes pasos largos ni listas extensas; devuelve una respuesta corta, clara y útil.`;
 };
 
 // Función helper para generar respuesta del LLM usando apifreellm.com
@@ -93,59 +129,29 @@ const getLLMResponseForUser = async (req, res) => {
     console.log('req.method:', req.method);
     console.log('req.headers:', req.headers);
     console.log('req.body:', req.body);
-    console.log('req.body type:', typeof req.body);
-    console.log('req.body keys:', Object.keys(req.body || {}));
-    
-    const { UID } = req.body || {};
-    
+
+    const { UID, conversation, userMessage } = req.body || {};
+
     if (!UID) {
       console.log('UID not found in request');
       return res.status(400).json({ 
         success: false,
-        error: "UID is required" 
+        error: 'UID is required'
       });
     }
 
-    const currentDate = getCurrentDate();
-    const cacheKey = getCacheKey(UID, currentDate);
-    
-    console.log(`Buscando respuesta LLM para usuario ${UID} en fecha ${currentDate}`);
+    // Build prompt using incoming conversation and userMessage
+    const prompt = generatePrompt(UID, conversation || [], userMessage || '');
+    console.log('Prompt generado (trunc):', prompt.substring(0, 200));
 
-    // Buscar si ya existe una respuesta en cache para este usuario y fecha
-    const existingResponse = llmResponseCache[cacheKey];
-
-    if (existingResponse) {
-      console.log(`Respuesta existente encontrada en cache para ${UID}`);
-      return res.status(200).json({
-        success: true,
-        response: existingResponse.response,
-        date: existingResponse.date,
-        cached: true
-      });
-    }
-
-    // Si no existe, generar nueva respuesta
-    console.log(`Generando nueva respuesta para ${UID}`);
-    
-    const prompt = generatePrompt(UID);
+    // Always generate a fresh response (no caching/storage)
     const llmResponse = await generateLLMResponse(prompt);
-    
-    // Guardar en cache
-    llmResponseCache[cacheKey] = {
-      UID: UID,
-      date: currentDate,
-      prompt: prompt,
-      response: llmResponse,
-      createdAt: new Date().toISOString()
-    };
 
-    console.log(`Nueva respuesta LLM guardada en cache para ${UID}`);
-    console.log(`Cache actual tiene ${Object.keys(llmResponseCache).length} entradas`);
-
-    return res.status(201).json({
+    // Return the response directly to the front-end
+    return res.status(200).json({
       success: true,
       response: llmResponse,
-      date: currentDate,
+      date: getCurrentDate(),
       cached: false
     });
 

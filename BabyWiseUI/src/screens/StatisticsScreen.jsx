@@ -9,19 +9,31 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
-  FlatList
+  FlatList,
+  Keyboard,
+  Pressable,
+  Platform
 } from 'react-native';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import ChartWebView from '../components/ChartWebView';
 import ChatPanel from '../components/ChatPanel';
 
 
+  {/* Chart container layout measurement for overlay */}
+  {/* note: ensure we measure the same container that renders the ChartWebView */}
+
 const StatisticsScreen = ({ navigation, route }) => {
   const { group } = route.params;
   const [eventsData, setEventsData] = useState(null);
   const [llmResponse, setLlmResponse] = useState('');
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [cameras, setCameras] = useState([]);
+  const [selectedCamera, setSelectedCamera] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isLoadingLLM, setIsLoadingLLM] = useState(true);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [chartBottom, setChartBottom] = useState(0);
+  const INPUT_HEIGHT = Platform.OS === 'ios' ? 96 : 72;
   // Control para desactivar el scroll vertical del padre mientras se hace scroll horizontal en la tarjeta
   const [parentScrollEnabled, setParentScrollEnabled] = useState(true);
 
@@ -39,54 +51,62 @@ const StatisticsScreen = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    fetchEventsData();
-    fetchLLMAnalysis();
+    fetchCameras();
   }, []);
 
-  const fetchEventsData = async () => {
+  // Listen to keyboard to show a dismiss-overlay when open
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Fetch cameras for the group (HARDCODED from backend for now)
+  const fetchCameras = async () => {
     try {
       setIsLoadingEvents(true);
-      
-      // HARDCODED: Datos simulados de eventos para 24 horas con patrones más entrecruzados
-      const hardcodedData = {
-        groupId: group.id,
-        events: [
-          { hour: 0, crying: 3, movement: 5 },   // Noche - más llantos, menos movimiento
-          { hour: 1, crying: 2, movement: 3 },
-          { hour: 2, crying: 4, movement: 2 },   // Pico de llanto nocturno
-          { hour: 3, crying: 1, movement: 4 },
-          { hour: 4, crying: 2, movement: 6 },
-          { hour: 5, crying: 1, movement: 8 },   // Despertar temprano
-          { hour: 6, crying: 0, movement: 12 },  // Movimiento sin llanto
-          { hour: 7, crying: 1, movement: 15 },  // Actividad matutina
-          { hour: 8, crying: 2, movement: 14 },
-          { hour: 9, crying: 0, movement: 18 },  // Pico de actividad
-          { hour: 10, crying: 1, movement: 16 },
-          { hour: 11, crying: 3, movement: 8 },  // Entrecruzamiento: más llanto, menos movimiento
-          { hour: 12, crying: 1, movement: 12 }, // Mediodía
-          { hour: 13, crying: 0, movement: 20 }, // Máximo movimiento
-          { hour: 14, crying: 2, movement: 17 },
-          { hour: 15, crying: 5, movement: 6 },  // Entrecruzamiento fuerte
-          { hour: 16, crying: 3, movement: 10 },
-          { hour: 17, crying: 1, movement: 19 }, // Actividad vespertina
-          { hour: 18, crying: 4, movement: 9 },  // Llanto de cansancio
-          { hour: 19, crying: 2, movement: 11 },
-          { hour: 20, crying: 3, movement: 7 },  // Preparación para dormir
-          { hour: 21, crying: 1, movement: 5 },
-          { hour: 22, crying: 2, movement: 4 },
-          { hour: 23, crying: 1, movement: 3 }   // Calma nocturna
-        ],
-        period: '24h',
-        generatedAt: new Date().toISOString()
-      };
-      
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setEventsData(hardcodedData);
+      const url = `${SIGNALING_SERVER_URL}/api/events/group/${group.id}/cameras`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.success && data.data && data.data.cameras) {
+        setCameras(data.data.cameras);
+        // select first camera by default and fetch its events
+        const first = data.data.cameras[0];
+        if (first) {
+          setSelectedCamera(first);
+          await fetchEventsByCamera(first.uid);
+        }
+      } else {
+        // fallback: empty cameras
+        setCameras([]);
+        setEventsData(null);
+      }
     } catch (error) {
-      console.error('Error al cargar eventos:', error);
-      Alert.alert('Error', 'Error al cargar eventos');
+      console.error('Error al obtener camaras:', error);
+      Alert.alert('Error', 'No se pudo obtener la lista de cámaras');
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  };
+
+  const fetchEventsByCamera = async (cameraUid) => {
+    try {
+      setIsLoadingEvents(true);
+      const url = `${SIGNALING_SERVER_URL}/api/events/camera/${cameraUid}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.success && data.data && data.data.events) {
+        setEventsData({ groupId: group.id, events: data.data.events, period: data.data.period, generatedAt: data.data.generatedAt });
+      } else {
+        setEventsData(null);
+      }
+    } catch (error) {
+      console.error('Error al obtener eventos por camara:', error);
+      Alert.alert('Error', 'No se pudieron obtener los eventos de la cámara');
+      setEventsData(null);
     } finally {
       setIsLoadingEvents(false);
     }
@@ -128,7 +148,11 @@ const StatisticsScreen = ({ navigation, route }) => {
   const renderChart = () => {
     if (!eventsData || !eventsData.events) {
       return (
-        <View style={styles.chartContainer}>
+        <View style={styles.chartContainer} onLayout={(e) => {
+            const { y, height } = e.nativeEvent.layout;
+            // compute bottom position relative to the content container
+            setChartBottom(y + height);
+          }}>
           <Text style={styles.noDataText}>No hay datos disponibles</Text>
         </View>
       );
@@ -165,6 +189,7 @@ const StatisticsScreen = ({ navigation, route }) => {
             bounces={false}
             scrollEventThrottle={16}
             onScroll={handleChartScroll}
+            nestedScrollEnabled={true}
           >
             <View style={[styles.chartGraph, { width: totalWidth, height: chartHeight }]}>
               {/* Líneas de cuadrícula horizontales */}
@@ -252,6 +277,7 @@ const StatisticsScreen = ({ navigation, route }) => {
             contentContainerStyle={[styles.hoursContent, { width: totalWidth }]}
             bounces={false}
             scrollEnabled={false}
+            nestedScrollEnabled={false}
           >
             <View style={[styles.hoursContainer, { width: totalWidth }]}>
               {eventsData.events.map((event, index) => (
@@ -303,43 +329,74 @@ const StatisticsScreen = ({ navigation, route }) => {
         <Text style={styles.headerTitle}>Estadísticas</Text>
       </View>
 
-  <ScrollView style={styles.content} showsVerticalScrollIndicator={false} scrollEnabled={parentScrollEnabled} nestedScrollEnabled={true}>
-        {/* Título del grupo */}
-        <Text style={styles.groupName}>{group.name}</Text>
+      <View style={styles.content}>
+        
+        {/* Selector de cámaras */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 14, color: '#555', marginBottom: 6 }}>Cámara</Text>
+          {isLoadingEvents ? (
+            <View style={{ padding: 12, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color="#3E5F8A" />
+            </View>
+          ) : (
+            <View>
+              {/* Collapsed picklist: show only selected camera. Tap to toggle list. */}
+              <TouchableOpacity onPress={() => setDropdownOpen(o => !o)} style={{ padding: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, backgroundColor: '#fff' }}>
+                <Text style={{ color: '#333' }}>{selectedCamera ? selectedCamera.name : 'Seleccionar cámara'}</Text>
+              </TouchableOpacity>
 
-        {/* Gráfico */}
+              {/* Expanded list */}
+              {dropdownOpen && (
+                <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, overflow: 'hidden' }}>
+                  {cameras.map(cam => (
+                    <TouchableOpacity key={cam.uid} onPress={async () => { setDropdownOpen(false); setSelectedCamera(cam); await fetchEventsByCamera(cam.uid); }} style={{ padding: 12, backgroundColor: selectedCamera && selectedCamera.uid === cam.uid ? '#eef4ff' : '#fff' }}>
+                      <Text style={{ color: '#333' }}>{cam.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Gráfico - Área fija que no scrollea */}
         {isLoadingEvents ? (
-          <View style={styles.loadingContainer}>
+          <View style={styles.loadingContainer} pointerEvents="none">
             <ActivityIndicator size="large" color="#3E5F8A" />
             <Text style={styles.loadingText}>Cargando datos...</Text>
           </View>
         ) : (
-          <View style={styles.chartContainer}>
-            {/* WebView chart: Chart.js con panning horizontal - altura fija para evitar crecimiento infinito */}
-            <ChartWebView
-              height={220}
-              labels={eventsData.events.map(e => `${e.hour}h`)}
-              datasets={[
-                { label: 'Llantos', data: eventsData.events.map(e => e.crying), borderColor: 'rgba(255,99,132,1)', backgroundColor: 'rgba(255,99,132,0.2)' },
-                { label: 'Movimientos', data: eventsData.events.map(e => e.movement), borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.2)' }
-              ]}
-            />
-          </View>
+          <View style={styles.chartContainer} onLayout={(e) => {
+              const { y, height } = e.nativeEvent.layout;
+              setChartBottom(y + height);
+            }} pointerEvents="box-none">
+              {/* WebView chart: Chart.js con panning horizontal - altura fija para evitar crecimiento infinito */}
+                {eventsData && eventsData.events ? (
+                  <ChartWebView
+                    height={220}
+                    labels={eventsData.events.map(e => `${e.hour}h`)}
+                    datasets={[
+                      { label: 'Llantos', data: eventsData.events.map(e => e.crying), borderColor: 'rgba(255,99,132,1)', backgroundColor: 'rgba(255,99,132,0.2)' },
+                      { label: 'Movimientos', data: eventsData.events.map(e => e.movement), borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.2)' }
+                    ]}
+                  />
+                ) : (
+                  <Text style={styles.noDataText}>No hay datos disponibles</Text>
+                )}
+            </View>
         )}
 
-        {/* Chat area (always starts empty; user initiates conversation) */}
-        <View style={{ marginBottom: 20 }}>
-          {isLoadingLLM && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#3E5F8A" />
-              <Text style={styles.loadingText}>Generando análisis...</Text>
-            </View>
-          )}
-          <View style={{ height: 360 }}>
-            <ChatPanel groupId={group.id} />
-          </View>
-        </View>
-      </ScrollView>
+        {/* Chat area - Esta es la única zona que controla el scroll vertical */}
+        {/* Usamos el ScrollView del padre (no lo removemos). Hacemos que su content se expanda y permita taps mientras
+            el teclado está abierto para que el botón Enviar sea accesible. */}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+          <ChatPanel 
+            groupId={group.id}
+            cameraUid={selectedCamera ? selectedCamera.uid : null}
+            initialMessages={[{ id: 'greeting', role: 'assistant', text: '¡Hola! Soy tu asistente inteligente. ¿Cómo puedo ayudarte?' }]}
+          />
+        </ScrollView>
+      </View> 
     </SafeAreaView>
   );
 };
@@ -382,7 +439,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 30,
+  marginBottom: 12,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -397,9 +454,9 @@ const styles = StyleSheet.create({
   chartContainer: {
     backgroundColor: '#fff',
     borderRadius: 15,
-    padding: 15,
-  marginBottom: 25,
-  minHeight: 220,
+    padding: 12,
+  marginBottom: 12,
+  minHeight: 180,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -417,7 +474,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   chartFixedContainer: {
-    height: 250,
+    height: 220,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     borderRadius: 8,
@@ -578,6 +635,15 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: '#555',
     textAlign: 'left',
+  },
+  keyboardOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 50,
   },
 });
 
