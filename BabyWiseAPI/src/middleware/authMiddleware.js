@@ -8,7 +8,7 @@ const authenticateToken = async (req, res, next) => {
   }
 
   const idToken = authHeader.split(' ')[1]; // Extraer el token después de "Bearer "
-  console.log("Id token: "+idToken)
+  // console.log("Id token: "+idToken)
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);

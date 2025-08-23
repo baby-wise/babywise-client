@@ -1,8 +1,12 @@
-import { AccessToken, WebhookReceiver, EgressClient, TrackType } from 'livekit-server-sdk';
+import { AccessToken, AgentDispatchClient , WebhookReceiver, EgressClient, TrackType } from 'livekit-server-sdk';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+const TOGGLE_AUDIO_TRACK_EGRESS = false;
+const TOGGLE_S3_HLS_EGRESS = true;
+const TOGGLE_AGENT_DISPATCH = true;
 
 // Livekit vars
 const apiKey = process.env.LIVEKIT_API_KEY;
@@ -87,31 +91,35 @@ function dispatchHLSParticipantEgress(event) {
         .catch(err => {console.error('[Egress] Error lanzando ParticipantEgress HLS:', err);});    
 }
 
+async function dispatchAgentForRoom(roomName) {
+      const agentName = 'BabyWise_Agent';
+      const agentDispatchClient = new AgentDispatchClient(`https://${livekitHost}`, apiKey, apiSecret);
+
+      // create a dispatch request for an agent
+      const dispatch = await agentDispatchClient.createDispatch(roomName, agentName);
+      console.log('created dispatch', dispatch);
+
+      const dispatches = await agentDispatchClient.listDispatch(roomName);
+      console.log(`there are ${dispatches.length} dispatches in ${roomName}`);
+}
+
 const handleMediaServerEvent = async (req, res) => {
   try {
     const event = await receiver.receive(req.body, req.get('Authorization'));
     console.log('[Webhook] Evento recibido:', event.event);
 
     // Iniciar TrackEgress para audio de camaras
-    if (event.event === 'track_published' && event.participant && event.participant.identity && event.participant.identity.startsWith('camera-')) {
+    if (TOGGLE_AUDIO_TRACK_EGRESS && event.event === 'track_published' && event.participant.identity.startsWith('camera-')) {
         dispatchAudioTrackEgress(event);
     }
     
     // Lanzar ParticipantEgress HLS a S3 (Backblaze) para cámaras al unirse
-    if (event.event === 'participant_joined' && event.participant && event.participant.identity && event.participant.identity.startsWith('camera-')) {
+    if (TOGGLE_S3_HLS_EGRESS && event.event === 'participant_joined' && event.participant.identity.startsWith('camera-')) {
         dispatchHLSParticipantEgress(event);
     }
 
-    if(event.event === 'room_started'){
-      const roomName = event.room.name;
-      const dataToSend = {roomName: roomName}
-      await fetch(`http://${process.env.AGENT_URL}`, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(dataToSend)
-      })
+    if(TOGGLE_AGENT_DISPATCH && event.event === 'room_started'){
+        dispatchAgentForRoom(event.room.name);
     }
 
     res.status(200).send('ok');
