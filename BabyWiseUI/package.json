@@ -31,7 +31,8 @@
     "react-native-reanimated": "^3.18.0",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.13.1",
-    "react-native-vector-icons": "^10.3.0"
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-video": "^6.16.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

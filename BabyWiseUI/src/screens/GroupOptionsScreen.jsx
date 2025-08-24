@@ -197,6 +197,12 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           <Text style={styles.optionButtonText}>Ser Cámara</Text>
         </TouchableOpacity>
         <TouchableOpacity 
+          style={styles.optionButton} 
+          onPress={() => navigation.navigate('RecordingsListScreen', { room: `baby-room-${group.id}` })}
+        >
+          <Text style={styles.optionButtonText}>Ver Grabaciones</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
           style={[styles.optionButton, styles.membersButton]} 
           onPress={addMembers}
         >
