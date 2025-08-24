@@ -73,7 +73,12 @@ const removeMember  = async (req,res)=>{
             group.removeMember(userDB)
             await Group_DB.updateOne(
                 {_id: groupDB._id},
-                {$set: {users: group.users}}
+                {$set: {
+                    users: group.users,
+                    admins: group.admins,
+                    cameras: group.cameras,
+                    viewers: group.viewers
+                }}
             )
             res.status(200).json(group)
         }else{
@@ -159,4 +164,48 @@ async function getGroupById(groupId) {
     return group
 }
 
-export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, getInviteCode}
+const addCamera = async (req, res)=>{ //Se usa para agregar y cambiar el nombre de alguna camara del grupo
+    const {UID, groupId,name} = req.body
+    const groupDB = await getGroupById(groupId)
+    const userDB = await getUserById(UID)
+
+    if(groupDB && userDB){//Verifico que exista el grupo y el usuario
+        const group = new Group(groupDB)
+        if(group.users.some(u => u._id.toString() == userDB._id.toString())){ //Verifico que el usuario este en el grupo
+            group.addCamera(userDB,name)
+            try {
+                if(group.existingBabyName(name)){
+                    await Group_DB.updateOne(
+                        {_id: groupDB._id},
+                        {$set: {cameras: group.cameras}}
+                    )
+                }else{
+                    group.addBabyName(name)
+                    await Group_DB.updateOne(
+                        {_id: groupDB._id},
+                        await Group_DB.updateOne(
+                            { _id: groupDB._id },
+                            { $set: { 
+                                cameras: group.cameras,
+                                babies: group.babies
+                            }}
+                        )
+                    )
+                }
+                res.status(200).json(group)
+            } catch (error) {
+                res.status(500).json(error)
+            }
+        }else{
+            res.status(404).json("User is not part of the group")
+        }
+    }else{
+        res.status(404).json({error: "Group or user not found"})
+    }
+}
+
+const addViewer = async (req,res) =>{
+
+}
+
+export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, getInviteCode, addCamera, addViewer}
