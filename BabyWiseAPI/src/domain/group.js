@@ -64,6 +64,17 @@ class Group {
         const normName = normalizeName(name)
         return this.babies.some(b=> normalizeName(b) === normName) 
     }
+
+    getBabyNameForMember(member) {
+        const camera = this.cameras.find(c => c.userId.toString() === member._id.toString())
+        const babyNameFromCamera = camera.name;
+        const normalizedCameraName = normalizeName(babyNameFromCamera);
+
+        // Buscar en la lista de bebés el que coincida normalizado
+        const babyName = this.babies.find(baby => normalizeName(baby) === normalizedCameraName);
+
+        return babyName
+    }
 }
 
 const groupSchema = new mongoose.Schema({
@@ -72,7 +83,7 @@ const groupSchema = new mongoose.Schema({
   users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   cameras: [{
     name: { type: String},
-    user:{ type: mongoose.Schema.Types.ObjectId, ref: "User" }}],
+    userId:{ type: mongoose.Schema.Types.ObjectId, ref: "User" }}],
   viewers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   admins: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   babies: [{ type: String}]

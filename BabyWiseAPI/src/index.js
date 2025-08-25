@@ -9,6 +9,7 @@ import { router as bucketRoutes } from './routes/bucket.routes.js';
 import { router as userRoutes } from './routes/users.routes.js';
 import { router as groupRoutes } from './routes/group.routes.js';
 import {router as livekitRoutes} from './routes/livekit.routes.js';
+import { router as eventRoutes } from './routes/event.routes.js';
 import { WebSocketServer } from 'ws';
 import { setUpAudioEgressSocketServer } from './services/audio/AudioTrackEgress.js';
 
@@ -57,6 +58,7 @@ app.use(bucketRoutes);
 app.use(userRoutes);
 app.use(groupRoutes);
 app.use(livekitRoutes);
+app.use(eventRoutes)
 
 export const b2 = new B2({
   applicationKeyId: process.env.B2_KEY_ID,

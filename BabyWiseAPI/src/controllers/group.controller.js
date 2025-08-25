@@ -208,4 +208,4 @@ const addViewer = async (req,res) =>{
 
 }
 
-export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, getInviteCode, addCamera, addViewer}
+export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, getInviteCode, addCamera, addViewer, getGroupById}
