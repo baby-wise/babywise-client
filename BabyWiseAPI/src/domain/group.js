@@ -42,7 +42,7 @@ class Group {
 
     addCamera(member, camaraName) {
         const existingCamera = this.cameras.find(
-            c => c.user.toString() === member._id.toString()
+            c => c.user._id.toString() === member._id.toString()
         );
         
         if (existingCamera) {
@@ -66,7 +66,7 @@ class Group {
     }
 
     getBabyNameForMember(member) {
-        const camera = this.cameras.find(c => c.userId.toString() === member._id.toString())
+        const camera = this.cameras.find(c => c.user._id.toString() === member._id.toString())
         const babyNameFromCamera = camera.name;
         const normalizedCameraName = normalizeName(babyNameFromCamera);
 
@@ -83,7 +83,7 @@ const groupSchema = new mongoose.Schema({
   users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   cameras: [{
     name: { type: String},
-    userId:{ type: mongoose.Schema.Types.ObjectId, ref: "User" }}],
+    user:{ type: mongoose.Schema.Types.ObjectId, ref: "User" }}],
   viewers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   admins: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   babies: [{ type: String}]

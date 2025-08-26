@@ -182,14 +182,11 @@ const addCamera = async (req, res)=>{ //Se usa para agregar y cambiar el nombre 
                 }else{
                     group.addBabyName(name)
                     await Group_DB.updateOne(
-                        {_id: groupDB._id},
-                        await Group_DB.updateOne(
-                            { _id: groupDB._id },
-                            { $set: { 
-                                cameras: group.cameras,
-                                babies: group.babies
-                            }}
-                        )
+                        { _id: groupDB._id },
+                        { $set: { 
+                            cameras: group.cameras,
+                            babies: group.babies
+                        }}
                     )
                 }
                 res.status(200).json(group)

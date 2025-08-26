@@ -1,4 +1,4 @@
-import { Event_DB } from "../domain/event.js"
+import { Event_DB, Event } from "../domain/event.js"
 import { Group } from "../domain/group.js"
 import { getUserById } from "./user.controller.js"
 import { getGroupById } from "./group.controller.js"
@@ -22,8 +22,16 @@ const newEvent = async (req,res)=>{
         const group = new Group(groupDB)
         if(group.users.some(u => u._id.toString() == userDB._id.toString())){ //Verifico que el usuario este en el grupo
             const baby = group.getBabyNameForMember(userDB)
-            const event = new Event({group, baby, type})
-            res.status(200).json(event)
+            const eventDB = new Event_DB({group, baby, type})
+            try {
+                await eventDB.save()
+                res.status(200).json(eventDB)
+            } catch (error) {
+                if (error.name === "ValidationError" && error.errors.type.kind === "enum") {
+                    return res.status(400).json({ error: "Tipo de evento inválido", type: type });
+                }
+                res.status(500).json(error)
+            }
         }
     }else{
         res.status(404).json({error: "Group or user not found"})
@@ -31,4 +39,4 @@ const newEvent = async (req,res)=>{
 
 }
 
-export{events}
+export{events, newEvent}
