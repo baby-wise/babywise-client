@@ -75,6 +75,12 @@ class Group {
 
         return babyName
     }
+
+    addViewer(member){
+        if(!this.viewers.some(v => v._id.toString()=== member._id.toString())){
+            this.viewers.push(member)
+        }
+    }
 }
 
 const groupSchema = new mongoose.Schema({

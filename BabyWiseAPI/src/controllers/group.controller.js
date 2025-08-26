@@ -202,7 +202,30 @@ const addCamera = async (req, res)=>{ //Se usa para agregar y cambiar el nombre 
 }
 
 const addViewer = async (req,res) =>{
+    const {UID, groupId} = req.body
+    const groupDB = await getGroupById(groupId)
+    const userDB = await getUserById(UID)
 
+    if(groupDB && userDB){//Verifico que exista el grupo y el usuario
+        const group = new Group(groupDB)
+
+        if(group.users.some(u => u._id.toString() == userDB._id.toString()) && !group.viewers.some(v => v._id.toString()=== userDB._id.toString())){//Verifico que el usuario esta en ese grupo y que no sea Viewer
+            group.addViewer(userDB)
+            try {     
+                await Group_DB.updateOne(
+                    {_id: groupDB._id},
+                    {$set: {viewers: group.viewers}}
+                )
+                res.status(200).json(group)
+            } catch (error) {
+                res.status(500).json(error)
+            }
+        }else{
+            res.status(304).json(group)
+        }
+    }else{
+        res.status(404).json({error: "Group or user not found"})
+    }
 }
 
 export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, getInviteCode, addCamera, addViewer, getGroupById}
