@@ -25,11 +25,14 @@ const newGroup = async (req,res)=>{
         const group = new Group({name})
         group.addMember(user)
         group.addAdmin(user)
+        try {            
+            const groupDB = new Group_DB(group)
+            await groupDB.save()
+            res.json(group)
+        } catch (error) {
+            res.status(500).json(error)
+        }
     
-        const groupDB = new Group_DB(group)
-        await groupDB.save()
-    
-        res.json(group)
     }else{
         res.status(404).json({error: "User not Found"})
     }
@@ -47,12 +50,16 @@ const addMember  = async (req,res)=>{
 
         if(!group.users.some(u => u._id.toString() == userDB._id.toString())){//Verifico que el usuario no esta ya en ese grupo
             group.addMember(userDB)
-            await Group_DB.updateOne(
-                {_id: groupDB._id},
-                {$set: {users: group.users}}
-            )
-            await InvitationCode_DB.deleteOne({code: invitationCodeDB.code})
-            res.status(200).json(group)
+            try {     
+                await Group_DB.updateOne(
+                    {_id: groupDB._id},
+                    {$set: {users: group.users}}
+                )
+                await InvitationCode_DB.deleteOne({code: invitationCodeDB.code})
+                res.status(200).json(group)
+            } catch (error) {
+                res.status(500).json(error)
+            }
         }else{
             res.status(304).json(group)
         }
@@ -71,16 +78,20 @@ const removeMember  = async (req,res)=>{
 
         if(group.users.some(u => u._id.toString() == userDB._id.toString())){//Verifico que el usuario esta en ese grupo
             group.removeMember(userDB)
-            await Group_DB.updateOne(
-                {_id: groupDB._id},
-                {$set: {
-                    users: group.users,
-                    admins: group.admins,
-                    cameras: group.cameras,
-                    viewers: group.viewers
-                }}
-            )
-            res.status(200).json(group)
+            try {       
+                await Group_DB.updateOne(
+                    {_id: groupDB._id},
+                    {$set: {
+                        users: group.users,
+                        admins: group.admins,
+                        cameras: group.cameras,
+                        viewers: group.viewers
+                    }}
+                )
+                res.status(200).json(group)
+            } catch (error) {
+                res.status(500).json(error)
+            }
         }else{
             res.status(304).json(group)
         }
@@ -117,11 +128,15 @@ const addAdmin  = async (req,res)=>{
 
         if(group.users.some(u => u._id.toString() == userDB._id.toString()) && !group.isAdmin(userDB)){//Verifico que el usuario esta en ese grupo y que no sea ya Admin
             group.addAdmin(userDB)
-            await Group_DB.updateOne(
-                {_id: groupDB._id},
-                {$set: {admins: group.admins}}
-            )
-            res.status(200).json(group)
+            try {                
+                await Group_DB.updateOne(
+                    {_id: groupDB._id},
+                    {$set: {admins: group.admins}}
+                )
+                res.status(200).json(group)
+            } catch (error) {
+                res.status(500).json(error)
+            }
         }else{
             res.status(304).json(group)
         }
@@ -134,10 +149,14 @@ const getGroupsForUser  = async (req,res)=>{
     const {UID} = req.body
     const userDB = await getUserById(UID)
     if(userDB){
-        const groups = await Group_DB.find({
-            users: userDB
-        })
-        res.status(200).json(groups)
+        try {
+            const groups = await Group_DB.find({
+                users: userDB
+            })
+            res.status(200).json(groups)
+        } catch (error) {
+            res.status(500).json(error)
+        }
     }else{
         res.status(404).json({error: "User not found"})
     }
@@ -152,8 +171,12 @@ const getInviteCode = async (req, res) => {
 
         const invitationCode = new InvitationCode({code: code, groupId: groupId})
         const invitationCodeDB = new InvitationCode_DB(invitationCode)
-        await invitationCodeDB.save()
-        res.status(200).json(invitationCode.code)
+        try {            
+            await invitationCodeDB.save()
+            res.status(200).json(invitationCode.code)
+        } catch (error) {
+            res.status(500).json(error)
+        }
     }else{
         res.status(404).json({error: "Group not found"})
     }
