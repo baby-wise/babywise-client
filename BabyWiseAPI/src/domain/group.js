@@ -41,6 +41,9 @@ class Group {
     }
 
     addCamera(member, camaraName) {
+        if(this.getRoleForMember(member) === 'Viewer'){
+            this.viewers = this.viewers.filter(v => v._id.toString() !==  member._id.toString())
+        }
         const existingCamera = this.cameras.find(
             c => c.user._id.toString() === member._id.toString()
         );
@@ -77,9 +80,21 @@ class Group {
     }
 
     addViewer(member){
-        if(!this.viewers.some(v => v._id.toString()=== member._id.toString())){
+        if(this.getRoleForMember(member) === 'Camera'){
+            this.cameras = this.cameras.filter(c => c.user._id.toString() !==  member._id.toString())
+        }
+
+        if(this.getRoleForMember(member) !== 'Viewer'){
             this.viewers.push(member)
         }
+    }
+
+    getRoleForMember(member){
+        let role
+        if(this.viewers.some(v => v._id.toString() === member._id.toString())) role = 'Viewer'
+        if(this.cameras.some(c => c.user._id.toString() === member._id.toString())) role = 'Camera'
+
+        return role
     }
 }
 

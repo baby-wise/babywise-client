@@ -11,6 +11,7 @@ const groups = async (req,res)=>{
             .populate("admins")
             .populate("cameras")
             .populate("viewers")
+            .populate("cameras.user")
         
         res.json(groups)
     } catch (error) {
@@ -194,30 +195,24 @@ const addCamera = async (req, res)=>{ //Se usa para agregar y cambiar el nombre 
 
     if(groupDB && userDB){//Verifico que exista el grupo y el usuario
         const group = new Group(groupDB)
-        if(group.users.some(u => u._id.toString() == userDB._id.toString())){ //Verifico que el usuario este en el grupo
+        if(group.users.some(u => u._id.toString() == userDB._id.toString()) && group.getRoleForMember(userDB) !== 'Camera'){ //Verifico que el usuario este en el grupo
             group.addCamera(userDB,name)
+            group.addBabyName(name)
             try {
-                if(group.existingBabyName(name)){
-                    await Group_DB.updateOne(
-                        {_id: groupDB._id},
-                        {$set: {cameras: group.cameras}}
-                    )
-                }else{
-                    group.addBabyName(name)
-                    await Group_DB.updateOne(
-                        { _id: groupDB._id },
+                await Group_DB.updateOne(
+                    { _id: groupDB._id },
                         { $set: { 
                             cameras: group.cameras,
+                            viewers: group.viewers,
                             babies: group.babies
                         }}
-                    )
-                }
+                )
                 res.status(200).json(group)
             } catch (error) {
                 res.status(500).json(error)
             }
         }else{
-            res.status(404).json("User is not part of the group")
+            res.status(304).json(group)
         }
     }else{
         res.status(404).json({error: "Group or user not found"})
@@ -232,12 +227,16 @@ const addViewer = async (req,res) =>{
     if(groupDB && userDB){//Verifico que exista el grupo y el usuario
         const group = new Group(groupDB)
 
-        if(group.users.some(u => u._id.toString() == userDB._id.toString()) && !group.viewers.some(v => v._id.toString()=== userDB._id.toString())){//Verifico que el usuario esta en ese grupo y que no sea Viewer
+        if(group.users.some(u => u._id.toString() == userDB._id.toString()) && group.getRoleForMember(userDB) !== 'Viewer'){//Verifico que el usuario esta en ese grupo y que no sea Viewer
             group.addViewer(userDB)
             try {     
                 await Group_DB.updateOne(
                     {_id: groupDB._id},
-                    {$set: {viewers: group.viewers}}
+                    {$set: {
+                        viewers: group.viewers,
+                        cameras: group.cameras
+
+                    }}
                 )
                 res.status(200).json(group)
             } catch (error) {
