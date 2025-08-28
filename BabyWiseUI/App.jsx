@@ -7,6 +7,7 @@ import ViewerScreen from './src/screens/ViewerScreen';
 import CameraScreen from './src/screens/CameraScreen';
 import RecordingsListScreen from './src/screens/RecordingsListScreen';
 import RecordingPlayerScreen from './src/screens/RecordingPlayerScreen';
+import StatisticsScreen from './src/screens/StatisticsScreen';
 
 const Stack = createStackNavigator();
 
@@ -73,6 +74,11 @@ const App = () => {
           name="RecordingPlayerScreen" 
           component={RecordingPlayerScreen} 
           options={{ title: 'Reproductor de grabación' }}
+        />
+        <Stack.Screen 
+          name="Statistics" 
+          component={StatisticsScreen} 
+          options={({ route }) => ({ title: `${route.params?.group?.name || 'Group'} Statistics` })}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -116,6 +116,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     setShowCameraNameModal(true);
   };
 
+  const goToStatistics = () => {
+    navigation.navigate('Statistics', { group });
+  };
+
   const handleCameraName = () => {
     if (!cameraName.trim()) {
       Alert.alert('Error', 'Por favor ingresa un nombre para la cámara');
@@ -201,6 +205,12 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           onPress={() => navigation.navigate('RecordingsListScreen', { room: `baby-room-${group.id}` })}
         >
           <Text style={styles.optionButtonText}>Ver Grabaciones</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.optionButton, styles.statisticsButton]} 
+          onPress={goToStatistics}
+        >
+          <Text style={styles.optionButtonText}>Ver Estadísticas</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.optionButton, styles.membersButton]} 
