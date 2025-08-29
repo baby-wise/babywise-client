@@ -154,6 +154,10 @@ const getGroupsForUser  = async (req,res)=>{
             const groups = await Group_DB.find({
                 users: userDB
             })
+                .populate("cameras.user")
+                .populate("viewers")
+                .populate("admins")
+
             res.status(200).json(groups)
         } catch (error) {
             res.status(500).json(error)
