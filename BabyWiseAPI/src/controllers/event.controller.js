@@ -39,4 +39,21 @@ const newEvent = async (req,res)=>{
 
 }
 
-export{events, newEvent}
+const getEventsByGroup = async (req, res) => {
+  const { groupId } = req.params;
+  try {
+    const events = await Event_DB.find(
+      {group: groupId}
+    )
+    if(events){
+      res.status(200).json(events)
+    }else{
+      res.status(400).json({message: "No hay eventos para el grupo"})
+    }
+
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+export{events, newEvent, getEventsByGroup}
