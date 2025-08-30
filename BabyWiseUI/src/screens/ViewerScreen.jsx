@@ -1,19 +1,32 @@
 
 import React, { useEffect, useState } from 'react';
+import { Alert } from 'react-native';
+import AudioSelectModal from '../components/AudioSelectModal';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
 import { LiveKitRoom, useTracks, VideoTrack, AudioSession, registerGlobals, isTrackReference } from '@livekit/react-native';
 import { Track } from 'livekit-client';
 import axios from 'axios';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
+import { useSocket } from '../contexts/SocketContext';
 
 const ViewerScreen = ({ route, navigation }) => {
-  // userName puede venir directo o anidado desde GroupOptions
   const { group, userName } = route.params || {};
+  const socket = useSocket();
+  const ROOM_ID = `baby-room-${group.id}`;
   const [token, setToken] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
   const [error, setError] = useState(null);
-  const ROOM_ID = `baby-room-${group.id}`;
   let wsUrl = 'wss://babywise-jqbqqsgq.livekit.cloud';
+
+  // Unirse a la sala como viewer cuando el socket esté listo
+  useEffect(() => {
+    if (socket && socket.connected) {
+      socket.emit('join-room', {
+        group: ROOM_ID,
+        role: 'viewer'
+      });
+    }
+  }, [socket, ROOM_ID]);
 
   registerGlobals();
   useEffect(() => {
@@ -65,7 +78,12 @@ const ViewerScreen = ({ route, navigation }) => {
             autoSubscribe: false
           }}
         >
-          <RoomView />
+          <RoomView
+            navigation={navigation}
+            group={group}
+            userName={userName}
+            socket={socket}
+          />
         </LiveKitRoom>
       )}
     </SafeAreaView>
@@ -73,9 +91,64 @@ const ViewerScreen = ({ route, navigation }) => {
 };
 
 
+
+
 import { useRemoteParticipants, useRoomContext, useLocalParticipant } from '@livekit/react-native';
 
-const RoomView = () => {
+const RoomView = ({ navigation, group, userName, socket }) => {
+  // Audio modal y reproducción
+  const [audioModalVisible, setAudioModalVisible] = useState(false);
+  const [reproduciendoAudio, setReproduciendoAudio] = useState(false);
+  // Escuchar eventos de audio para mostrar/ocultar botón detener
+  useEffect(() => {
+    if (!socket) return;
+    const handlePlayAudio = () => setReproduciendoAudio(true);
+    const handleStopAudio = () => setReproduciendoAudio(false);
+    socket.on('play-audio', handlePlayAudio);
+    socket.on('stop-audio', handleStopAudio);
+    return () => {
+      socket.off('play-audio', handlePlayAudio);
+      socket.off('stop-audio', handleStopAudio);
+    };
+  }, [socket]);
+
+  // Función para enviar play-audio
+  const handlePlayAudio = (audio) => {
+    if (!socket) {
+      Alert.alert('Error', 'No hay conexión con el servidor');
+      return;
+    }
+    const cameraIdentity = selectedCamera;
+    if (!cameraIdentity) {
+      Alert.alert('Error', 'No hay cámara seleccionada');
+      return;
+    }
+    socket.emit('play-audio', {
+      group: `baby-room-${group.id}`,
+      cameraIdentity,
+      audioUrl: audio.url,
+    });
+    setReproduciendoAudio(true);
+    setAudioModalVisible(false);
+  };
+
+  // Función para enviar stop-audio
+  const handleStopAudio = () => {
+    if (!socket) {
+      Alert.alert('Error', 'No hay conexión con el servidor');
+      return;
+    }
+    const cameraIdentity = selectedCamera;
+    if (!cameraIdentity) {
+      Alert.alert('Error', 'No hay cámara seleccionada');
+      return;
+    }
+    socket.emit('stop-audio', {
+      group: `baby-room-${group.id}`,
+      cameraIdentity,
+    });
+    setReproduciendoAudio(false);
+  };
   const room = useRoomContext();
   const tracks = useTracks([Track.Source.Camera]);
   const remoteParticipants = useRemoteParticipants();
@@ -230,6 +303,8 @@ const RoomView = () => {
 
   const selectedTrack = cameraTracks.find(t => t.participant.identity === selectedCamera);
 
+
+
   return (
     <View style={styles.tracksContainer}>
       {cameraParticipants.length > 1 && (
@@ -269,22 +344,42 @@ const RoomView = () => {
       ) : (
         <Text style={{ color: 'white', marginTop: 20 }}>Esperando transmisión de cámara...</Text>
       )}
-      <TouchableOpacity
-        style={{
-          marginTop: 24,
-          backgroundColor: isTalking ? '#007AFF' : '#aaa',
-          padding: 18,
-          borderRadius: 32,
-          alignSelf: 'center',
-        }}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={1}
-      >
-        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>
-          {isTalking ? 'Hablando...' : 'Mantener para hablar'}
-        </Text>
-      </TouchableOpacity>
+      {selectedCamera && (
+        <TouchableOpacity
+          style={{
+            marginTop: 24,
+            backgroundColor: isTalking ? '#007AFF' : '#aaa',
+            padding: 18,
+            borderRadius: 32,
+            alignSelf: 'center',
+          }}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={1}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18, flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ fontSize: 20 }}>🎙️ </Text>
+            {isTalking ? 'Hablando...' : 'Mantener para hablar'}
+          </Text>
+        </TouchableOpacity>
+      )}
+      {selectedTrack && !reproduciendoAudio && (
+        <TouchableOpacity style={[styles.audioButton, { marginTop: 18 }]} onPress={() => setAudioModalVisible(true)}>
+          <Text style={styles.audioButtonText}>🎵 Reproducir audio</Text>
+        </TouchableOpacity>
+      )}
+      {selectedTrack && reproduciendoAudio && (
+        <TouchableOpacity style={[styles.stopButton, { marginTop: 18 }]} onPress={handleStopAudio}>
+          <Text style={styles.stopButtonText}>⏹ Detener audio</Text>
+        </TouchableOpacity>
+      )}
+      <AudioSelectModal
+        visible={audioModalVisible}
+        onClose={() => setAudioModalVisible(false)}
+        group={group}
+        cameraIdentity={selectedCamera}
+        onPlay={handlePlayAudio}
+      />
     </View>
   );
 };
@@ -294,6 +389,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000',
+  },
+  audioButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 24,
+    marginBottom: 8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  audioButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  stopButton: {
+    backgroundColor: '#d9534f',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  stopButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   tracksContainer: {
     flex: 1,

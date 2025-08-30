@@ -33,7 +33,6 @@ const RecordingsListScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <Button title="Volver" onPress={() => navigation.goBack()} />
       <Text style={styles.title}>Grabaciones disponibles</Text>
       {loading ? (
         <ActivityIndicator size="large" />
@@ -59,18 +58,61 @@ const RecordingsListScreen = ({ navigation, route }) => {
           )}
         />
       )}
+      <View style={{ marginTop: 32, width: '100%' }}>
+        <Button title="Volver" onPress={() => navigation.goBack()} />
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
-  participantBlock: { marginBottom: 24 },
-  participantTitle: { fontSize: 17, fontWeight: 'bold', color: '#007AFF', marginBottom: 8 },
-  item: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  itemText: { fontSize: 16, color: '#007AFF' },
-  error: { color: 'red', marginTop: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: '#3E5F8A',
+    padding: 20,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 24,
+    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    padding: 10,
+    borderRadius: 8,
+  },
+  participantBlock: {
+    marginBottom: 24,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  participantTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#3E5F8A',
+    marginBottom: 8,
+  },
+  item: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  itemText: {
+    fontSize: 16,
+    color: '#3E5F8A',
+  },
+  error: {
+    color: 'red',
+    marginTop: 16,
+  },
 });
 
 export default RecordingsListScreen;

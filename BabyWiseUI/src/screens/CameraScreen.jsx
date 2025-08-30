@@ -6,6 +6,8 @@ import { Track } from 'livekit-client';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
+import { useSocket } from '../contexts/SocketContext';
+import Video from 'react-native-video';
 
 const CameraScreen = ({ route }) => {
   const { group, cameraName } = route.params;
@@ -13,7 +15,27 @@ const CameraScreen = ({ route }) => {
   const [token, setToken] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
   const [error, setError] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const socket = useSocket();
   const ROOM_ID = `baby-room-${group.id}`;
+  // Unirse a la sala como cámara y escuchar eventos cuando el socket esté listo
+  useEffect(() => {
+    if (socket && socket.connected) {
+      socket.emit('join-room', {
+        group: ROOM_ID,
+        role: 'camera',
+        cameraIdentity: `camera-${cameraName}`,
+      });
+      const handlePlayAudio = ({ audioUrl }) => setAudioUrl(audioUrl);
+      const handleStopAudio = () => setAudioUrl(null);
+      socket.on('play-audio', handlePlayAudio);
+      socket.on('stop-audio', handleStopAudio);
+      return () => {
+        socket.off('play-audio', handlePlayAudio);
+        socket.off('stop-audio', handleStopAudio);
+      };
+    }
+  }, [socket, ROOM_ID, cameraName]);
   // Construye la URL WebSocket correctamente, evitando doble puerto
   let wsUrl = 'wss://babywise-jqbqqsgq.livekit.cloud'
 
@@ -71,6 +93,20 @@ const CameraScreen = ({ route }) => {
         >
           <RoomView setStatus={setStatus} />
         </LiveKitRoom>
+      )}
+      {/* Reproductor de audio oculto, solo cuando hay audioUrl */}
+      {audioUrl && (
+        <Video
+          source={{ uri: audioUrl }}
+          audioOnly
+          paused={false}
+          onEnd={() => setAudioUrl(null)}
+          onError={e => {
+            setAudioUrl(null);
+            setStatus('Error al reproducir audio');
+          }}
+          style={{ width: 0, height: 0 }}
+        />
       )}
     </SafeAreaView>
   );

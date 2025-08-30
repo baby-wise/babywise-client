@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   SafeAreaView, 
   StyleSheet, 
   Text, 
-  TouchableOpacity, 
+  TouchableOpacity,
   View,
   Modal,
   TextInput,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
+
 
 const GroupOptionsScreen = ({ navigation, route }) => {
   const { group, userName } = route.params || {};
@@ -103,10 +104,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     }
   };
 
-
   // Modal para ingresar nombre de la cámara
   const [showCameraNameModal, setShowCameraNameModal] = useState(false);
   const [cameraName, setCameraName] = useState('');
+
 
   const goToViewer = () => {
     navigation.navigate('Viewer', { group, userName });
@@ -202,9 +203,9 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.optionButton} 
-          onPress={() => navigation.navigate('RecordingsListScreen', { room: `baby-room-${group.id}` })}
+          onPress={() => navigation.navigate('MediaOptionsScreen', { group })}
         >
-          <Text style={styles.optionButtonText}>Ver Grabaciones</Text>
+          <Text style={styles.optionButtonText}>Ver archivos multimedia</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.optionButton, styles.statisticsButton]} 
@@ -392,7 +393,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           <Text style={styles.toastText}>{toastMessage}</Text>
         </View>
       )}
-    </SafeAreaView>
+
+  </SafeAreaView>
   );
 };
 
@@ -666,5 +668,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
 });
+
+  
 
 export default GroupOptionsScreen;

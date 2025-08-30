@@ -1,12 +1,13 @@
 import { AccessToken, AgentDispatchClient , WebhookReceiver, EgressClient, TrackType } from 'livekit-server-sdk';
-import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { s3Client } from './bucket.controller.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const TOGGLE_AUDIO_TRACK_EGRESS = false;
-const TOGGLE_S3_HLS_EGRESS = true;
-const TOGGLE_AGENT_DISPATCH = true;
+const TOGGLE_S3_HLS_EGRESS = false;
+const TOGGLE_AGENT_DISPATCH = false;
 
 // Livekit vars
 const apiKey = process.env.LIVEKIT_API_KEY;
@@ -18,15 +19,7 @@ const egressClient = new EgressClient(livekitEgressUrl, apiKey, apiSecret);
 const wsAudioPath = '/audio-egress';
 
 // Cloudflare R2 client
-const s3Client = new S3Client({
-  region: process.env.CF_REGION || 'auto',
-  endpoint: process.env.CF_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.CF_KEY_ID,
-    secretAccessKey: process.env.CF_KEY_SECRET,
-  },
-  forcePathStyle: true,
-});
+
 
 function dispatchAudioTrackEgress(event) {
     console.log('[Webhook] Evento track_published de cámara detectado');

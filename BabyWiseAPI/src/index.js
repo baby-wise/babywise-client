@@ -12,6 +12,7 @@ import {router as livekitRoutes} from './routes/livekit.routes.js';
 import { router as eventRoutes } from './routes/event.routes.js';
 import { WebSocketServer } from 'ws';
 import { setUpAudioEgressSocketServer } from './services/audio/AudioTrackEgress.js';
+import { setUpClientMessageSocket } from './services/ClientMessageSocket.js';
 
 dotenv.config();
 
@@ -32,11 +33,16 @@ const io = new Server(httpServer, {
 const wsAudioPath = '/audio-egress';
 const wss = new WebSocketServer({ server: httpServer, path: wsAudioPath });
 
+export const clients = [];
+
 // WebSocket server for livekit audio track egress
 wss.on('connection', (ws, req) => setUpAudioEgressSocketServer(ws, req));
 
 // Socket connection for mobile clients
-io.on('connection', (socket) => setUpClientMessageSocket(socket));
+io.on('connection', (socket) => {
+  console.log('New client connected');
+  setUpClientMessageSocket(socket);
+});
 
 (async () => {
   try {

@@ -56,9 +56,9 @@ export const groupService = {
     console.log('UID:', UID);
     
     try {
-      console.log('Fetching user groups from:', `${SIGNALING_SERVER_URL}/groups-for-user`);
-      
-      const response = await fetch(`${SIGNALING_SERVER_URL}/groups-for-user`, {
+      console.log('Fetching user groups from:', `${SIGNALING_SERVER_URL}/secure/groups-for-user`);
+
+      const response = await fetch(`${SIGNALING_SERVER_URL}/secure/groups-for-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
