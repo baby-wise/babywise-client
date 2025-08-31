@@ -104,7 +104,9 @@ const groupSchema = new mongoose.Schema({
   users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   cameras: [{
     name: { type: String},
-    user:{ type: mongoose.Schema.Types.ObjectId, ref: "User" }}],
+    user:{ type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    status: {type: String, enum: ['ONLINE', 'OFFLINE'], default: 'OFFLINE'}
+  }],
   viewers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   admins: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   babies: [{ type: String}]
