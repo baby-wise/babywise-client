@@ -97,6 +97,7 @@ package-lock.json
 # Temporary files
 .metro-health-check*
 temp/
+uploads/
 
 # testing
 /coverage
