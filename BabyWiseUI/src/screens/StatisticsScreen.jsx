@@ -68,19 +68,30 @@ const StatisticsScreen = ({ navigation, route }) => {
   const fetchCameras = async () => {
     try {
       setIsLoadingEvents(true);
-      const url = `${SIGNALING_SERVER_URL}/api/events/group/${group.id}/cameras`;
+      // Use existing public endpoint /groups to obtain group info (includes cameras)
+      const url = `${SIGNALING_SERVER_URL}/groups`;
       const res = await fetch(url);
       const data = await res.json();
-      if (data && data.success && data.data && data.data.cameras) {
-        setCameras(data.data.cameras);
-        // select first camera by default and fetch its events
-        const first = data.data.cameras[0];
-        if (first) {
-          setSelectedCamera(first);
-          await fetchEventsByCamera(first.uid);
+      // /groups returns an array of group objects
+      if (Array.isArray(data)) {
+        const found = data.find(g => String(g._id) === String(group.id) || String(g.id) === String(group.id));
+        if (found && found.cameras) {
+          setCameras(found.cameras);
+          const first = found.cameras[0];
+          if (first) {
+            setSelectedCamera(first);
+            // camera object has .user which is a user id; pass that as cameraUid
+            const camUid = first.user && first.user._id ? first.user._id : first.user ? first.user : first.uid;
+            await fetchEventsByCamera(camUid);
+          }
+        } else {
+          // group not found or no cameras
+          console.warn('fetchCameras: group not found in /groups response or no cameras present');
+          setCameras([]);
+          setEventsData(null);
         }
       } else {
-        // fallback: empty cameras
+        console.warn('fetchCameras: unexpected /groups response', data);
         setCameras([]);
         setEventsData(null);
       }
@@ -95,7 +106,7 @@ const StatisticsScreen = ({ navigation, route }) => {
   const fetchEventsByCamera = async (cameraUid) => {
     try {
       setIsLoadingEvents(true);
-      const url = `${SIGNALING_SERVER_URL}/api/events/camera/${cameraUid}`;
+  const url = `${SIGNALING_SERVER_URL}/events/camera/${cameraUid}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data && data.success && data.data && data.data.events) {
@@ -213,7 +224,7 @@ const StatisticsScreen = ({ navigation, route }) => {
                 const movementHeight = (event.movement / maxValue) * chartHeight;
                 
                 return (
-                  <View key={event.hour} style={[styles.hourColumn, { left: x, width: hourWidth }]}>
+                    <View key={`${event.timestamp}-${index}`} style={[styles.hourColumn, { left: x, width: hourWidth }]}>
                     {/* Línea vertical de cuadrícula */}
                     <View style={[styles.gridLineVertical, { height: chartHeight }]} />
                     
@@ -282,7 +293,7 @@ const StatisticsScreen = ({ navigation, route }) => {
             <View style={[styles.hoursContainer, { width: totalWidth }]}>
               {eventsData.events.map((event, index) => (
                 <Text 
-                  key={event.hour} 
+                  key={`h-${event.timestamp}-${index}`} 
                   style={[
                     styles.hourLabel, 
                     { 

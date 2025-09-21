@@ -1,5 +1,5 @@
 import { Event_DB, Event } from "../domain/event.js"
-import { Group } from "../domain/group.js"
+import { Group, Group_DB } from "../domain/group.js"
 import { getUserById } from "./user.controller.js"
 import { getGroupById } from "./group.controller.js"
 
@@ -57,4 +57,50 @@ const getEventsByGroup = async (req, res) => {
   }
 };
 
-export{events, newEvent, getEventsByGroup}
+// Return 24 hourly buckets for the camera identified by cameraUid
+const getEventsByCamera = async (req, res) => {
+  try {
+    const { cameraUid } = req.params;
+
+    // Find the group that contains this camera
+    const group = await Group_DB.findOne({ 'cameras.user': cameraUid });
+    if (!group) return res.status(404).json({ success: false, message: 'Camera not found in any group' });
+
+    // Find camera object and its name (baby name mapping)
+    const cameraObj = group.cameras.find(c => String(c.user) === String(cameraUid) || (c.user && String(c.user._id) === String(cameraUid)));
+    if (!cameraObj) return res.status(404).json({ success: false, message: 'Camera not found' });
+    const cameraName = cameraObj.name;
+
+    // compute last 24 hours window ending at current rounded hour
+    const now = new Date();
+    const end = new Date(now);
+    end.setMinutes(0,0,0);
+    const start = new Date(end);
+    start.setHours(end.getHours() - 23);
+
+    // fetch events for this group and baby name within the time window
+    const rawEvents = await Event_DB.find({
+      group: group._id,
+      baby: cameraName,
+      date: { $gte: start, $lte: new Date(end.getTime() + (60 * 60 * 1000)) }
+    }).lean();
+
+    // build 24 hourly buckets
+    const buckets = [];
+    for (let i = 0; i < 24; i++) {
+      const bucketStart = new Date(start.getTime() + i * 60 * 60 * 1000);
+      const bucketEnd = new Date(bucketStart.getTime() + 60 * 60 * 1000);
+      const inBucket = rawEvents.filter(ev => new Date(ev.date) >= bucketStart && new Date(ev.date) < bucketEnd);
+      const crying = inBucket.filter(e => e.type === 'LLANTO').length;
+      const movement = inBucket.filter(e => e.type === 'MOVIMIENTO').length;
+      buckets.push({ hour: bucketStart.getHours(), crying, movement, timestamp: bucketStart.toISOString() });
+    }
+
+    return res.status(200).json({ success: true, data: { events: buckets, period: '24h', generatedAt: new Date().toISOString() } });
+  } catch (error) {
+    console.error('getEventsByCamera error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export{events, newEvent, getEventsByGroup, getEventsByCamera}
