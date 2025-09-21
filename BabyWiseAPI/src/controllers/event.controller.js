@@ -22,7 +22,8 @@ const newEvent = async (req,res)=>{
         const group = new Group(groupDB)
         if(group.users.some(u => u._id.toString() == userDB._id.toString())){ //Verifico que el usuario este en el grupo
             const baby = group.getBabyNameForMember(userDB)
-            const eventDB = new Event_DB({group, baby, type})
+            const event = new Event({group, baby, type})
+            const eventDB = new Event_DB(event)
             try {
                 await eventDB.save()
                 res.status(200).json(eventDB)
