@@ -5,6 +5,7 @@ import {
   Text, 
   TouchableOpacity,
   View,
+  ScrollView,
   Modal,
   TextInput,
   ActivityIndicator,
@@ -33,11 +34,45 @@ const GroupOptionsScreen = ({ navigation, route }) => {
 
   // HARDCODED: Simulación de base de datos local para settings
   const [localSettingsDB, setLocalSettingsDB] = useState({});
+  const [fetchedCameras, setFetchedCameras] = useState(null);
+  const [isLoadingCameras, setIsLoadingCameras] = useState(false);
 
   // Cargar settings al montar el componente
   useEffect(() => {
     loadGroupSettings();
+    fetchCamerasFromBackend();
   }, []);
+
+  const fetchCamerasFromBackend = async () => {
+    setIsLoadingCameras(true);
+    try {
+      // Use groupService to get groups for current user, then find this group by id
+      // If groupService requires UID, try to use group._id (fallback to public /groups)
+      let groups = [];
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          groups = await groupService.getUserGroups(currentUser.uid);
+        }
+      } catch (e) {
+        // fallback to public fetch
+        const res = await fetch(`${SIGNALING_SERVER_URL}/groups`);
+        groups = await res.json();
+      }
+
+      const found = Array.isArray(groups) ? groups.find(g => String(g._id) === String(group._id || group.id)) : null;
+      if (found && found.cameras) {
+        setFetchedCameras(found.cameras);
+      } else {
+        setFetchedCameras(group.cameras || []);
+      }
+    } catch (error) {
+      console.error('Error fetching cameras:', error);
+      setFetchedCameras(group.cameras || []);
+    } finally {
+      setIsLoadingCameras(false);
+    }
+  };
 
   // HARDCODED: Función para cargar settings (simulando llamada a backend)
   const loadGroupSettings = async () => {
@@ -175,51 +210,90 @@ const GroupOptionsScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Botón de volver minimalista */}
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-        <Text style={styles.backButtonText}>‹</Text>
-      </TouchableOpacity>
-      
-      {/* Botón de settings */}
-      <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
-        <Text style={styles.settingsButtonText}>⚙️</Text>
-      </TouchableOpacity>
-      
-      <Text style={styles.title}>{group.name}</Text>
-      <Text style={styles.subtitle}>{group.members} miembros</Text>
-      
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={styles.optionButton} 
-          onPress={goToViewer}
-        >
-          <Text style={styles.optionButtonText}>Ver Cámaras</Text>
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backButtonText}>‹</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.optionButton} 
-          onPress={goToCamera}
-        >
-          <Text style={styles.optionButtonText}>Ser Cámara</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.optionButton} 
-          onPress={() => navigation.navigate('MediaOptionsScreen', { group })}
-        >
-          <Text style={styles.optionButtonText}>Ver archivos multimedia</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.optionButton, styles.statisticsButton]} 
-          onPress={goToStatistics}
-        >
-          <Text style={styles.optionButtonText}>Ver Estadísticas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.optionButton, styles.membersButton]} 
-          onPress={addMembers}
-        >
-          <Text style={styles.optionButtonText}>Agregar Miembros</Text>
+
+        <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
+          <Text style={styles.settingsButtonText}>⚙️</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={styles.headerInfoCentered}>
+        <Text style={styles.title}>{group.name}</Text>
+        <Text style={styles.subtitle}>{group.members} miembros</Text>
+      </View>
+
+      {/* Camera carousel */}
+      <View style={styles.carouselContainer}>
+        <Text style={styles.sectionTitle}>Cámaras</Text>
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cameraScroll}
+          decelerationRate={'fast'}
+          snapToInterval={152}
+          snapToAlignment={'start'}
+          directionalLockEnabled={true}
+        >
+            {isLoadingCameras ? (
+              <View style={styles.noCameraCard}>
+                <ActivityIndicator />
+              </View>
+            ) : (
+              (fetchedCameras && fetchedCameras.length > 0) ? (
+                fetchedCameras.map((cam, idx) => (
+                  <TouchableOpacity key={cam._id || cam.user || idx} style={styles.cameraCard} onPress={() => navigation.navigate('Viewer', { group, cameraUid: cam.user || cam.uid })}>
+                    <View style={styles.cameraAvatar} />
+                    <Text style={styles.cameraName}>{cam.name || `Cam ${idx+1}`}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.noCameraCard}>
+                  <Text style={styles.noCameraText}>No hay cámaras añadidas</Text>
+                </View>
+              )
+            )}
+        </ScrollView>
+      </View>
+
+      {/* Actions section */}
+      <View style={styles.actionsSection}>
+        <Text style={styles.sectionTitle}>Acciones</Text>
+    
+        <View style={styles.actionsGridRowFirst}>  
+        <TouchableOpacity style={styles.gridCard} onPress={goToCamera}>
+          <View style={styles.cardIcon}><Text>📲</Text></View>
+          <Text style={styles.cardActionTitle}>Ser Cámara</Text>
+          <Text style={styles.cardActionSubtitle}>Transmitir desde tu móvil</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.gridCard} onPress={addMembers}>
+          <View style={styles.cardIcon}><Text>➕</Text></View>
+          <Text style={styles.cardActionTitle}>Agregar Miembros</Text>
+          <Text style={styles.cardActionSubtitle}>Invitar familia</Text>
+        </TouchableOpacity>
+        {/* placeholder to keep spacing aligned with second column */}
+        
+      </View>
+
+      <View style={styles.actionsGridRow}>
+        <TouchableOpacity style={styles.gridCard} onPress={() => navigation.navigate('MediaOptionsScreen', { group })}>
+          <View style={styles.cardIcon}><Text>🖼️</Text></View>
+          <Text style={styles.cardActionTitle}>Multimedia</Text>
+          <Text style={styles.cardActionSubtitle}>Fotos y videos</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.gridCard} onPress={goToStatistics}>
+          <View style={styles.cardIcon}><Text>📈</Text></View>
+          <Text style={styles.cardActionTitle}>Estadísticas</Text>
+          <Text style={styles.cardActionSubtitle}>Actividad</Text>
+        </TouchableOpacity>
+      </View>
+      </View>
+
+
 
       {/* Modal para ingresar nombre de la cámara */}
       <Modal
@@ -401,10 +475,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#3E5F8A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: '#fff',
   },
   backButton: {
     position: 'absolute',
@@ -417,9 +488,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButtonText: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: '300',
+    fontSize: 28,
+    color: '#0F172A',
+    fontWeight: '600',
   },
   settingsButton: {
     position: 'absolute',
@@ -432,49 +503,84 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   settingsButtonText: {
-    fontSize: 24,
-    color: '#fff',
+    fontSize: 20,
+    color: '#0F172A',
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 6,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 50,
+    fontSize: 16,
+    color: '#64748B',
     textAlign: 'center',
-    opacity: 0.8,
   },
-  buttonContainer: {
-    width: '100%',
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 12,
   },
-  optionButton: {
-    backgroundColor: '#fff',
+  headerInfoCentered: { 
+    alignItems: 'center', 
     paddingVertical: 20,
-    paddingHorizontal: 40,
+    paddingHorizontal: 18,
+  },
+  carouselContainer: { marginTop: 24, paddingLeft: 18 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
+  cameraScroll: { paddingRight: 18, paddingVertical: 8 },
+  cameraCard: {
+    width: 140,
+    height: 120,
+    backgroundColor: '#FBFBFD',
+    borderRadius: 12,
+    marginRight: 12,
+    padding: 12,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#EFEFF1'
+  },
+  cameraAvatar: {
+    width: 54,
+    height: 54,
     borderRadius: 10,
-    marginBottom: 20,
-    width: '80%',
-    alignItems: 'center',
-    elevation: 3,
+    backgroundColor: '#E6EEF8',
+    marginBottom: 8,
+  },
+  cameraName: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  noCameraCard: { padding: 12 },
+  noCameraText: { color: '#94A3B8' },
+  actionsSection: { marginTop: 24, paddingLeft: 18 },
+  actionsGridRowFirst: { paddingHorizontal: 18, flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
+  actionsGridRow: { paddingHorizontal: 18, flexDirection: 'row', justifyContent: 'space-between', marginTop: 0 },
+  gridCard: {
+    width: '48%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    alignItems: 'flex-start',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2
   },
-  membersButton: {
-    backgroundColor: '#4CAF50',
+  cardIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: '#F4F6FB',
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  optionButtonText: {
-    color: '#3E5F8A',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
+  cardActionTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  cardActionSubtitle: { color: '#777', marginTop: 6, fontSize: 12 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -525,26 +631,14 @@ const styles = StyleSheet.create({
     height: 48,
   },
   cancelButton: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginRight: 8,
   },
-  cancelButtonText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  addButton: {
-    backgroundColor: '#4CAF50',
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-    elevation: 0,
-    shadowOpacity: 0,
-  },
+  cancelButtonText: { color: '#666', fontSize: 16, fontWeight: 'bold' },
+  addButton: { backgroundColor: '#4CAF50' },
+  addButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   toastContainer: {
     position: 'absolute',
     top: 10,
@@ -561,112 +655,20 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     zIndex: 1000,
   },
-  toastText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  settingLabel: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-    flex: 1,
-  },
-  toggle: {
-    width: 50,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#ccc',
-    justifyContent: 'center',
-    padding: 2,
-  },
-  toggleActive: {
-    backgroundColor: '#4CAF50',
-  },
-  toggleCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  toggleCircleActive: {
-    transform: [{ translateX: 24 }],
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666',
-  },
-  cancelButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginRight: 8,
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  modalDescription: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  codeContainer: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  inviteCode: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#3E5F8A',
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginBottom: 10,
-    letterSpacing: 2,
-  },
-  copyButton: {
-    backgroundColor: '#E8F4FD',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 5,
-  },
-  copyButtonText: {
-    color: '#3E5F8A',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    marginVertical: 30,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#666',
-  },
+  toastText: { color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center' },
+  settingItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  settingLabel: { fontSize: 16, color: '#333', fontWeight: '500', flex: 1 },
+  toggle: { width: 50, height: 26, borderRadius: 13, backgroundColor: '#ccc', justifyContent: 'center', padding: 2 },
+  toggleActive: { backgroundColor: '#4CAF50' },
+  toggleCircle: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2, elevation: 2 },
+  toggleCircleActive: { transform: [{ translateX: 24 }] },
+  loadingContainer: { alignItems: 'center', marginVertical: 30 },
+  loadingText: { marginTop: 10, fontSize: 14, color: '#666' },
+  modalDescription: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 20 },
+  codeContainer: { alignItems: 'center', marginVertical: 20 },
+  inviteCode: { fontSize: 24, fontWeight: 'bold', color: '#3E5F8A', backgroundColor: '#f5f5f5', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginBottom: 10, letterSpacing: 2 },
+  copyButton: { backgroundColor: '#E8F4FD', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 5 },
+  copyButtonText: { color: '#3E5F8A', fontSize: 14, fontWeight: 'bold' },
 });
 
   
