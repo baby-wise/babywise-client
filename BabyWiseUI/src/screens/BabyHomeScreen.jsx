@@ -35,7 +35,7 @@ const BabyHomeScreen = ({ navigation, route }) => {
           style={styles.optionButton} 
           onPress={goToViewer}
         >
-          <Text style={styles.optionButtonText}>Ver Cámaras</Text>
+          <Text style={styles.optionButtonText}>Ver a {babyName}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.optionButton} 
