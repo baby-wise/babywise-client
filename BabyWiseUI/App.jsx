@@ -11,6 +11,7 @@ import RecordingPlayerScreen from './src/screens/RecordingPlayerScreen';
 import AudioListScreen from './src/screens/AudioListScreen';
 import MediaOptionsScreen from './src/screens/MediaOptionsScreen';
 import StatisticsScreen from './src/screens/StatisticsScreen';
+import BabyHomeScreen from './src/screens/BabyHomeScreen';
 
 const Stack = createStackNavigator();
 
@@ -60,6 +61,13 @@ const App = () => {
             component={GroupOptionsScreen} 
             options={({ route }) => ({ title: `${route.params?.group?.name || 'Group'} Options` })}
           />
+
+          <Stack.Screen 
+            name="BabyHome" 
+            component={BabyHomeScreen} 
+            options={{ title: `Baby Home Screen` }}
+          />
+
           <Stack.Screen 
             name="Viewer" 
             component={ViewerScreen} 
