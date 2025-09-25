@@ -244,7 +244,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
             ) : (
               (fetchedCameras && fetchedCameras.length > 0) ? (
                 fetchedCameras.map((cam, idx) => (
-                  <TouchableOpacity key={cam._id || cam.user || idx} style={styles.cameraCard} onPress={() => navigation.navigate('Viewer', { group, cameraUid: cam.user || cam.uid })}>
+                  <TouchableOpacity key={cam._id || cam.user || idx} style={styles.cameraCard} onPress={() => navigation.navigate('BabyHome', { group, babyName: cam.name})}>
                     <View style={styles.cameraAvatar} />
                     <Text style={styles.cameraName}>{cam.name || `Cam ${idx+1}`}</Text>
                   </TouchableOpacity>
