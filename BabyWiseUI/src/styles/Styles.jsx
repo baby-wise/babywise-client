@@ -1,51 +1,133 @@
-import { StyleSheet } from 'react-native';
+// theme.js
+import { StyleSheet } from "react-native";
 
-const styles = StyleSheet.create({
+export const Colors = {
+  background: "#fffdf4",
+  primary: "#3fc8af",     // turquesa
+  secondary: "#45c3ec",   // verde agua
+  accent: "#ffd357",      // amarillo original:#ffd357
+  text: "#333",
+  textSecondary: "#666",
+  white: "#fff",
+  overlay: "rgba(0,0,0,0.5)",
+};
+
+export const GlobalStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: Colors.background,
+    padding: 20,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 40,
-  },
-  buttonContainer: {
-    flexDirection: 'column',
-    alignItems: 'center',
+    color: Colors.primary,
+    marginBottom: 32,
+    textAlign: 'center',
+    padding: 10,
+    borderRadius: 8,
   },
   button: {
-    backgroundColor: '#007bff',
+    flex: 1,
     paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 10,
-    marginVertical: 10,
-    width: 250,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  buttonPrimary: {
+    backgroundColor: Colors.primary,
+  },
+  buttonSecondary: {
+    backgroundColor: Colors.secondary,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  stopButton: {
-    position: 'absolute',
-    bottom: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)', // fondo semitransparente
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 6,
-    alignSelf: 'center',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-  },
-  stopButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: Colors.text,
+    marginBottom: 15,
+  },
+  card: {
+    backgroundColor: Colors.white,
+    padding: 20,
+    borderRadius: 10,
+    marginBottom: 15,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: Colors.text,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  googleButton: {
+    backgroundColor: Colors.secondary,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    marginTop: 20,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 10,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  backButtonText: {
+    fontSize: 32,
+    color: "#000",
+    fontWeight: '300',
+  },
+  optionList: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionButton: {
+    backgroundColor: Colors.white,
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    borderRadius: 10,
+    marginBottom: 20,
+    width: "80%",
+    alignItems: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+    optionButtonText: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "bold",
+  }
+  
 });
-
-export default styles
