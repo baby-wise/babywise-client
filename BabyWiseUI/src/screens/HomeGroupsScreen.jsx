@@ -486,14 +486,14 @@ const HomeGroupsScreen = ({ navigation }) => {
       animationType="fade"
       onRequestClose={cancelCreateGroup}
     >
-      <View style={{ flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", alignItems: "center" }}>
-        <View style={{ backgroundColor: Colors.white, borderRadius: 12, padding: 24, width: "85%", maxWidth: 400 }}>
-          <Text style={{ fontSize: 20, fontWeight: "bold", color: Colors.text, textAlign: "center", marginBottom: 20 }}>
+      <View style={GlobalStyles.modalOverlay}>
+        <View style={GlobalStyles.modalContainer}>
+          <Text style={GlobalStyles.modalTitle}>
             Crear Nuevo Grupo
           </Text>
-          
+
           <TextInput
-            style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 20, backgroundColor: "#f9f9f9", color: Colors.text }}
+            style={GlobalStyles.modalInput}
             placeholder="Nombre del grupo"
             placeholderTextColor={Colors.textSecondary}
             value={newGroupName}
@@ -501,31 +501,38 @@ const HomeGroupsScreen = ({ navigation }) => {
             autoFocus
             maxLength={50}
           />
-          
-          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-            <TouchableOpacity 
-              style={[GlobalStyles.button, { backgroundColor: "#f0f0f0", flex: 1 }]} 
+
+          <View style={GlobalStyles.modalButtons}>
+            {/* Cancelar */}
+            <TouchableOpacity
+              style={[GlobalStyles.modalButton, GlobalStyles.cancelButton]}
               onPress={cancelCreateGroup}
               disabled={isCreatingGroup}
             >
-              <Text style={{ color: Colors.textSecondary, fontSize: 16, fontWeight: "600" }}>Cancelar</Text>
+              <Text style={GlobalStyles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[GlobalStyles.button, GlobalStyles.buttonPrimary, { flex: 1 }, isCreatingGroup && { backgroundColor: "#ccc" }]} 
+
+            {/* Crear */}
+            <TouchableOpacity
+              style={[
+                GlobalStyles.modalButton,
+                GlobalStyles.addButton,
+                isCreatingGroup && GlobalStyles.disabledButton,
+              ]}
               onPress={handleCreateGroup}
               disabled={isCreatingGroup}
             >
               {isCreatingGroup ? (
                 <ActivityIndicator size="small" color={Colors.white} />
               ) : (
-                <Text style={GlobalStyles.buttonText}>Crear</Text>
+                <Text style={GlobalStyles.addButtonText}>Crear</Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
       </View>
     </Modal>
+
 
     {/* Modal para unirse a grupo */}
     <Modal
@@ -534,13 +541,12 @@ const HomeGroupsScreen = ({ navigation }) => {
       animationType="fade"
       onRequestClose={cancelJoinGroup}
     >
-      <View style={{ flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", alignItems: "center" }}>
-        <View style={{ backgroundColor: Colors.white, borderRadius: 12, padding: 24, width: "85%", maxWidth: 400 }}>
-          <Text style={{ fontSize: 20, fontWeight: "bold", color: Colors.text, textAlign: "center", marginBottom: 20 }}>
-            Unirse a Grupo
-          </Text>
+      <View style={GlobalStyles.modalOverlay}>
+        <View style={GlobalStyles.modalContainer}>
+          <Text style={GlobalStyles.modalTitle}>Unirse a Grupo</Text>
+
           <TextInput
-            style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 20, backgroundColor: "#f9f9f9", color: Colors.text }}
+            style={GlobalStyles.modalInput}
             placeholder="Código de invitación"
             placeholderTextColor={Colors.textSecondary}
             value={inviteCode}
@@ -549,30 +555,36 @@ const HomeGroupsScreen = ({ navigation }) => {
             autoCapitalize="characters"
             autoCorrect={false}
           />
-          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-            <TouchableOpacity 
-              style={[GlobalStyles.button, { backgroundColor: "#f0f0f0", flex: 1 }]} 
+
+          <View style={GlobalStyles.modalButtons}>
+            <TouchableOpacity
+              style={[GlobalStyles.modalButton, GlobalStyles.cancelButton]}
               onPress={cancelJoinGroup}
               disabled={isJoiningGroup}
             >
-              <Text style={{ color: Colors.textSecondary, fontSize: 16, fontWeight: "600" }}>Cancelar</Text>
+              <Text style={GlobalStyles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[GlobalStyles.button, GlobalStyles.buttonPrimary, { flex: 1 }, isJoiningGroup && { backgroundColor: "#ccc" }]} 
+
+            <TouchableOpacity
+              style={[
+                GlobalStyles.modalButton,
+                GlobalStyles.addButton,
+                isJoiningGroup && GlobalStyles.disabledButton,
+              ]}
               onPress={handleJoinGroup}
               disabled={isJoiningGroup}
             >
               {isJoiningGroup ? (
                 <ActivityIndicator size="small" color={Colors.white} />
               ) : (
-                <Text style={GlobalStyles.buttonText}>Unirse</Text>
+                <Text style={GlobalStyles.addButtonText}>Unirse</Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
       </View>
     </Modal>
+
 
     {/* Toast */}
     {showToast && (
