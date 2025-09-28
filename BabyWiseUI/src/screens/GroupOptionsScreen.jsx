@@ -276,13 +276,15 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         <Text style={GlobalStyles.cardTitle}>📈Estadísticas</Text>
         <Text style={GlobalStyles.cardSubtitle}>{group.members} Actividad</Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={GlobalStyles.optionButton}
+      </View>
+
+       <TouchableOpacity
+        style={[GlobalStyles.googleButton, {backgroundColor: Colors.primary}]}
         onPress={addMembers}>
         <Text style={GlobalStyles.cardTitle}>Agregar Miembros</Text>
         <Text style={GlobalStyles.cardSubtitle}>Invitar familia</Text>
       </TouchableOpacity>
-      </View>
+
       {/* Modal para agregar miembro */}
       <Modal
         visible={showAddMemberModal}
