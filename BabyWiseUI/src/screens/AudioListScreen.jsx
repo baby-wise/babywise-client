@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, StyleSheet, Alert, SafeAreaView } from 'react-native';
 
 import { pick } from '@react-native-documents/picker';
 import Video from 'react-native-video';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
+import { GlobalStyles, Colors } from '../styles/Styles';
 
 const AudioListScreen = () => {
   const navigation = useNavigation();
@@ -173,10 +174,17 @@ const AudioListScreen = () => {
 
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Audios</Text>
+    <SafeAreaView style={GlobalStyles.container}>
+      <View>
+        <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={GlobalStyles.backButtonText}>‹</Text>
+        </TouchableOpacity>
+      </View>
+      
+      <View style={GlobalStyles.optionList}>
+      <Text style={GlobalStyles.title}>Audios</Text>
       {audios.length === 0 ? (
-        <Text style={styles.emptyText}>No hay audios disponibles.</Text>
+        <Text style={GlobalStyles.cardSubtitle}>No hay audios disponibles.</Text>
       ) : (
         <FlatList
           data={audios}
@@ -185,8 +193,8 @@ const AudioListScreen = () => {
           contentContainerStyle={{ paddingBottom: 80 }}
         />
       )}
-      <TouchableOpacity style={styles.fab} onPress={handleUploadAudio}>
-        <Text style={styles.fabText}>+</Text>
+      <TouchableOpacity style={GlobalStyles.fab} onPress={handleUploadAudio}>
+        <Text style={GlobalStyles.fabText}>+</Text>
       </TouchableOpacity>
       {playingAudio && (
         <Video
@@ -205,6 +213,7 @@ const AudioListScreen = () => {
         <Button title="Volver" onPress={() => navigation.goBack()} />
       </View>
     </View>
+    </SafeAreaView>
   );
 };
 

@@ -6,6 +6,11 @@ const MediaOptionsScreen = ({ navigation, route }) => {
   const { group } = route.params;
   return (
     <SafeAreaView style={GlobalStyles.container}>
+      <View>
+      <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={GlobalStyles.backButtonText}>‹</Text>
+      </TouchableOpacity>
+      </View>
       <View style={GlobalStyles.optionList}>
       <Text style={GlobalStyles.title}>Archivos multimedia</Text>
       <TouchableOpacity

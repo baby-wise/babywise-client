@@ -212,8 +212,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={GlobalStyles.container}>
       <View style={styles.headerRow}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>‹</Text>
+        <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={GlobalStyles.backButtonText}>‹</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>

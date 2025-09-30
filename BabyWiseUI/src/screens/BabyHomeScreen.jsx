@@ -25,9 +25,11 @@ const BabyHomeScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={GlobalStyles.container}>
     {/* Botón de volver minimalista */}
-    <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
-      <Text style={GlobalStyles.backButtonText}>‹</Text>
-    </TouchableOpacity>
+    <View>
+      <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={GlobalStyles.backButtonText}>‹</Text>
+      </TouchableOpacity>
+    </View>
     
     {/* Opciones centradas */}
     <View style={GlobalStyles.optionList}>
