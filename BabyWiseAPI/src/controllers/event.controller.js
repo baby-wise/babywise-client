@@ -1,7 +1,13 @@
+import { User_DB } from '../domain/user.js';
+import { admin } from '../config/firebaseConfig.js';
+import { clients } from '../index.js';
 import { Event_DB, Event } from "../domain/event.js"
 import { Group, Group_DB } from "../domain/group.js"
 import { getUserById } from "./user.controller.js"
 import { getGroupById } from "./group.controller.js"
+
+// Cooldown en memoria para notificaciones push
+const lastPushSent = {}; // { [key]: timestamp }
 
 const events = async (req,res)=>{
     try {
@@ -103,4 +109,68 @@ const getEventsByCamera = async (req, res) => {
   }
 };
 
-export{events, newEvent, getEventsByGroup, getEventsByCamera}
+
+// Recibe evento de detección del Agent
+const receiveDetectionEvent = async (req, res) => {
+  try {
+    const { group, baby, type, date } = req.body;
+    if (!group || !baby || !type) {
+      return res.status(400).json({ error: 'Faltan campos requeridos: group, baby, type' });
+    }
+    // Persistir evento
+    const event = new Event_DB({ group, baby, type, date: date || new Date() });
+    await event.save();
+
+    // Emitir por socket a viewers conectados al grupo
+    const viewers = clients.filter(c => c.role === 'viewer' && c.group === group);
+    viewers.forEach(v => {
+      v.socket.emit('notify-event', {
+        group,
+        baby,
+        type,
+        date: event.date,
+      });
+    });
+
+    // Cooldown: solo enviar push si no se envió en los últimos 60 segundos para este grupo-bebé-tipo
+    const key = `${group}_${baby}_${type}`;
+    const now = Date.now();
+    const COOLDOWN_MS = 60000; // 60 segundos
+
+    if (!lastPushSent[key] || now - lastPushSent[key] > COOLDOWN_MS) {
+      lastPushSent[key] = now;
+      const users = await User_DB.find({ pushToken: { $exists: true, $ne: null }, platform: { $in: ['android', 'ios'] } });
+      for (const user of users) {
+        if (user.pushToken) {
+          const message = {
+            token: user.pushToken,
+            notification: {
+              title: `Evento en grupo ${group}`,
+              body: `Tipo: ${type} - Bebé: ${baby}`,
+            },
+            data: {
+              group: String(group),
+              baby: String(baby),
+              type: String(type),
+              date: event.date.toISOString(),
+            },
+          };
+          try {
+            await admin.messaging().send(message);
+          } catch (err) {
+            console.error('Error enviando push a', user.UID, err);
+          }
+        }
+      }
+    } else {
+      console.log(`[COOLDOWN] Push no enviado para ${key}, dentro de los ${COOLDOWN_MS / 1000}s`);
+    }
+
+    return res.status(201).json({ success: true, event });
+  } catch (err) {
+    console.error('[EVENT] Error al recibir evento:', err);
+    return res.status(500).json({ error: 'Error interno al procesar evento' });
+  }
+};
+
+export { events, newEvent, getEventsByGroup, getEventsByCamera, receiveDetectionEvent };

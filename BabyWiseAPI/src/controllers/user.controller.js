@@ -1,5 +1,27 @@
 import { User_DB } from "../domain/user.js"
 
+
+const registerPushToken = async (req, res) => {
+    const { UID, pushToken, platform } = req.body;
+    if (!UID || !pushToken || !platform) {
+        return res.status(400).json({ error: 'Faltan campos requeridos: UID, pushToken, platform' });
+    }
+    try {
+        const user = await User_DB.findOneAndUpdate(
+            { UID },
+            { pushToken, platform },
+            { new: true }
+        );
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        return res.status(200).json({ success: true, user });
+    } catch (error) {
+        console.error('Error registrando token push:', error);
+        return res.status(500).json({ error: 'Error interno al registrar token push' });
+    }
+};
+
 const users = async (req,res)=>{
     try {
         const users = await User_DB.find()
@@ -43,4 +65,4 @@ async function getUserById(UID){
     return user
 }
 
-export {users, newUser, getUserById}
+export {users, newUser, getUserById, registerPushToken}
