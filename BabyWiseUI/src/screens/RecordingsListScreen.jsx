@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, StyleSheet, SafeAreaView } from 'react-native';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import { GlobalStyles } from '../styles/Styles';
 
@@ -32,40 +32,63 @@ const RecordingsListScreen = ({ navigation, route }) => {
   };
 
   return (
-    <View style={GlobalStyles.container}>
+    <SafeAreaView style={GlobalStyles.container}>
       <View>
         <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
           <Text style={GlobalStyles.backButtonText}>‹</Text>
         </TouchableOpacity>
       </View>
-      <Text style={GlobalStyles.title}>Grabaciones disponibles</Text>
-      {loading ? (
-        <ActivityIndicator size="large" />
-      ) : recordingsByParticipant.length === 0 ? (
-        <View style={GlobalStyles.optionList}>
-          <Text style={GlobalStyles.cardSubtitle}>No hay grabaciones disponibles</Text>
-        </View>
-      ):(
-        <FlatList
-          data={recordingsByParticipant}
-          keyExtractor={(item) => item.participant}
-          renderItem={({ item }) => (
-            <View style={[GlobalStyles.optionList]}>
-              <Text style={GlobalStyles.optionButtonText}>Cámara: {item.participant.replace('camera-', '')}</Text>
-              <FlatList
-                data={item.recordings}
-                keyExtractor={(rec) => rec.key}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={GlobalStyles.item} onPress={() => handleSelect(item)}>
-                    <Text style={GlobalStyles.cardSubtitle}>Fecha: {item.date}, Hora: {item.time} ({item.duration ? item.duration + 's' : 'sin duración'})</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          )}
-        />
-      )}
-    </View>
+      <View style={GlobalStyles.optionList}>
+        {loading ? (
+          <ActivityIndicator size="large" />
+        ) : recordingsByParticipant.length === 0 ? (
+          <View>
+            <Text style={GlobalStyles.title}>Grabaciones</Text>
+            <Text style={GlobalStyles.cardSubtitle}>No hay grabaciones disponibles</Text>
+          </View>
+        ) : (
+            <FlatList
+               data={recordingsByParticipant}
+               keyExtractor={(item) => item.participant}
+               ListHeaderComponent={
+                  <Text style={[GlobalStyles.title, { textAlign: "center", marginBottom: 20 }]}>
+                    Grabaciones
+                  </Text>
+                }
+               contentContainerStyle={{
+                   flexGrow: 1,                  
+                   justifyContent: "center",     
+                   alignItems: "center",         
+                   paddingBottom: 20,
+               }}
+               renderItem={({ item }) => (
+                 <View style={{ marginBottom: 20, alignItems: "center" }}>
+                   <Text style={GlobalStyles.optionButtonText}>
+                     Cámara: {item.participant.replace("camera-", "")}
+                   </Text>
+                   <FlatList
+                     data={item.recordings}
+                     keyExtractor={(rec) => rec.key}
+                     contentContainerStyle={{ paddingBottom: 20, alignItems: "center" }}
+                     renderItem={({ item }) => (
+                       <TouchableOpacity
+                         style={GlobalStyles.item}
+                         onPress={() => handleSelect(item)}
+                       >
+                         <Text style={GlobalStyles.cardSubtitle}>
+                           Fecha: {item.date}, Hora: {item.time} (
+                           {item.duration ? item.duration + "s" : "sin duración"})
+                         </Text>
+                       </TouchableOpacity>
+                     )}
+                   />
+                 </View>
+               )}
+             />
+        )}
+      </View>
+    </SafeAreaView>
+
   );
 };
 
