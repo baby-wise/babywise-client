@@ -220,5 +220,29 @@ export const GlobalStyles = StyleSheet.create({
     elevation: 0,
     shadowOpacity: 0,
   },
-  
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '98%',
+    alignSelf: 'center',
+    marginVertical: 0,
+    paddingRight: 24,
+    paddingLeft: 8,
+  },
+  deleteButton: {
+    marginLeft: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#3E5F8A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
