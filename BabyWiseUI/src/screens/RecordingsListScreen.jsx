@@ -41,7 +41,11 @@ const RecordingsListScreen = ({ navigation, route }) => {
       <Text style={GlobalStyles.title}>Grabaciones disponibles</Text>
       {loading ? (
         <ActivityIndicator size="large" />
-      ) : (
+      ) : recordingsByParticipant ? (
+        <View style={GlobalStyles.optionList}>
+          <Text style={GlobalStyles.cardSubtitle}>No hay grabaciones disponibles</Text>
+        </View>
+      ):(
         <FlatList
           data={recordingsByParticipant}
           keyExtractor={(item) => item.participant}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
+import { Colors, GlobalStyles } from '../styles/Styles';
 const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null }) => {
   const [messages, setMessages] = useState(initialMessages);
   const [text, setText] = useState('');
@@ -143,7 +144,7 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null }) =
 
   return (
     <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()} accessible={false}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.container, styles.chartContainer]}>
         <View style={{ flex: 1 }}>
           <ScrollView
             ref={flatRef}
@@ -181,8 +182,8 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null }) =
                 blurOnSubmit={true}
                 onSubmitEditing={() => send()}
               />
-              <TouchableOpacity style={styles.sendBtn} onPress={send}>
-                <Text style={{ color: '#fff', fontWeight: '700' }}>Enviar</Text>
+              <TouchableOpacity style={[styles.sendBtn, {backgroundColor: Colors.secondary}]} onPress={send}>
+                <Text style={GlobalStyles.buttonText}>Enviar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -202,7 +203,18 @@ const styles = StyleSheet.create({
   inputWrapper: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', paddingBottom: Platform.OS === 'ios' ? 16 : 8, zIndex: 1000, elevation: 1000, borderTopWidth: 1, borderTopColor: '#eee' },
   inputRow: { flexDirection: 'row', padding: 8, alignItems: 'center' },
   input: { flex: 1, backgroundColor: '#fff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', marginRight: 8, height: 44 },
-  sendBtn: { backgroundColor: '#3E5F8A', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8 }
+  sendBtn: { backgroundColor: '#3E5F8A', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8 },
+  chartContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 12,
+    marginBottom: 12,
+    minHeight: 180,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    }}
 });
 
 export default ChatPanel;
