@@ -182,15 +182,27 @@ const AudioListScreen = () => {
       </View>
       
       <View style={GlobalStyles.optionList}>
-      <Text style={GlobalStyles.title}>Audios</Text>
       {audios.length === 0 ? (
-        <Text style={GlobalStyles.cardSubtitle}>No hay audios disponibles.</Text>
+        <View>
+          <Text style={GlobalStyles.title}>Audios</Text>
+          <Text style={GlobalStyles.cardSubtitle}>No hay audios disponibles.</Text>
+        </View>
       ) : (
         <FlatList
           data={audios}
           keyExtractor={item => item.key}
           renderItem={renderAudioItem}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          ListHeaderComponent={
+             <Text style={[GlobalStyles.title, { textAlign: "center", marginBottom: 20 }]}>
+              Audios
+              </Text>
+          }
+          contentContainerStyle={{
+            flexGrow: 1,                  
+            justifyContent: "center",     
+            alignItems: "center",         
+            paddingBottom: 20,
+          }}
         />
       )}
       <TouchableOpacity style={GlobalStyles.fab} onPress={handleUploadAudio}>
