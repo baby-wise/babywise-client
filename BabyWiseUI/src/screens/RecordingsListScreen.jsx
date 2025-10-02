@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, StyleSheet } from 'react-native';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
+import { GlobalStyles } from '../styles/Styles';
 
 const RecordingsListScreen = ({ navigation, route }) => {
   const { room } = route.params;
@@ -15,7 +16,6 @@ const RecordingsListScreen = ({ navigation, route }) => {
         setError(null);
         const res = await fetch(`${SIGNALING_SERVER_URL}/recordings?room=${room}`);
         const data = await res.json();
-        console.log('[UI] Grabaciones recibidas:', data);
         setRecordingsByParticipant(data.recordingsByParticipant || []);
       } catch (err) {
         setError('Error cargando grabaciones');
@@ -32,25 +32,28 @@ const RecordingsListScreen = ({ navigation, route }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Grabaciones disponibles</Text>
+    <View style={GlobalStyles.container}>
+      <View>
+        <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={GlobalStyles.backButtonText}>‹</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={GlobalStyles.title}>Grabaciones disponibles</Text>
       {loading ? (
         <ActivityIndicator size="large" />
-      ) : error ? (
-        <Text style={styles.error}>{error}</Text>
       ) : (
         <FlatList
           data={recordingsByParticipant}
           keyExtractor={(item) => item.participant}
           renderItem={({ item }) => (
-            <View style={styles.participantBlock}>
-              <Text style={styles.participantTitle}>Cámara: {item.participant.replace('camera-', '')}</Text>
+            <View style={[GlobalStyles.optionList]}>
+              <Text style={GlobalStyles.optionButtonText}>Cámara: {item.participant.replace('camera-', '')}</Text>
               <FlatList
                 data={item.recordings}
                 keyExtractor={(rec) => rec.key}
                 renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.item} onPress={() => handleSelect(item)}>
-                    <Text style={styles.itemText}>Fecha: {item.date}, Hora: {item.time} ({item.duration ? item.duration + 's' : 'sin duración'})</Text>
+                  <TouchableOpacity style={GlobalStyles.item} onPress={() => handleSelect(item)}>
+                    <Text style={GlobalStyles.cardSubtitle}>Fecha: {item.date}, Hora: {item.time} ({item.duration ? item.duration + 's' : 'sin duración'})</Text>
                   </TouchableOpacity>
                 )}
               />
@@ -58,61 +61,8 @@ const RecordingsListScreen = ({ navigation, route }) => {
           )}
         />
       )}
-      <View style={{ marginTop: 32, width: '100%' }}>
-        <Button title="Volver" onPress={() => navigation.goBack()} />
-      </View>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#3E5F8A',
-    padding: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 24,
-    textAlign: 'center',
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    padding: 10,
-    borderRadius: 8,
-  },
-  participantBlock: {
-    marginBottom: 24,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 10,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  participantTitle: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#3E5F8A',
-    marginBottom: 8,
-  },
-  item: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  itemText: {
-    fontSize: 16,
-    color: '#3E5F8A',
-  },
-  error: {
-    color: 'red',
-    marginTop: 16,
-  },
-});
 
 export default RecordingsListScreen;

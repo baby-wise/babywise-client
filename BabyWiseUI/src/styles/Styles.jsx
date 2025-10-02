@@ -109,6 +109,7 @@ export const GlobalStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 25
   },
   optionButton: {
     backgroundColor: Colors.white,
@@ -229,6 +230,11 @@ export const GlobalStyles = StyleSheet.create({
     marginVertical: 0,
     paddingRight: 24,
     paddingLeft: 8,
+  },
+  item: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   deleteButton: {
     marginLeft: 8,
