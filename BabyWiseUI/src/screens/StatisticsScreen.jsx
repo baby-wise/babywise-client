@@ -107,7 +107,9 @@ const StatisticsScreen = ({ navigation, route }) => {
   const fetchEventsByCamera = async (cameraUid) => {
     try {
       setIsLoadingEvents(true);
+      console.log('fetchEventsByCamera called with cameraUid:', cameraUid, 'type:', typeof cameraUid);
   const url = `${SIGNALING_SERVER_URL}/events/camera/${cameraUid}`;
+      console.log('Fetching from URL:', url);
       const res = await fetch(url);
       const data = await res.json();
       if (data && data.success && data.data && data.data.events) {
@@ -358,11 +360,26 @@ const StatisticsScreen = ({ navigation, route }) => {
               {/* Expanded list */}
               {dropdownOpen && (
                 <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, overflow: 'hidden' }}>
-                  {cameras.map(cam => (
-                    <TouchableOpacity key={cam.uid} onPress={async () => { setDropdownOpen(false); setSelectedCamera(cam); await fetchEventsByCamera(cam.uid); }} style={{ padding: 12, backgroundColor: selectedCamera && selectedCamera.uid === cam.uid ? '#eef4ff' : '#fff' }}>
-                      <Text style={{ color: '#333' }}>{cam.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {cameras.map((cam, index) => {
+                    // Use the same logic as in fetchCameras to get the camera UID
+                    const camUid = cam.user && cam.user._id ? cam.user._id : cam.user ? cam.user : cam.uid;
+                    return (
+                      <TouchableOpacity 
+                        key={camUid || index} 
+                        onPress={async () => { 
+                          setDropdownOpen(false); 
+                          setSelectedCamera(cam); 
+                          await fetchEventsByCamera(camUid); 
+                        }} 
+                        style={{ 
+                          padding: 12, 
+                          backgroundColor: selectedCamera && ((selectedCamera.user && selectedCamera.user._id) === camUid || selectedCamera.user === camUid || selectedCamera.uid === camUid) ? '#eef4ff' : '#fff' 
+                        }}
+                      >
+                        <Text style={{ color: '#333' }}>{cam.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               )}
             </View>

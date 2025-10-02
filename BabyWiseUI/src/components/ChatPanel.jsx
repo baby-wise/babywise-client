@@ -69,6 +69,7 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null }) =
 
       const payload = {
         UID: groupId,
+        cameraUid: cameraUid, // Incluir la cámara específica
         // Send the conversation so backend can handle prompt engineering
         conversation,
         // Also include the latest user input for convenience
