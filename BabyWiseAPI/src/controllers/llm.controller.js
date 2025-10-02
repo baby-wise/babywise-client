@@ -11,110 +11,106 @@ const getCurrentDate = () => {
   return now.toISOString().split('T')[0];
 };
 
-// Función helper para obtener eventos reales de la base de datos por cámara específica
+// Función helper para obtener eventos reales - COPIADO EXACTO de getEventsByCamera
 const getRealEventsData = async (groupUID, cameraUid) => {
   try {
-    console.log('Obteniendo eventos reales para cámara:', cameraUid, 'en grupo:', groupUID);
+    console.log('=== COPIANDO LÓGICA EXACTA DE getEventsByCamera ===');
+    console.log('Input params - groupUID:', groupUID, 'cameraUid:', cameraUid);
+    console.log('cameraUid type:', typeof cameraUid, 'length:', cameraUid?.length);
     
-    // Si no hay cameraUid, usar eventos de todo el grupo
-    if (!cameraUid || cameraUid === 'undefined' || cameraUid === 'null') {
-      console.log('No se especificó cameraUid, usando eventos de todo el grupo');
-      const events = await Event_DB.find({ group: groupUID });
-      return await processEventsData(events, groupUID);
-    }
-
-    // Encontrar el grupo que contiene esta cámara (mismo código que getEventsByCamera)
-    const group = await Group_DB.findOne({ 'cameras.user': cameraUid });
-    if (!group) {
-      console.log('Cámara no encontrada en ningún grupo:', cameraUid);
+    // Si no hay cameraUid, devolver datos vacíos
+    if (!cameraUid || cameraUid === 'undefined' || cameraUid === 'null' || cameraUid.trim() === '') {
+      console.log('❌ Invalid cameraUid detected, devolviendo datos vacíos');
+      console.log('cameraUid value:', cameraUid);
       return getEmptyEventsData(groupUID);
     }
 
-    // Encontrar el objeto de la cámara y obtener su nombre (baby name mapping)
+    // EXACTAMENTE IGUAL que getEventsByCamera
+    console.log('🔍 Buscando grupo con cameraUid:', cameraUid);
+    const group = await Group_DB.findOne({ 'cameras.user': cameraUid });
+    if (!group) {
+      console.log('❌ Camera not found in any group for cameraUid:', cameraUid);
+      return getEmptyEventsData(groupUID);
+    }
+    console.log('✅ Grupo encontrado:', group._id, 'con', group.cameras.length, 'cámaras');
+
     const cameraObj = group.cameras.find(c => String(c.user) === String(cameraUid) || (c.user && String(c.user._id) === String(cameraUid)));
     if (!cameraObj) {
-      console.log('Objeto de cámara no encontrado:', cameraUid);
+      console.log('❌ Camera object not found in cameras array');
+      console.log('Available cameras:', group.cameras.map(c => ({ user: c.user, name: c.name })));
       return getEmptyEventsData(groupUID);
     }
     
     const cameraName = cameraObj.name;
-    console.log('Nombre de la cámara/bebé encontrado:', cameraName);
+    console.log('✅ Camera/baby name found:', cameraName);
 
-    // Obtener eventos específicos de esta cámara/bebé (últimas 24 horas)
+    // EXACTAMENTE IGUAL: compute last 24 hours window ending at current rounded hour
     const now = new Date();
     const end = new Date(now);
-    end.setMinutes(0,0,0);
+    end.setMinutes(0,0,0); // Round to hour
     const start = new Date(end);
-    start.setHours(end.getHours() - 23);
+    start.setHours(end.getHours() - 23); // 24 hours ago
 
-    const events = await Event_DB.find({
+    console.log(`Buscando eventos desde ${start.toISOString()} hasta ${new Date(end.getTime() + (60 * 60 * 1000)).toISOString()}`);
+
+    // EXACTAMENTE IGUAL: fetch events for this group and baby name within the time window
+    const query = {
       group: group._id,
       baby: cameraName,
       date: { $gte: start, $lte: new Date(end.getTime() + (60 * 60 * 1000)) }
-    }).lean();
+    };
+    console.log('🔍 Query para eventos:', JSON.stringify(query, null, 2));
+    
+    const rawEvents = await Event_DB.find(query).lean();
+    console.log(`📊 Raw events found: ${rawEvents.length}`);
+    
+    if (rawEvents.length > 0) {
+      console.log('Primeros 3 eventos encontrados:');
+      rawEvents.slice(0, 3).forEach((event, i) => {
+        console.log(`  ${i+1}. Tipo: ${event.type}, Baby: ${event.baby}, Fecha: ${event.date}`);
+      });
+    } else {
+      console.log('❌ NO se encontraron eventos para:');
+      console.log('  - Grupo ID:', group._id);
+      console.log('  - Baby name:', cameraName);
+      console.log('  - Rango fechas:', start.toISOString(), 'a', new Date(end.getTime() + (60 * 60 * 1000)).toISOString());
+    }
 
-    console.log(`Eventos encontrados para cámara ${cameraName}:`, events.length);
-    return await processEventsData(events, groupUID, start);
+    // EXACTAMENTE IGUAL: build 24 hourly buckets
+    const buckets = [];
+    for (let i = 0; i < 24; i++) {
+      const bucketStart = new Date(start.getTime() + i * 60 * 60 * 1000);
+      const bucketEnd = new Date(bucketStart.getTime() + 60 * 60 * 1000);
+      const inBucket = rawEvents.filter(ev => new Date(ev.date) >= bucketStart && new Date(ev.date) < bucketEnd);
+      const crying = inBucket.filter(e => e.type === 'LLANTO').length;
+      const movement = inBucket.filter(e => e.type === 'MOVIMIENTO').length;
+      buckets.push({ hour: bucketStart.getHours(), crying, movement, timestamp: bucketStart.toISOString() });
+    }
+
+    // Calcular totales y picos
+    const totalCrying = buckets.reduce((sum, bucket) => sum + bucket.crying, 0);
+    const totalMovement = buckets.reduce((sum, bucket) => sum + bucket.movement, 0);
+    const peakCryingHour = buckets.reduce((max, bucket) => bucket.crying > max.crying ? bucket : max);
+    const peakMovementHour = buckets.reduce((max, bucket) => bucket.movement > max.movement ? bucket : max);
+
+    console.log(`TOTALES CALCULADOS: ${totalCrying} llanto, ${totalMovement} movimiento`);
+    console.log(`PICOS: llanto a las ${peakCryingHour.hour}:00 (${peakCryingHour.crying}), movimiento a las ${peakMovementHour.hour}:00 (${peakMovementHour.movement})`);
+
+    return {
+      groupId: groupUID,
+      events: buckets,
+      totalCrying,
+      totalMovement,
+      peakCryingHour,
+      peakMovementHour,
+      period: '24h',
+      generatedAt: new Date().toISOString()
+    };
 
   } catch (error) {
     console.error('Error obteniendo eventos reales:', error);
     return getEmptyEventsData(groupUID);
   }
-};
-
-// Función helper para procesar los eventos en buckets de horas
-const processEventsData = async (events, groupUID, customStart = null) => {
-  if (!events || events.length === 0) {
-    console.log('No hay eventos para procesar');
-    return getEmptyEventsData(groupUID);
-  }
-
-  // Usar ventana de tiempo personalizada o día actual
-  let start, end;
-  if (customStart) {
-    start = customStart;
-    end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-  } else {
-    const today = new Date();
-    start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-  }
-
-  // Crear buckets por hora (24 horas)
-  const hourlyData = [];
-  for (let i = 0; i < 24; i++) {
-    const bucketStart = new Date(start.getTime() + i * 60 * 60 * 1000);
-    const bucketEnd = new Date(bucketStart.getTime() + 60 * 60 * 1000);
-    
-    const eventsInBucket = events.filter(event => {
-      const eventDate = new Date(event.date);
-      return eventDate >= bucketStart && eventDate < bucketEnd;
-    });
-
-    const crying = eventsInBucket.filter(e => e.type === 'LLANTO').length;
-    const movement = eventsInBucket.filter(e => e.type === 'MOVIMIENTO').length;
-    
-    hourlyData.push({ hour: bucketStart.getHours(), crying, movement });
-  }
-
-  // Calcular métricas
-  const totalCrying = hourlyData.reduce((sum, h) => sum + h.crying, 0);
-  const totalMovement = hourlyData.reduce((sum, h) => sum + h.movement, 0);
-  const peakCryingHour = hourlyData.reduce((max, h) => h.crying > max.crying ? h : max);
-  const peakMovementHour = hourlyData.reduce((max, h) => h.movement > max.movement ? h : max);
-
-  console.log(`Eventos procesados: ${totalCrying} llanto, ${totalMovement} movimiento`);
-
-  return {
-    groupId: groupUID,
-    events: hourlyData,
-    totalCrying,
-    totalMovement,
-    peakCryingHour,
-    peakMovementHour,
-    period: '24h',
-    generatedAt: new Date().toISOString()
-  };
 };
 
 // Función helper para datos vacíos
@@ -143,55 +139,80 @@ const generatePrompt = async (UID, cameraUid, conversation = [], userMessage = '
   const { totalCrying, totalMovement, peakCryingHour, peakMovementHour } = realEventsData;
 
   // Prompt instructions: be concise and answer taking into account conversation + events
-  return `Eres un asistente experto en cuidado infantil. Responde SOLO en español, de forma concisa (máximo 4-6 frases).
+  const now = new Date();
+  const timeRange = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')} del ${currentDate}`;
+  
+  return `Eres un asistente experto en cuidado infantil. Responde en español de forma natural y conversacional.
 
-DATOS DEL BEBÉ PARA HOY (${currentDate}):
-- Total de llanto detectado: ${totalCrying} episodios
-- Total de movimiento detectado: ${totalMovement} episodios  
-- Hora con más llanto: ${peakCryingHour.hour}:00 (${peakCryingHour.crying} episodios)
-- Hora con más movimiento: ${peakMovementHour.hour}:00 (${peakMovementHour.movement} episodios)
+DATOS DISPONIBLES DEL BEBÉ (últimas 24 horas hasta ${timeRange}):
+- Llanto: ${totalCrying} episodios
+- Movimiento: ${totalMovement} episodios  
+- Pico de llanto: ${peakCryingHour.hour}:00 (${peakCryingHour.crying} episodios)
+- Pico de movimiento: ${peakMovementHour.hour}:00 (${peakMovementHour.movement} episodios)
 
 Conversación previa:
 ${conversationText}
 
-Pregunta del usuario: ${userMessage}
+Pregunta: "${userMessage}"
 
-IMPORTANTE: Responde SOLO en español basándote en los datos del bebé. Si piden un resumen, analiza los patrones de llanto y movimiento para dar consejos útiles.`;
+INSTRUCCIONES:
+- Responde de forma natural y conversacional
+- USA los datos del bebé SOLO cuando sea relevante para la pregunta
+- Si preguntan por resumen/estadísticas del bebé, entonces sí usa todos los datos
+- Si es una pregunta general (saludo, etc.), responde normalmente sin mencionar datos
+- Sé útil y amigable`;
 };
 
-// Función para generar respuesta usando API LLM gratuita (simple)
+// Función para generar respuesta usando Pollinations (simple y directo)
 const generateLLMResponse = async (prompt) => {
-  console.log('Llamando a API LLM gratuita...');
+  console.log('=== POLLINATIONS DEBUG ===');
+  console.log('Prompt completo enviado:');
+  console.log(prompt);
+  console.log('========================');
   
   try {
-    // Usando una API sin clave que realmente funciona
+    const requestBody = {
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      model: 'openai',
+      jsonMode: false
+    };
+
+    console.log('Request body a enviar:', JSON.stringify(requestBody, null, 2));
+
     const response = await fetch('https://text.pollinations.ai/', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'User-Agent': 'BabyWise-App/1.0'
       },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ]
-      })
+      body: JSON.stringify(requestBody)
     });
 
+    console.log('Pollinations response status:', response.status);
+    console.log('Pollinations response headers:', response.headers);
+
     if (!response.ok) {
-      console.log('Pollinations error:', response.status, response.statusText);
-      throw new Error(`HTTP ${response.status}`);
+      const errorText = await response.text();
+      console.log('Pollinations error response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    const text = await response.text();
-    console.log('Pollinations respuesta exitosa');
+    const responseText = await response.text();
+    console.log('Pollinations respuesta RAW:', responseText);
+    console.log('Longitud de respuesta:', responseText.length);
     
-    return text.trim();
+    const trimmedResponse = responseText.trim();
+    console.log('Respuesta final después de trim:', trimmedResponse);
+    
+    return trimmedResponse;
 
   } catch (error) {
-    console.error('Error con Pollinations:', error);
+    console.error('Error detallado con Pollinations:', error);
     return 'Disculpa, no puedo procesar tu consulta en este momento.';
   }
 };
@@ -214,7 +235,11 @@ const getLLMResponseForUser = async (req, res) => {
       });
     }
 
-    console.log('Datos recibidos - UID:', UID, 'cameraUid:', cameraUid);
+    console.log('Datos recibidos:');
+    console.log('  - UID:', UID);
+    console.log('  - cameraUid:', cameraUid, 'type:', typeof cameraUid);
+    console.log('  - conversation length:', conversation?.length || 0);
+    console.log('  - userMessage:', userMessage);
 
     // Build prompt using incoming conversation and userMessage for specific camera
     const prompt = await generatePrompt(UID, cameraUid, conversation || [], userMessage || '');

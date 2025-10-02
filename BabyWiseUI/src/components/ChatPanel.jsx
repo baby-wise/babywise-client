@@ -136,11 +136,14 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null }) =
 
   // Autoscroll: use onContentSizeChange for reliable scrolling
   const handleContentSizeChange = () => {
-    try {
-      flatRef.current?.scrollToEnd({ animated: true });
-    } catch (e) {
-      // ignore
-    }
+    // Usar setTimeout más largo para mensajes largos
+    setTimeout(() => {
+      try {
+        flatRef.current?.scrollToEnd({ animated: true });
+      } catch (e) {
+        // ignore
+      }
+    }, 150);
   };
 
   return (
@@ -154,17 +157,26 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null }) =
               paddingVertical: 8,
               paddingBottom: 140,
               flexGrow: 1,
-              justifyContent: messages.length === 0 ? 'flex-end' : 'flex-start'
+              minHeight: '100%'
             }}
             onContentSizeChange={() => handleContentSizeChange()}
+            onLayout={() => handleContentSizeChange()}
             nestedScrollEnabled={true}
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
+            scrollEnabled={true}
+            bounces={true}
+            alwaysBounceVertical={false}
           >
             {messages.map(item => (
               <View key={item.id} style={[styles.msgRow, item.role === 'user' ? styles.userRow : styles.assistantRow]}>
-                <Text style={item.role === 'user' ? styles.msgTextUser : styles.msgTextAssistant}>{item.text}</Text>
+                <Text 
+                  style={item.role === 'user' ? styles.msgTextUser : styles.msgTextAssistant}
+                  selectable={true}
+                >
+                  {item.text}
+                </Text>
               </View>
             ))}
           </ScrollView>
@@ -196,11 +208,31 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null }) =
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  msgRow: { marginVertical: 6, marginHorizontal: 10, padding: 10, borderRadius: 8, maxWidth: '80%' },
+  msgRow: { 
+    marginVertical: 6, 
+    marginHorizontal: 10, 
+    padding: 10, 
+    borderRadius: 8, 
+    maxWidth: '85%',
+    minHeight: 44,
+    flexShrink: 1
+  },
   userRow: { alignSelf: 'flex-end', backgroundColor: '#3E5F8A' },
   assistantRow: { alignSelf: 'flex-start', backgroundColor: '#f1f1f1' },
-  msgTextUser: { color: '#fff' },
-  msgTextAssistant: { color: '#222' },
+  msgTextUser: { 
+    color: '#fff',
+    fontSize: 14,
+    lineHeight: 20,
+    flexWrap: 'wrap',
+    flexShrink: 1
+  },
+  msgTextAssistant: { 
+    color: '#222',
+    fontSize: 14,
+    lineHeight: 20,
+    flexWrap: 'wrap',
+    flexShrink: 1
+  },
   inputWrapper: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', paddingBottom: Platform.OS === 'ios' ? 16 : 8, zIndex: 1000, elevation: 1000, borderTopWidth: 1, borderTopColor: '#eee' },
   inputRow: { flexDirection: 'row', padding: 8, alignItems: 'center' },
   input: { flex: 1, backgroundColor: '#fff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', marginRight: 8, height: 44 },

@@ -419,7 +419,7 @@ const StatisticsScreen = ({ navigation, route }) => {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <ChatPanel
             groupId={group.id}
-            cameraUid={selectedCamera ? selectedCamera.uid : null}
+            cameraUid={selectedCamera ? (selectedCamera.user && selectedCamera.user._id ? selectedCamera.user._id : selectedCamera.user ? selectedCamera.user : selectedCamera.uid) : null}
             initialMessages={[{ id: 'greeting', role: 'assistant', text: '¡Hola! Soy tu asistente inteligente. ¿Cómo puedo ayudarte?' }]}
           />
         </ScrollView>
