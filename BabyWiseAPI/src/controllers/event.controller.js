@@ -145,7 +145,7 @@ const receiveDetectionEvent = async (req, res) => {
           const message = {
             token: user.pushToken,
             notification: {
-              title: `Evento en grupo ${group}`,
+              title: `🚨 Evento detectado`, 
               body: `Tipo: ${type} - Bebé: ${baby}`,
             },
             data: {

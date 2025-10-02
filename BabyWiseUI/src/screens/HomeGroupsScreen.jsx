@@ -1,3 +1,6 @@
+import messaging from '@react-native-firebase/messaging';
+import { Platform } from 'react-native';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import React, { useEffect, useState, useRef } from 'react';
 import { 
   SafeAreaView, 
@@ -16,9 +19,10 @@ import { auth } from '../config/firebase';
 import { signInWithCredential, GoogleAuthProvider, signOut } from '@react-native-firebase/auth';
 import { groupService, userService } from '../services/apiService';
 
-
-
 const HomeGroupsScreen = ({ navigation }) => {
+  // Estado para el popup de notificación
+  const [notifPopup, setNotifPopup] = useState({ visible: false, message: '', roomId: null });
+  const notifTimeout = useRef(null);
   const email = useRef();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +39,99 @@ const HomeGroupsScreen = ({ navigation }) => {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [isJoiningGroup, setIsJoiningGroup] = useState(false);
+
+ // Función para registrar el token push en el backend
+  const registerPushToken = async (UID) => {
+    try {
+      // Solicitar permisos de notificación
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      if (!enabled) {
+        console.log('[PUSH] Permiso de notificación denegado');
+        return;
+      }
+      // Obtener token FCM
+      const token = await messaging().getToken();
+      console.log('[PUSH] Token FCM obtenido:', token);
+      // Enviar al backend
+      const res = await fetch(`${SIGNALING_SERVER_URL}/users/push-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ UID, pushToken: token, platform: Platform.OS }),
+      });
+      const data = await res.json();
+      console.log('[PUSH] Respuesta backend:', data);
+    } catch (err) {
+      console.log('[PUSH] Error registrando token:', err);
+    }
+  };
+  // Listener de notificaciones FCM
+  useEffect(() => {
+    // Foreground: mensaje recibido
+    const unsubscribeOnMessage = messaging().onMessage(async remoteMessage => {
+      console.log('[FCM] Notificación recibida en foreground:', remoteMessage);
+      const title = remoteMessage?.notification?.title || 'Notificación';
+      const body = remoteMessage?.notification?.body || '';
+      const groupId = remoteMessage?.data?.group || null;
+      const baby = remoteMessage?.data?.baby || '';
+      const type = remoteMessage?.data?.type || '';
+      const date = remoteMessage?.data?.date ? new Date(remoteMessage.data.date).toLocaleString() : '';
+      // Texto bonito y claro para el popup
+      const popupText = `${title}\n${body}\nFecha: ${date}`;
+      setNotifPopup({ visible: true, message: popupText, groupId });
+      if (notifTimeout.current) clearTimeout(notifTimeout.current);
+      notifTimeout.current = setTimeout(() => setNotifPopup(p => ({ ...p, visible: false })), 3500);
+    });
+    // Handler para navegar al room si el usuario toca el popup
+
+    // App abierta desde notificación (background)
+    const unsubscribeOnNotificationOpened = messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log('[FCM] App abierta desde notificación:', remoteMessage);
+      // Navegación o lógica especial
+      const title = remoteMessage?.notification?.title || 'Notificación';
+      const body = remoteMessage?.notification?.body || '';
+      const groupId = remoteMessage?.data?.group || null;
+      const baby = remoteMessage?.data?.baby || '';
+      const type = remoteMessage?.data?.type || '';
+      const date = remoteMessage?.data?.date ? new Date(remoteMessage.data.date).toLocaleString() : '';
+      const popupText = `${title}\n${body}\nFecha: ${date}`;
+      setNotifPopup({ visible: false, message: popupText, groupId });
+      handleNotifPress();
+      
+    });
+
+    // App iniciada por notificación (quit)
+    messaging().getInitialNotification().then(remoteMessage => {
+      if (remoteMessage) {
+        console.log('[FCM] App iniciada por notificación:', remoteMessage);
+        // Navegación o lógica especial
+        const title = remoteMessage?.notification?.title || 'Notificación';
+        const body = remoteMessage?.notification?.body || '';
+        const groupId = remoteMessage?.data?.group || null;
+        const baby = remoteMessage?.data?.baby || '';
+        const type = remoteMessage?.data?.type || '';
+        const date = remoteMessage?.data?.date ? new Date(remoteMessage.data.date).toLocaleString() : '';
+        const popupText = `${title}\n${body}\nFecha: ${date}`;
+        setNotifPopup({ visible: false, message: popupText, groupId });
+        handleNotifPress();
+      }
+    });
+
+    return () => {
+      unsubscribeOnMessage();
+      unsubscribeOnNotificationOpened();
+    };
+  }, []);
+
+    const handleNotifPress = () => {
+      setNotifPopup(p => ({ ...p, visible: false }));
+      const groupId = notifPopup.groupId;
+      if (groupId) {
+        navigation.navigate('ViewerScreen', { group: { id: groupId }, userName: getUserName() });
+      }
+    };
 
   useEffect(() => {
     // Configurar Google Sign-In
@@ -118,7 +215,10 @@ const HomeGroupsScreen = ({ navigation }) => {
         email.current = currentUser.user.email;
         setDisplayEmail(currentUser.user.email);
         console.log('User already signed in:', email.current);
-        
+        // Registrar token push en el backend
+        if (currentUser.user.email) {
+          await registerPushToken(currentUser.user.email);
+        }
         // Cargar grupos del usuario autenticado
         await loadUserGroups(currentUser.user.email);
       } else {
@@ -146,7 +246,10 @@ const HomeGroupsScreen = ({ navigation }) => {
         email.current = currentUser.user.email;
         setDisplayEmail(currentUser.user.email);
         console.log('Silent sign in successful:', email.current);
-        
+        // Registrar token push en el backend
+        if (currentUser.user.email) {
+          await registerPushToken(currentUser.user.email);
+        }
         // Cargar grupos del usuario autenticado
         await loadUserGroups(currentUser.user.email);
       } catch (error) {
@@ -185,7 +288,10 @@ const HomeGroupsScreen = ({ navigation }) => {
           email.current = userInfo.data.user.email;
           setDisplayEmail(userInfo.data.user.email);
           console.log('Manual sign in successful:', email.current);
-          
+          // Registrar token push en el backend
+          if (userInfo.data.user.email) {
+            await registerPushToken(userInfo.data.user.email);
+          }
           // Cargar grupos del usuario autenticado
           await loadUserGroups(userInfo.data.user.email);
         } catch (signInError) {
@@ -565,6 +671,32 @@ const HomeGroupsScreen = ({ navigation }) => {
         </View>
       </Modal>
 
+      {/* Popup de notificación push solo foreground */}
+      {notifPopup.visible && (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleNotifPress}
+          style={{
+            position: 'absolute',
+            top: 32,
+            left: 20,
+            right: 20,
+            backgroundColor: '#fff',
+            borderRadius: 16,
+            paddingVertical: 18,
+            paddingHorizontal: 22,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            elevation: 8,
+            zIndex: 100,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: '#222', fontSize: 17, fontWeight: '600', textAlign: 'center' }}>{notifPopup.message}</Text>
+        </TouchableOpacity>
+      )}
       {/* Toast de éxito */}
       {showToast && (
         <View style={styles.toastContainer}>

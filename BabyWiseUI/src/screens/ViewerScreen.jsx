@@ -12,7 +12,7 @@ import { useSocket } from '../contexts/SocketContext';
 const ViewerScreen = ({ route, navigation }) => {
   const { group, userName } = route.params || {};
   const socket = useSocket();
-  const ROOM_ID = `baby-room-${group.id}`;
+  const ROOM_ID = `${group.id}`;
   const [token, setToken] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
   const [error, setError] = useState(null);

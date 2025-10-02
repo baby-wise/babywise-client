@@ -17,7 +17,7 @@ const CameraScreen = ({ route }) => {
   const [error, setError] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const socket = useSocket();
-  const ROOM_ID = `baby-room-${group.id}`;
+  const ROOM_ID = `${group.id}`;
   // Unirse a la sala como cámara y escuchar eventos cuando el socket esté listo
   useEffect(() => {
     if (socket && socket.connected) {
