@@ -185,27 +185,22 @@ async function getGroupById(groupId) {
 }
 
 const addCamera = async (req, res)=>{ 
-    const {UID, groupId,name} = req.body
+    const {groupId,name} = req.body
     const groupDB = await getGroupById(groupId)
-    const userDB = await getUserById(UID)
 
-    if(groupDB && userDB){//Verifico que exista el grupo y el usuario
+    if(groupDB){//Verifico que exista el grupo 
         const group = new Group(groupDB)
-        if(group.users.some(u => u._id.toString() == userDB._id.toString())){ //Verifico que el usuario este en el grupo
-            group.addCamera(name)
-            try {
-                await Group_DB.updateOne(
-                    { _id: groupDB._id },
-                        { $set: { 
-                            cameras: group.cameras
-                        }}
-                )
-                res.status(200).json(group)
-            } catch (error) {
-                res.status(500).json(error)
-            }
-        }else{
-            res.status(304).json(group)
+        group.addCamera(name)
+        try {
+            await Group_DB.updateOne(
+                { _id: groupDB._id },
+                    { $set: { 
+                        cameras: group.cameras
+                    }}
+            )
+            res.status(200).json(group)
+        } catch (error) {
+            res.status(500).json(error)
         }
     }else{
         res.status(404).json({error: "Group or user not found"})

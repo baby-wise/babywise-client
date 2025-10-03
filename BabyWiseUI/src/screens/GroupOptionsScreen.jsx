@@ -144,11 +144,6 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [showCameraNameModal, setShowCameraNameModal] = useState(false);
   const [cameraName, setCameraName] = useState('');
 
-
-  const goToViewer = () => {
-    navigation.navigate('Viewer', { group, userName });
-  };
-
   const goToCamera = () => {
     setShowCameraNameModal(true);
   };
@@ -163,6 +158,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       return;
     }
     setShowCameraNameModal(false);
+    groupService.addCamera(group.id,cameraName)
     navigation.navigate('Camera', { group, cameraName: cameraName.trim(), userName });
     setCameraName('');
   };
@@ -257,9 +253,11 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               )
             )}
         </ScrollView>
-        <TouchableOpacity style={GlobalStyles.fab} onPress={goToCamera}>
-                <Text style={GlobalStyles.fabText}>+</Text>
-        </TouchableOpacity>
+        <View>
+          <TouchableOpacity style={GlobalStyles.fab} onPress={goToCamera}>
+                  <Text style={GlobalStyles.fabText}>+</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Actions section */}

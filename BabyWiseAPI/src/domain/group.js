@@ -48,7 +48,7 @@ class Group {
     }
     existingBabyName(name){
         const normName = normalizeName(name)
-        return this.babies.some(b=> normalizeName(b) === normName) 
+        return Object.values(this.cameras).some(c=> normalizeName(c.name) === normName) 
     }
 }
 
