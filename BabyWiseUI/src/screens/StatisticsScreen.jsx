@@ -17,6 +17,7 @@ import {
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import ChartWebView from '../components/ChartWebView';
 import ChatPanel from '../components/ChatPanel';
+import { GlobalStyles } from '../styles/Styles';
 
 
   {/* Chart container layout measurement for overlay */}
@@ -106,7 +107,9 @@ const StatisticsScreen = ({ navigation, route }) => {
   const fetchEventsByCamera = async (cameraUid) => {
     try {
       setIsLoadingEvents(true);
+      console.log('fetchEventsByCamera called with cameraUid:', cameraUid, 'type:', typeof cameraUid);
   const url = `${SIGNALING_SERVER_URL}/events/camera/${cameraUid}`;
+      console.log('Fetching from URL:', url);
       const res = await fetch(url);
       const data = await res.json();
       if (data && data.success && data.data && data.data.events) {
@@ -328,23 +331,21 @@ const StatisticsScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={GlobalStyles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>← Volver</Text>
+      <View>
+        <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={GlobalStyles.backButtonText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Estadísticas</Text>
-      </View>
+       </View>
+      
 
-      <View style={styles.content}>
+      <View style={GlobalStyles.container}>
+      <Text style={GlobalStyles.title}>Estadísticas</Text>
         
         {/* Selector de cámaras */}
         <View style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 14, color: '#555', marginBottom: 6 }}>Cámara</Text>
+          <Text style={{ fontSize: 14, color: '#555', marginBottom: 6 }}>Bebe</Text>
           {isLoadingEvents ? (
             <View style={{ padding: 12, alignItems: 'center' }}>
               <ActivityIndicator size="small" color="#3E5F8A" />
@@ -359,11 +360,26 @@ const StatisticsScreen = ({ navigation, route }) => {
               {/* Expanded list */}
               {dropdownOpen && (
                 <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, overflow: 'hidden' }}>
-                  {cameras.map(cam => (
-                    <TouchableOpacity key={cam.uid} onPress={async () => { setDropdownOpen(false); setSelectedCamera(cam); await fetchEventsByCamera(cam.uid); }} style={{ padding: 12, backgroundColor: selectedCamera && selectedCamera.uid === cam.uid ? '#eef4ff' : '#fff' }}>
-                      <Text style={{ color: '#333' }}>{cam.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {cameras.map((cam, index) => {
+                    // Use the same logic as in fetchCameras to get the camera UID
+                    const camUid = cam.user && cam.user._id ? cam.user._id : cam.user ? cam.user : cam.uid;
+                    return (
+                      <TouchableOpacity 
+                        key={camUid || index} 
+                        onPress={async () => { 
+                          setDropdownOpen(false); 
+                          setSelectedCamera(cam); 
+                          await fetchEventsByCamera(camUid); 
+                        }} 
+                        style={{ 
+                          padding: 12, 
+                          backgroundColor: selectedCamera && ((selectedCamera.user && selectedCamera.user._id) === camUid || selectedCamera.user === camUid || selectedCamera.uid === camUid) ? '#eef4ff' : '#fff' 
+                        }}
+                      >
+                        <Text style={{ color: '#333' }}>{cam.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -372,9 +388,9 @@ const StatisticsScreen = ({ navigation, route }) => {
 
         {/* Gráfico - Área fija que no scrollea */}
         {isLoadingEvents ? (
-          <View style={styles.loadingContainer} pointerEvents="none">
+          <View style={GlobalStyles.loadingContainer} pointerEvents="none">
             <ActivityIndicator size="large" color="#3E5F8A" />
-            <Text style={styles.loadingText}>Cargando datos...</Text>
+            <Text style={GlobalStyles.cardSubtitle}>Cargando datos...</Text>
           </View>
         ) : (
           <View style={styles.chartContainer} onLayout={(e) => {
@@ -401,9 +417,9 @@ const StatisticsScreen = ({ navigation, route }) => {
         {/* Usamos el ScrollView del padre (no lo removemos). Hacemos que su content se expanda y permita taps mientras
             el teclado está abierto para que el botón Enviar sea accesible. */}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-          <ChatPanel 
+          <ChatPanel
             groupId={group.id}
-            cameraUid={selectedCamera ? selectedCamera.uid : null}
+            cameraUid={selectedCamera ? (selectedCamera.user && selectedCamera.user._id ? selectedCamera.user._id : selectedCamera.user ? selectedCamera.user : selectedCamera.uid) : null}
             initialMessages={[{ id: 'greeting', role: 'assistant', text: '¡Hola! Soy tu asistente inteligente. ¿Cómo puedo ayudarte?' }]}
           />
         </ScrollView>
@@ -413,61 +429,12 @@ const StatisticsScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#3E5F8A',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  content: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    paddingHorizontal: 20,
-    paddingTop: 30,
-  },
-  groupName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#333',
-    textAlign: 'center',
-  marginBottom: 12,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
   chartContainer: {
     backgroundColor: '#fff',
     borderRadius: 15,
     padding: 12,
-  marginBottom: 12,
-  minHeight: 180,
+    marginBottom: 12,
+    minHeight: 180,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

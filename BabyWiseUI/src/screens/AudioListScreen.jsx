@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, StyleSheet, Alert, SafeAreaView } from 'react-native';
 
 import { pick } from '@react-native-documents/picker';
 import Video from 'react-native-video';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
+import { GlobalStyles, Colors } from '../styles/Styles';
 
 const AudioListScreen = () => {
   const navigation = useNavigation();
@@ -106,7 +107,7 @@ const AudioListScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={GlobalStyles.loadingContainer}>
         <ActivityIndicator size="large" color="#007bff" />
         <Text style={{ color: '#fff', marginTop: 16, fontWeight: 'bold', fontSize: 18, textAlign: 'center' }}>Cargando audios...</Text>
       </View>
@@ -115,7 +116,7 @@ const AudioListScreen = () => {
 
   if (error) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={GlobalStyles.loadingContainer}>
         <Text style={{ color: 'red', fontWeight: 'bold' }}>{error}</Text>
         <Button title="Volver" onPress={() => navigation.goBack()} />
       </View>
@@ -158,35 +159,54 @@ const AudioListScreen = () => {
   };
 
   const renderAudioItem = ({ item: audio }) => (
-    <View style={styles.itemRow}>
-      <TouchableOpacity style={styles.item} onPress={() => handleSelect(audio)}>
-        <Text style={styles.itemText}>
+    <View style={GlobalStyles.itemRow}>
+      <TouchableOpacity style={[GlobalStyles.optionList, GlobalStyles.card]}onPress={() => handleSelect(audio)}>
+        <Text style={GlobalStyles.cardTitle}>
           {audio.key.replace(`audio/${room}/`, '')}
           {playingAudio && playingAudio.key === audio.key ? '  🔊' : ''}
         </Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteAudio(audio)}>
-        <Text style={styles.trashEmoji}>❌</Text>
+      <TouchableOpacity style={GlobalStyles.deleteButton} onPress={() => handleDeleteAudio(audio)}>
+        <Text >❌</Text>
       </TouchableOpacity>
     </View>
   );
 
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Audios</Text>
+    <SafeAreaView style={GlobalStyles.container}>
+      <View>
+        <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={GlobalStyles.backButtonText}>‹</Text>
+        </TouchableOpacity>
+      </View>
+      
+      <View style={GlobalStyles.optionList}>
       {audios.length === 0 ? (
-        <Text style={styles.emptyText}>No hay audios disponibles.</Text>
+        <View>
+          <Text style={GlobalStyles.title}>Audios</Text>
+          <Text style={GlobalStyles.cardSubtitle}>No hay audios disponibles.</Text>
+        </View>
       ) : (
         <FlatList
           data={audios}
           keyExtractor={item => item.key}
           renderItem={renderAudioItem}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          ListHeaderComponent={
+             <Text style={[GlobalStyles.title, { textAlign: "center", marginBottom: 20 }]}>
+              Audios
+              </Text>
+          }
+          contentContainerStyle={{
+            flexGrow: 1,                  
+            justifyContent: "center",     
+            alignItems: "center",         
+            paddingBottom: 20,
+          }}
         />
       )}
-      <TouchableOpacity style={styles.fab} onPress={handleUploadAudio}>
-        <Text style={styles.fabText}>+</Text>
+      <TouchableOpacity style={GlobalStyles.fab} onPress={handleUploadAudio}>
+        <Text style={GlobalStyles.fabText}>+</Text>
       </TouchableOpacity>
       {playingAudio && (
         <Video
@@ -201,146 +221,9 @@ const AudioListScreen = () => {
           style={{ width: 0, height: 0 }}
         />
       )}
-      <View style={{ marginTop: 32, width: '100%' }}>
-        <Button title="Volver" onPress={() => navigation.goBack()} />
-      </View>
     </View>
+    </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#3E5F8A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '98%',
-    alignSelf: 'center',
-    marginVertical: 0,
-    paddingRight: 24,
-    paddingLeft: 8,
-  },
-  deleteButton: {
-    marginLeft: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteButton: {
-    marginLeft: 8,
-    padding: 6,
-    borderRadius: 16,
-    backgroundColor: 'transparent',
-    minWidth: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteButton: {
-    marginLeft: 8,
-    padding: 6,
-    borderRadius: 16,
-    backgroundColor: 'transparent',
-  },
-  trashEmoji: {
-    fontSize: 28,
-    color: '#e53935',
-    marginLeft: 2,
-    marginRight: 2,
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#3E5F8A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 32,
-    textAlign: 'center',
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    padding: 10,
-    borderRadius: 8,
-  },
-  item: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-    marginVertical: 12,
-    width: '85%',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  itemText: {
-    color: '#3E5F8A',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  emptyText: {
-    color: '#fff',
-    fontSize: 18,
-    marginTop: 40,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    opacity: 0.8,
-  },
-  fab: {
-    backgroundColor: '#fff',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginTop: 16,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  fabText: {
-    color: '#3E5F8A',
-    fontSize: 36,
-    fontWeight: 'bold',
-    marginTop: -2,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    alignSelf: 'center',
-    paddingRight: 24,
-    paddingLeft: 8,
-    marginVertical: 0,
-  },
-  deleteButton: {
-    marginLeft: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 16,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 44,
-  },
-});
 
 export default AudioListScreen;

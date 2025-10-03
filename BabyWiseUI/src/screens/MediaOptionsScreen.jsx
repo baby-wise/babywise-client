@@ -1,24 +1,32 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { GlobalStyles} from '../styles/Styles';
 
 const MediaOptionsScreen = ({ navigation, route }) => {
   const { group } = route.params;
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Archivos multimedia</Text>
+    <SafeAreaView style={GlobalStyles.container}>
+      <View>
+      <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={GlobalStyles.backButtonText}>‹</Text>
+      </TouchableOpacity>
+      </View>
+      <View style={GlobalStyles.optionList}>
+      <Text style={GlobalStyles.title}>Archivos multimedia</Text>
       <TouchableOpacity
-        style={styles.button}
+        style={GlobalStyles.optionButton}
         onPress={() => navigation.navigate('RecordingsListScreen', { room: `baby-room-${group.id}` })}
       >
-        <Text style={styles.buttonText}>Ver videos</Text>
+        <Text style={GlobalStyles.optionButtonText}>Ver videos</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={styles.button}
+        style={GlobalStyles.optionButton}
         onPress={() => navigation.navigate('AudioListScreen', { room: `baby-room-${group.id}` })}
       >
-        <Text style={styles.buttonText}>Ver audios</Text>
+        <Text style={GlobalStyles.optionButtonText}>Ver audios</Text>
       </TouchableOpacity>
     </View>
+  </SafeAreaView>
   );
 };
 

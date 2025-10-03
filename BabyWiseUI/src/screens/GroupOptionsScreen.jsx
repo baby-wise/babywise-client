@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
+import { GlobalStyles, Colors} from '../styles/Styles';
 
 
 const GroupOptionsScreen = ({ navigation, route }) => {
@@ -209,10 +210,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={GlobalStyles.container}>
       <View style={styles.headerRow}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>‹</Text>
+        <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={GlobalStyles.backButtonText}>‹</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
@@ -256,82 +257,33 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               )
             )}
         </ScrollView>
+        <TouchableOpacity style={GlobalStyles.fab} onPress={goToCamera}>
+                <Text style={GlobalStyles.fabText}>+</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Actions section */}
-      <View style={styles.actionsSection}>
-        <Text style={styles.sectionTitle}>Acciones</Text>
-    
-        <View style={styles.actionsGridRowFirst}>  
-        <TouchableOpacity style={styles.gridCard} onPress={goToCamera}>
-          <View style={styles.cardIcon}><Text>📲</Text></View>
-          <Text style={styles.cardActionTitle}>Ser Cámara</Text>
-          <Text style={styles.cardActionSubtitle}>Transmitir desde tu móvil</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.gridCard} onPress={addMembers}>
-          <View style={styles.cardIcon}><Text>➕</Text></View>
-          <Text style={styles.cardActionTitle}>Agregar Miembros</Text>
-          <Text style={styles.cardActionSubtitle}>Invitar familia</Text>
-        </TouchableOpacity>
-        {/* placeholder to keep spacing aligned with second column */}
-        
+      <View style={[GlobalStyles.optionList, {marginTop: -150}]}>
+      <TouchableOpacity
+        style={GlobalStyles.optionButton}
+        onPress={() => navigation.navigate('MediaOptionsScreen', { group })}>
+        <Text style={GlobalStyles.cardTitle}>🖼️ Multimedia</Text>
+        <Text style={GlobalStyles.cardSubtitle}>Fotos y videos</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={GlobalStyles.optionButton}
+        onPress={goToStatistics}>
+        <Text style={GlobalStyles.cardTitle}>📈Estadísticas</Text>
+        <Text style={GlobalStyles.cardSubtitle}>{group.members} Actividad</Text>
+      </TouchableOpacity>
       </View>
 
-      <View style={styles.actionsGridRow}>
-        <TouchableOpacity style={styles.gridCard} onPress={() => navigation.navigate('MediaOptionsScreen', { group })}>
-          <View style={styles.cardIcon}><Text>🖼️</Text></View>
-          <Text style={styles.cardActionTitle}>Multimedia</Text>
-          <Text style={styles.cardActionSubtitle}>Fotos y videos</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.gridCard} onPress={goToStatistics}>
-          <View style={styles.cardIcon}><Text>📈</Text></View>
-          <Text style={styles.cardActionTitle}>Estadísticas</Text>
-          <Text style={styles.cardActionSubtitle}>Actividad</Text>
-        </TouchableOpacity>
-      </View>
-      </View>
-
-
-
-      {/* Modal para ingresar nombre de la cámara */}
-      <Modal
-        visible={showCameraNameModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowCameraNameModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Nombre de la cámara</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Ej: Habitación bebé, Living, etc."
-              placeholderTextColor="#999"
-              value={cameraName}
-              onChangeText={setCameraName}
-              autoFocus={true}
-              autoCapitalize="words"
-              autoCorrect={false}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={() => setShowCameraNameModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.addButton]} 
-                onPress={handleCameraName}
-              >
-                <Text style={styles.addButtonText}>Confirmar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+       <TouchableOpacity
+        style={[GlobalStyles.googleButton, {backgroundColor: Colors.primary}]}
+        onPress={addMembers}>
+        <Text style={GlobalStyles.cardTitle}>Agregar Miembros</Text>
+        <Text style={GlobalStyles.cardSubtitle}>Invitar familia</Text>
+      </TouchableOpacity>
 
       {/* Modal para agregar miembro */}
       <Modal
@@ -392,6 +344,43 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         </View>
       </Modal>
 
+      {/* Modal para ingresar nombre de la cámara */}
+      <Modal
+        visible={showCameraNameModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCameraNameModal(false)}
+      >
+        <View style={GlobalStyles.modalOverlay}>
+          <View style={GlobalStyles.modalContainer}>
+            <Text style={GlobalStyles.modalTitle}>Nombre del Bebe</Text>
+            <TextInput
+              style={GlobalStyles.modalInput}
+              placeholderTextColor="#999"
+              value={cameraName}
+              onChangeText={setCameraName}
+              autoFocus={true}
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
+            <View style={GlobalStyles.modalButtons}>
+              <TouchableOpacity 
+                style={[GlobalStyles.modalButton, GlobalStyles.cancelButton]} 
+                onPress={() => setShowCameraNameModal(false)}
+              >
+                <Text style={GlobalStyles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[GlobalStyles.modalButton, GlobalStyles.addButton]} 
+                onPress={handleCameraName}
+              >
+                <Text style={GlobalStyles.addButtonText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
       {/* Modal de Settings */}
       <Modal
         visible={showSettingsModal}
@@ -399,9 +388,9 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         animationType="fade"
         onRequestClose={() => setShowSettingsModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Configuración</Text>
+        <View style={GlobalStyles.modalOverlay}>
+          <View style={GlobalStyles.modalContainer}>
+            <Text style={GlobalStyles.modalTitle}>Configuración</Text>
             
             {isLoadingSettings ? (
               <View style={styles.loadingContainer}>
@@ -436,17 +425,17 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               </>
             )}
             
-            <View style={styles.modalButtons}>
+            <View style={GlobalStyles.modalButtons}>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
+                style={[GlobalStyles.modalButton, GlobalStyles.cancelButton]} 
                 onPress={() => setShowSettingsModal(false)}
                 disabled={isSavingSettings}
               >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                <Text style={GlobalStyles.cancelButtonText}>Cancelar</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.modalButton, styles.addButton]} 
+                style={[GlobalStyles.modalButton, GlobalStyles.addButton]} 
                 onPress={saveGroupSettings}
                 disabled={isSavingSettings || isLoadingSettings}
               >
