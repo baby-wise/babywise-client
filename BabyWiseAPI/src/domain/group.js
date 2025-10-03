@@ -2,14 +2,12 @@ import mongoose from "mongoose";
 import { User_DB } from "./user.js";
 
 class Group {
-    constructor({_id, name, users, cameras, viewers, admins,babies }) {
+    constructor({_id, name, users, cameras, admins }) {
         this._id = _id
         this.name = name;
         this.users = users || [];
         this.cameras = cameras || [];
-        this.viewers = viewers || [];
         this.admins = admins || [];
-        this.babies = babies || []
     }
 
     addMember(newMember) {
@@ -17,15 +15,13 @@ class Group {
     }
 
     removeMember(memberToRemove) {
-        const memberLists = ['users', 'viewers', 'admins'];
+        const memberLists = ['users', 'admins'];
 
         for (const listName of memberLists) {
             this[listName] = this[listName].filter(
                 (member) => member._id.toString() !== memberToRemove._id.toString()
             );
         }
-
-        this.cameras = this.cameras.filter(c => c.user._id.toString() !==  memberToRemove._id.toString())
     }
 
     isAdmin(member) {
@@ -40,77 +36,30 @@ class Group {
         }
     }
 
-    addCamera(member, camaraName) {
-        if(this.getRoleForMember(member) === 'Viewer'){
-            this.viewers = this.viewers.filter(v => v._id.toString() !==  member._id.toString())
-        }
-        const existingCamera = this.cameras.find(
-            c => c.user._id.toString() === member._id.toString()
-        );
-        
-        if (existingCamera) {
-            existingCamera.name = camaraName;
-        } else { //Si no existe la nombre de camara para ese miembro le agrego uno
+    addCamera(camaraName) {
+        const existingCamaraName = this.existingBabyName(camaraName)
+
+        if(!existingCamaraName){
             this.cameras.push({
-                name: camaraName,
-                user: member
-            });
+                name: camaraName
+            })
         }
 
-    }
-    addBabyName(name){
-        if(!this.existingBabyName(name)){
-            this.babies.push(name)
-        }
     }
     existingBabyName(name){
         const normName = normalizeName(name)
         return this.babies.some(b=> normalizeName(b) === normName) 
     }
-
-    getBabyNameForMember(member) {
-        const camera = this.cameras.find(c => c.user._id.toString() === member._id.toString())
-        const babyNameFromCamera = camera.name;
-        const normalizedCameraName = normalizeName(babyNameFromCamera);
-
-        // Buscar en la lista de bebés el que coincida normalizado
-        const babyName = this.babies.find(baby => normalizeName(baby) === normalizedCameraName);
-
-        return babyName
-    }
-
-    addViewer(member){
-        if(this.getRoleForMember(member) === 'Camera'){
-            this.cameras = this.cameras.filter(c => c.user._id.toString() !==  member._id.toString())
-        }
-
-        if(this.getRoleForMember(member) !== 'Viewer'){
-            this.viewers.push(member)
-        }
-    }
-
-    getRoleForMember(member){
-        let role
-        if(this.viewers.some(v => v._id.toString() === member._id.toString())) role = 'Viewer'
-        if(this.cameras.some(c => c.user._id.toString() === member._id.toString())) role = 'Camera'
-
-        return role
-    }
 }
 
 const groupSchema = new mongoose.Schema({
   name: { type: String, required: true },
-
   users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   cameras: [{
     name: { type: String},
-    user:{ type: mongoose.Schema.Types.ObjectId, ref: "User" },
     status: {type: String, enum: ['ONLINE', 'OFFLINE'], default: 'OFFLINE'}
   }],
-  viewers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-  admins: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-  babies: [{ type: String}]
-  
+  admins: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]  
   //preferencias: { type: mongoose.Schema.Types.ObjectId, ref: "Preferencias" }
 });
 
