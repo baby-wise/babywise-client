@@ -139,14 +139,15 @@ const receiveDetectionEvent = async (req, res) => {
 
     if (!lastPushSent[key] || now - lastPushSent[key] > COOLDOWN_MS) {
       lastPushSent[key] = now;
-      const users = await User_DB.find({ pushToken: { $exists: true, $ne: null }, platform: { $in: ['android', 'ios'] } });
-      for (const user of users) {
-        if (user.pushToken) {
+        // Buscar solo usuarios que pertenecen al grupo y filtrar en memoria
+        const groupDB = await Group_DB.findById(group).populate('users');
+        const users = (groupDB.users || []).filter(u => u.pushToken);
+        for (const user of users) {
           const message = {
             token: user.pushToken,
             notification: {
               title: `Evento detectado`, 
-              body: `Tipo: ${type} - Bebé: ${baby}`,
+              body: `${type} de ${baby} a las ${event.date.toLocaleTimeString()}`,
             },
             data: {
               group: String(group),
@@ -161,7 +162,6 @@ const receiveDetectionEvent = async (req, res) => {
             console.error('Error enviando push a', user.UID, err);
           }
         }
-      }
     } else {
       console.log(`[COOLDOWN] Push no enviado para ${key}, dentro de los ${COOLDOWN_MS / 1000}s`);
     }
