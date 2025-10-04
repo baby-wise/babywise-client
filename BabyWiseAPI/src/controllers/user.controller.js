@@ -4,7 +4,7 @@ import { User_DB } from "../domain/user.js"
 const registerPushToken = async (req, res) => {
     const { UID, pushToken, platform } = req.body;
     if (!UID || !pushToken || !platform) {
-        return res.status(400).json({ error: 'Faltan campos requeridos: UID, pushToken, platform' });
+        return res.status(400).json({ error: 'Faltan campos requeridos: UID, pushToken, platform. Fueron recibidos: ' + JSON.stringify(req.body) });
     }
     try {
         const user = await User_DB.findOneAndUpdate(

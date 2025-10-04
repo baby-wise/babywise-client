@@ -135,7 +135,7 @@ const receiveDetectionEvent = async (req, res) => {
     // Cooldown: solo enviar push si no se envió en los últimos 60 segundos para este grupo-bebé-tipo
     const key = `${group}_${baby}_${type}`;
     const now = Date.now();
-    const COOLDOWN_MS = 60000; // 60 segundos
+    const COOLDOWN_MS = 6000; // 6 segundos
 
     if (!lastPushSent[key] || now - lastPushSent[key] > COOLDOWN_MS) {
       lastPushSent[key] = now;
@@ -145,7 +145,7 @@ const receiveDetectionEvent = async (req, res) => {
           const message = {
             token: user.pushToken,
             notification: {
-              title: `🚨 Evento detectado`, 
+              title: `Evento detectado`, 
               body: `Tipo: ${type} - Bebé: ${baby}`,
             },
             data: {
