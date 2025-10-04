@@ -120,6 +120,10 @@ const App = () => {
     // Foreground: mensaje recibido
     const unsubscribeOnMessage = messaging().onMessage(async remoteMessage => {
       console.log('[FCM] Notificación recibida en foreground:', remoteMessage);
+      // Ignorar mensajes vacíos o sin datos relevantes
+      if (!remoteMessage?.data || Object.keys(remoteMessage.data).length === 0 || !remoteMessage.data.type) {
+        return;
+      }
       const type = remoteMessage?.data?.type || '';
       const babyName = remoteMessage?.data?.baby || '';
       let popupText = '';
