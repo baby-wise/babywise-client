@@ -67,8 +67,22 @@ const getEventsByGroup = async (req, res) => {
 const getEventsByCamera = async (req, res) => {
   try {
     const { cameraUid } = req.params;
+    
+    // Debug logging
+    console.log('getEventsByCamera called with cameraUid:', cameraUid, 'type:', typeof cameraUid);
+
+    // Validate cameraUid parameter
+    if (!cameraUid || cameraUid === 'undefined' || cameraUid === 'null' || cameraUid.trim() === '') {
+      console.log('Invalid cameraUid detected:', cameraUid);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid camera ID provided',
+        receivedValue: cameraUid
+      });
+    }
 
     // Find the group that contains this camera
+    console.log('Searching for group with camera user:', cameraUid);
     const group = await Group_DB.findOne({ 'cameras.user': cameraUid });
     if (!group) return res.status(404).json({ success: false, message: 'Camera not found in any group' });
 
