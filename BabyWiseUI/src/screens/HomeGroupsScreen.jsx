@@ -69,13 +69,6 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
     }
   };
 
-  const handleNotifPress = () => {
-    setNotifPopup(p => ({ ...p, visible: false }));
-    const groupId = notifPopup.groupId;
-    if (groupId) {
-      navigation.navigate('ViewerScreen', { group: { id: groupId }, userName: getUserName() });
-    }
-  };
 
   useEffect(() => {
     // Configurar Google Sign-In

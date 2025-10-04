@@ -164,7 +164,7 @@ const App = () => {
       userName = userEmail.split('@')[0];
     }
     if (groupId && navigationRef.current) {
-      navigationRef.current.navigate('ViewerScreen', { group: { id: groupId }, userName });
+      navigationRef.current.navigate('Viewer', { group: { id: groupId }, userName });
     }
   };
 
@@ -197,7 +197,7 @@ const App = () => {
             options={{ title: `Baby Home Screen` }}
           />
           <Stack.Screen 
-            name="ViewerScreen" 
+            name="Viewer" 
             component={ViewerScreen} 
             options={{ title: 'Baby Monitor Viewer' }}
           />

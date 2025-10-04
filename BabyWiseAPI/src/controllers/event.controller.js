@@ -155,7 +155,12 @@ const receiveDetectionEvent = async (req, res) => {
       lastPushSent[key] = now;
         // Buscar solo usuarios que pertenecen al grupo y filtrar en memoria
         const groupDB = await Group_DB.findById(group).populate('users');
-        const users = (groupDB.users || []).filter(u => u.pushToken);
+        // Obtener IDs de usuarios que son cámaras
+        const cameraUserIds = (groupDB.cameras || []).map(c => String(c.user));
+        // Filtrar usuarios: solo los que no son cámaras y tienen pushToken
+        const users = (groupDB.users || []).filter(u =>
+          u.pushToken && !cameraUserIds.includes(String(u._id))
+        );
         for (const user of users) {
           const message = {
             token: user.pushToken,

@@ -7,7 +7,7 @@ dotenv.config();
 
 const TOGGLE_AUDIO_TRACK_EGRESS = false;
 const TOGGLE_S3_HLS_EGRESS = false;
-const TOGGLE_AGENT_DISPATCH = false;
+const TOGGLE_AGENT_DISPATCH = true;
 
 // Livekit vars
 const apiKey = process.env.LIVEKIT_API_KEY;
