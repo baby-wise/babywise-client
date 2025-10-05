@@ -11,17 +11,12 @@ class Group {
     }
 
     addMember(newMember) {
-        this.users.push(newMember);
+        this.users.push({user:newMember});
     }
 
     removeMember(memberToRemove) {
-        const memberLists = ['users', 'admins'];
-
-        for (const listName of memberLists) {
-            this[listName] = this[listName].filter(
-                (member) => member._id.toString() !== memberToRemove._id.toString()
-            );
-        }
+        this.admins = this.admins.filter((member) => member._id.toString() !== memberToRemove._id.toString())
+        this.users = this.users.filter((member) => member.user._id.toString() !== memberToRemove._id.toString())
     }
 
     isAdmin(member) {
@@ -54,7 +49,9 @@ class Group {
 
 const groupSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  users: [{ user:{type: mongoose.Schema.Types.ObjectId, ref: "User"},
+            role: {type: String, enum: ['viewer', 'camera'], default: 'viewer'}
+  }],
   cameras: [{
     name: { type: String},
     status: {type: String, enum: ['ONLINE', 'OFFLINE'], default: 'OFFLINE'}

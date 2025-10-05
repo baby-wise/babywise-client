@@ -6,7 +6,7 @@ import {v4 as uuidv4} from "uuid"
 const groups = async (req,res)=>{
     try {
         const groups = await Group_DB.find()
-            .populate("users")
+            .populate("users.user")
             .populate("admins")
         
         res.json(groups)
@@ -45,7 +45,7 @@ const addMember  = async (req,res)=>{
         const groupDB = await getGroupById(invitationCodeDB.groupId)
         const group = new Group(groupDB)
 
-        if(!group.users.some(u => u._id.toString() == userDB._id.toString())){//Verifico que el usuario no esta ya en ese grupo
+        if(!group.users.some(u => u.user._id.toString() == userDB._id.toString())){//Verifico que el usuario no esta ya en ese grupo
             group.addMember(userDB)
             try {     
                 await Group_DB.updateOne(
@@ -73,15 +73,14 @@ const removeMember  = async (req,res)=>{
     if(groupDB && userDB){//Verifico que exista el grupo y el usuario
         const group = new Group(groupDB)
 
-        if(group.users.some(u => u._id.toString() == userDB._id.toString())){//Verifico que el usuario esta en ese grupo
+        if(group.users.some(u => u.user._id.toString() == userDB._id.toString())){//Verifico que el usuario esta en ese grupo
             group.removeMember(userDB)
             try {       
                 await Group_DB.updateOne(
                     {_id: groupDB._id},
                     {$set: {
                         users: group.users,
-                        admins: group.admins,
-                        cameras: group.cameras,
+                        admins: group.admins
                     }}
                 )
                 res.status(200).json(group)
@@ -122,7 +121,7 @@ const addAdmin  = async (req,res)=>{
     if(groupDB && userDB){//Verifico que exista el grupo y el usuario
         const group = new Group(groupDB)
 
-        if(group.users.some(u => u._id.toString() == userDB._id.toString()) && !group.isAdmin(userDB)){//Verifico que el usuario esta en ese grupo y que no sea ya Admin
+        if(group.users.some(u => u.user._id.toString() == userDB._id.toString()) && !group.isAdmin(userDB)){//Verifico que el usuario esta en ese grupo y que no sea ya Admin
             group.addAdmin(userDB)
             try {                
                 await Group_DB.updateOne(
@@ -147,9 +146,10 @@ const getGroupsForUser  = async (req,res)=>{
     if(userDB){
         try {
             const groups = await Group_DB.find({
-                users: userDB
+                'users.user': userDB
             })
                 .populate("admins")
+                .populate("users.user")
             res.status(200).json(groups)
         } catch (error) {
             res.status(500).json(error)
@@ -161,7 +161,7 @@ const getGroupsForUser  = async (req,res)=>{
 
 const getInviteCode = async (req, res) => {
     const {groupId} = req.body
-
+    console.log("Generando Codigo de invitacion para: ", groupId)
     const groupDB = await getGroupById(groupId)
     if(groupDB){//Verifico que exista el grupo
        const code = uuidv4().split('-')[0]
