@@ -2,6 +2,7 @@ import { AccessToken, AgentDispatchClient , WebhookReceiver, EgressClient, Track
 import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { s3Client } from './bucket.controller.js';
 import dotenv from 'dotenv';
+import { updateCameraStatus } from './group.controller.js';
 
 dotenv.config();
 
@@ -109,15 +110,13 @@ const handleMediaServerEvent = async (req, res) => {
     // Lanzar ParticipantEgress HLS a S3 (Backblaze) para cámaras al unirse
     if (TOGGLE_S3_HLS_EGRESS && event.event === 'participant_joined' && event.participant.identity.startsWith('camera-')) {
         dispatchHLSParticipantEgress(event);
-        // TODO search for camera identity in db
-        // set status = online
-        // save in db
     }
 
     if(event.event === 'participant_left' && event.participant.identity.startsWith('camera-')) {
-        // TODO search for camera identity in db
-        // set status = offline
-        // save in db
+      console.log("Entrando en participant left")
+      const camaraName = event.participant.identity.replace('camera-','')
+      const groupId = event.room.name.replace('baby-room-','')
+      updateCameraStatus(groupId,camaraName,'OFFLINE')
     }
 
     if(TOGGLE_AGENT_DISPATCH && event.event === 'room_started'){
