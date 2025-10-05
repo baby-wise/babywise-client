@@ -126,6 +126,7 @@ const getEventsByCamera = async (req, res) => {
 
 // Recibe evento de detección del Agent
 const receiveDetectionEvent = async (req, res) => {
+  console.log('receiveDetectionEvent called with body:', req.body);
   try {
     const { group, baby, type, date } = req.body;
     if (!group || !baby || !type) {
@@ -134,17 +135,7 @@ const receiveDetectionEvent = async (req, res) => {
     // Persistir evento
     const event = new Event_DB({ group, baby, type, date: date || new Date() });
     await event.save();
-
-    // Emitir por socket a viewers conectados al grupo
-    const viewers = clients.filter(c => c.role === 'viewer' && c.group === group);
-    viewers.forEach(v => {
-      v.socket.emit('notify-event', {
-        group,
-        baby,
-        type,
-        date: event.date,
-      });
-    });
+    console.log(`[EVENT] Evento guardado: ${type} de ${baby} en grupo ${group} a las ${event.date.toLocaleTimeString()}`);
 
     // Cooldown: solo enviar push si no se envió en los últimos 60 segundos para este grupo-bebé-tipo
     const key = `${group}_${baby}_${type}`;
@@ -153,17 +144,15 @@ const receiveDetectionEvent = async (req, res) => {
 
     if (!lastPushSent[key] || now - lastPushSent[key] > COOLDOWN_MS) {
       lastPushSent[key] = now;
-        // Buscar solo usuarios que pertenecen al grupo y filtrar en memoria
-        const groupDB = await Group_DB.findById(group).populate('users');
-        // Obtener IDs de usuarios que son cámaras
-        const cameraUserIds = (groupDB.cameras || []).map(c => String(c.user));
-        // Filtrar usuarios: solo los que no son cámaras y tienen pushToken
+        const groupDB = await Group_DB.findById(group).populate('users.user');
+        
         const users = (groupDB.users || []).filter(u =>
-          u.pushToken && !cameraUserIds.includes(String(u._id))
+          u.user.pushToken && u.role !== 'camera'
         );
         for (const user of users) {
+          const userData = user.user
           const message = {
-            token: user.pushToken,
+            token: userData.pushToken,
             notification: {
               title: `Evento detectado`, 
               body: `${type} de ${baby} a las ${event.date.toLocaleTimeString()}`,
@@ -176,9 +165,10 @@ const receiveDetectionEvent = async (req, res) => {
             },
           };
           try {
+            console.log('Notificando del evento a', userData.email);
             await admin.messaging().send(message);
           } catch (err) {
-            console.error('Error enviando push a', user.UID, err);
+            console.error('Error enviando push a', user.user.UID, err);
           }
         }
     } else {
