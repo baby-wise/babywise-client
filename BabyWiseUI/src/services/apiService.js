@@ -181,6 +181,15 @@ export const groupService = {
       console.error('Connection test failed:', error.message);
       return false;
     }
+  },
+
+  //AddCamera
+  async addCamera(groupId, name){
+    try {
+      const response = await apiClient.post('/secure/add-camera',{groupId,name})
+    } catch (error) {
+      console.log(error)
+    }
   }
 };
 

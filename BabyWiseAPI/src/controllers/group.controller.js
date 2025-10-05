@@ -1,4 +1,3 @@
-import { error } from "console"
 import { Group_DB, Group } from "../domain/group.js"
 import { getUserById } from "./user.controller.js"
 import { InvitationCode, InvitationCode_DB } from "../domain/invitation.js"
@@ -7,11 +6,8 @@ import {v4 as uuidv4} from "uuid"
 const groups = async (req,res)=>{
     try {
         const groups = await Group_DB.find()
-            .populate("users")
+            .populate("users.user")
             .populate("admins")
-            .populate("cameras")
-            .populate("viewers")
-            .populate("cameras.user")
         
         res.json(groups)
     } catch (error) {
@@ -49,7 +45,7 @@ const addMember  = async (req,res)=>{
         const groupDB = await getGroupById(invitationCodeDB.groupId)
         const group = new Group(groupDB)
 
-        if(!group.users.some(u => u._id.toString() == userDB._id.toString())){//Verifico que el usuario no esta ya en ese grupo
+        if(!group.users.some(u => u.user._id.toString() == userDB._id.toString())){//Verifico que el usuario no esta ya en ese grupo
             group.addMember(userDB)
             try {     
                 await Group_DB.updateOne(
@@ -77,16 +73,14 @@ const removeMember  = async (req,res)=>{
     if(groupDB && userDB){//Verifico que exista el grupo y el usuario
         const group = new Group(groupDB)
 
-        if(group.users.some(u => u._id.toString() == userDB._id.toString())){//Verifico que el usuario esta en ese grupo
+        if(group.users.some(u => u.user._id.toString() == userDB._id.toString())){//Verifico que el usuario esta en ese grupo
             group.removeMember(userDB)
             try {       
                 await Group_DB.updateOne(
                     {_id: groupDB._id},
                     {$set: {
                         users: group.users,
-                        admins: group.admins,
-                        cameras: group.cameras,
-                        viewers: group.viewers
+                        admins: group.admins
                     }}
                 )
                 res.status(200).json(group)
@@ -127,7 +121,7 @@ const addAdmin  = async (req,res)=>{
     if(groupDB && userDB){//Verifico que exista el grupo y el usuario
         const group = new Group(groupDB)
 
-        if(group.users.some(u => u._id.toString() == userDB._id.toString()) && !group.isAdmin(userDB)){//Verifico que el usuario esta en ese grupo y que no sea ya Admin
+        if(group.users.some(u => u.user._id.toString() == userDB._id.toString()) && !group.isAdmin(userDB)){//Verifico que el usuario esta en ese grupo y que no sea ya Admin
             group.addAdmin(userDB)
             try {                
                 await Group_DB.updateOne(
@@ -152,12 +146,10 @@ const getGroupsForUser  = async (req,res)=>{
     if(userDB){
         try {
             const groups = await Group_DB.find({
-                users: userDB
+                'users.user': userDB
             })
-                .populate("cameras.user")
-                .populate("viewers")
                 .populate("admins")
-
+                .populate("users.user")
             res.status(200).json(groups)
         } catch (error) {
             res.status(500).json(error)
@@ -169,7 +161,7 @@ const getGroupsForUser  = async (req,res)=>{
 
 const getInviteCode = async (req, res) => {
     const {groupId} = req.body
-
+    console.log("Generando Codigo de invitacion para: ", groupId)
     const groupDB = await getGroupById(groupId)
     if(groupDB){//Verifico que exista el grupo
        const code = uuidv4().split('-')[0]
@@ -192,66 +184,26 @@ async function getGroupById(groupId) {
     return group
 }
 
-const addCamera = async (req, res)=>{ //Se usa para agregar y cambiar el nombre de alguna camara del grupo
-    const {UID, groupId,name} = req.body
+const addCamera = async (req, res)=>{ 
+    const {groupId,name} = req.body
     const groupDB = await getGroupById(groupId)
-    const userDB = await getUserById(UID)
 
-    if(groupDB && userDB){//Verifico que exista el grupo y el usuario
+    if(groupDB){//Verifico que exista el grupo 
         const group = new Group(groupDB)
-        if(group.users.some(u => u._id.toString() == userDB._id.toString()) && group.getRoleForMember(userDB) !== 'Camera'){ //Verifico que el usuario este en el grupo
-            group.addCamera(userDB,name)
-            group.addBabyName(name)
-            try {
-                await Group_DB.updateOne(
-                    { _id: groupDB._id },
-                        { $set: { 
-                            cameras: group.cameras,
-                            viewers: group.viewers,
-                            babies: group.babies
-                        }}
-                )
-                res.status(200).json(group)
-            } catch (error) {
-                res.status(500).json(error)
-            }
-        }else{
-            res.status(304).json(group)
-        }
-    }else{
-        res.status(404).json({error: "Group or user not found"})
-    }
-}
-
-const addViewer = async (req,res) =>{
-    const {UID, groupId} = req.body
-    const groupDB = await getGroupById(groupId)
-    const userDB = await getUserById(UID)
-
-    if(groupDB && userDB){//Verifico que exista el grupo y el usuario
-        const group = new Group(groupDB)
-
-        if(group.users.some(u => u._id.toString() == userDB._id.toString()) && group.getRoleForMember(userDB) !== 'Viewer'){//Verifico que el usuario esta en ese grupo y que no sea Viewer
-            group.addViewer(userDB)
-            try {     
-                await Group_DB.updateOne(
-                    {_id: groupDB._id},
-                    {$set: {
-                        viewers: group.viewers,
+        group.addCamera(name)
+        try {
+            await Group_DB.updateOne(
+                { _id: groupDB._id },
+                    { $set: { 
                         cameras: group.cameras
-
                     }}
-                )
-                res.status(200).json(group)
-            } catch (error) {
-                res.status(500).json(error)
-            }
-        }else{
-            res.status(304).json(group)
+            )
+            res.status(200).json(group)
+        } catch (error) {
+            res.status(500).json(error)
         }
     }else{
         res.status(404).json({error: "Group or user not found"})
     }
 }
-
-export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, getInviteCode, addCamera, addViewer, getGroupById}
+export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, getInviteCode, addCamera, getGroupById}
