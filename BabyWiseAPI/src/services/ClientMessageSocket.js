@@ -1,3 +1,4 @@
+import { upadeteRoleInGroup, updateCameraStatus } from '../controllers/group.controller.js';
 import { clients  } from '../index.js';
 // Lista global de clientes conectados en memoria
 
@@ -9,9 +10,11 @@ export function setUpClientMessageSocket(socket) {
     socket.on('join-room', (data) => {
         socket.join(data.group);
         console.log(`${data.role} ${socket.id} se unió al grupo: ${data.group}`);
+        upadeteRoleInGroup(data.groupId, data.UID, data.role)
         // Si es cámara, guardar cameraIdentity
         const clientInfo = { socket, role: data.role, group: data.group };
         if (data.role === 'camera' && data.cameraIdentity) {
+            updateCameraStatus(data.groupId,data.baby, "ONLINE")
             clientInfo.cameraIdentity = data.cameraIdentity;
         }
         clients.push(clientInfo); 

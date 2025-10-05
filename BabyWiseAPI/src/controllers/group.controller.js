@@ -206,4 +206,57 @@ const addCamera = async (req, res)=>{
         res.status(404).json({error: "Group or user not found"})
     }
 }
-export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, getInviteCode, addCamera, getGroupById}
+
+async function upadeteRoleInGroup(groupId, UID, role) {
+    try {
+        const userDB = await getUserById(UID)
+        const result = await Group_DB.updateOne({
+                _id: groupId,
+                "users.user": userDB._id 
+            },
+            {
+                $set: {
+                    "users.$.role": role 
+                }
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            console.log("Group or user not found.")
+            return
+        }
+        console.log(`Rol cambiado a ${role} para el miembro ${userDB._id }`)
+    } catch (error) {
+        console.log("Error al hacer update del rol del usuario en el grupo")
+        console.log(error)
+    }
+    
+}
+
+async function updateCameraStatus(groupId, cameraName, status) {
+    try {
+        const result = await Group_DB.updateOne({
+                _id: groupId,
+                "cameras.name": cameraName
+            },
+            {
+                $set: {
+                    "cameras.$.status": status 
+                }
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            console.log("Group or camera not found.")
+            return
+        }
+        console.log(`Staus de la camara ${cameraName} cambiado a ${status}`)
+    } catch (error) {
+        console.log("Error al hacer update del rol del usuario en el grupo")
+        console.log(error)
+    }
+}
+
+export {groups, newGroup, addMember, removeMember, isAdmin, addAdmin, getGroupsForUser, 
+    getInviteCode, addCamera, getGroupById, upadeteRoleInGroup, updateCameraStatus
+}
