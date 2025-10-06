@@ -1,3 +1,6 @@
+import messaging from '@react-native-firebase/messaging';
+import { Platform } from 'react-native';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import React, { useEffect, useState, useRef } from 'react';
 import { 
   SafeAreaView, 
@@ -17,9 +20,10 @@ import { signInWithCredential, GoogleAuthProvider, signOut } from '@react-native
 import { groupService, userService } from '../services/apiService';
 import { GlobalStyles, Colors } from '../styles/Styles';
 
-
-
-const HomeGroupsScreen = ({ navigation }) => {
+const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
+  // Estado para el popup de notificación
+  const [notifPopup, setNotifPopup] = useState({ visible: false, message: '', roomId: null });
+  const notifTimeout = useRef(null);
   const email = useRef();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +40,35 @@ const HomeGroupsScreen = ({ navigation }) => {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [isJoiningGroup, setIsJoiningGroup] = useState(false);
+
+ // Función para registrar el token push en el backend
+  const registerPushToken = async (UID) => {
+    try {
+      // Solicitar permisos de notificación
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      if (!enabled) {
+        console.log('[PUSH] Permiso de notificación denegado');
+        return;
+      }
+      // Obtener token FCM
+      const token = await messaging().getToken();
+      console.log('[PUSH] Token FCM obtenido:', token);
+      // Enviar al backend
+      const res = await fetch(`${SIGNALING_SERVER_URL}/users/push-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ UID, pushToken: token, platform: Platform.OS }),
+      });
+      const data = await res.json();
+      console.log('[PUSH] Respuesta backend:', data);
+    } catch (err) {
+      console.log('[PUSH] Error registrando token:', err);
+    }
+  };
+
 
   useEffect(() => {
     // Configurar Google Sign-In
@@ -101,6 +134,9 @@ const HomeGroupsScreen = ({ navigation }) => {
       }));
       
       setGroups(formattedGroups);
+
+      // Registrar token push en el backend
+      await registerPushToken(currentUser.uid);
     } catch (error) {
       console.error('Error loading user groups:', error);
       // TODO: Mostrar mensaje de error al usuario
@@ -118,8 +154,9 @@ const HomeGroupsScreen = ({ navigation }) => {
         setIsLoggedIn(true);
         email.current = currentUser.user.email;
         setDisplayEmail(currentUser.user.email);
+        // Guardar el email globalmente en App.jsx
+        if (setUserEmail) setUserEmail(currentUser.user.email);
         console.log('User already signed in:', email.current);
-        
         // Cargar grupos del usuario autenticado
         await loadUserGroups(currentUser.user.email);
       } else {
@@ -147,7 +184,10 @@ const HomeGroupsScreen = ({ navigation }) => {
         email.current = currentUser.user.email;
         setDisplayEmail(currentUser.user.email);
         console.log('Silent sign in successful:', email.current);
-        
+        // Registrar token push en el backend
+        if (currentUser.user.email) {
+          await registerPushToken(currentUser.uid);
+        }
         // Cargar grupos del usuario autenticado
         await loadUserGroups(currentUser.user.email);
       } catch (error) {
@@ -186,7 +226,10 @@ const HomeGroupsScreen = ({ navigation }) => {
           email.current = userInfo.data.user.email;
           setDisplayEmail(userInfo.data.user.email);
           console.log('Manual sign in successful:', email.current);
-          
+          // Registrar token push en el backend
+          if (userInfo.data.user.email) {
+            await registerPushToken(userInfo.data.user.uid);
+          }
           // Cargar grupos del usuario autenticado
           await loadUserGroups(userInfo.data.user.email);
         } catch (signInError) {

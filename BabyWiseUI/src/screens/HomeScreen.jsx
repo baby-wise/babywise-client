@@ -1,3 +1,5 @@
+import messaging from '@react-native-firebase/messaging';
+import { Platform } from 'react-native';
 import React, { useEffect, useState, useRef } from 'react';
 import { 
   SafeAreaView, 
@@ -13,12 +15,45 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../config/firebase';
 import { signInWithCredential, GoogleAuthProvider, signOut } from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/Feather';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 const HomeScreen = ({ setRole }) => {
   const email = useRef();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [displayEmail, setDisplayEmail] = useState(null); // Estado para forzar re-render del email
+  
+  useEffect(() => {
+    // Listener para notificaciones push recibidas en foreground
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('[PUSH] Notificación recibida en foreground:', remoteMessage);
+      Alert.alert(
+        remoteMessage.notification?.title || 'Notificación',
+        remoteMessage.notification?.body || JSON.stringify(remoteMessage.data)
+      );
+    });
+
+    // Listener para notificaciones recibidas cuando la app está en background o cerrada
+    messaging().setBackgroundMessageHandler(async remoteMessage => {
+      console.log('[PUSH] Notificación recibida en background:', remoteMessage);
+    });
+
+    // Listener para notificaciones que abren la app desde estado cerrado
+    messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log('[PUSH] Notificación abrió la app:', remoteMessage);
+    });
+
+    // Notificación que abrió la app desde estado cerrado (cold start)
+    messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage) {
+          console.log('[PUSH] Notificación abrió la app desde cold start:', remoteMessage);
+        }
+      });
+
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     // Configurar Google Sign-In
@@ -32,6 +67,7 @@ const HomeScreen = ({ setRole }) => {
     // Verificar si hay un usuario ya autenticado
     checkCurrentUser();
   }, []);
+
 
   const checkCurrentUser = async () => {
     try {
@@ -110,6 +146,13 @@ const HomeScreen = ({ setRole }) => {
           email.current = userInfo.data.user.email;
           setDisplayEmail(userInfo.data.user.email);
           console.log('Manual sign in successful:', email.current);
+          // Registrar token push en el backend
+          if (currentUser.user.email) {
+            await registerPushToken(currentUser.user.email);
+          }
+          if (userInfo.data.user.email) {
+            await registerPushToken(userInfo.data.user.email);
+          }
         } catch (signInError) {
           console.log('Sign in error:', signInError);
           console.log('Error message:', signInError.message);

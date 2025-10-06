@@ -8,11 +8,13 @@ import { Track } from 'livekit-client';
 import axios from 'axios';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import { useSocket } from '../contexts/SocketContext';
+import { auth } from '../config/firebase';
+
 
 const ViewerScreen = ({ route, navigation }) => {
   const { group, userName } = route.params || {};
   const socket = useSocket();
-  const ROOM_ID = `baby-room-${group.id}`;
+  const ROOM_ID = `${group.id}`;
   const [token, setToken] = useState(null);
   const [status, setStatus] = useState('Inicializando...');
   const [error, setError] = useState(null);
@@ -23,7 +25,9 @@ const ViewerScreen = ({ route, navigation }) => {
     if (socket && socket.connected) {
       socket.emit('join-room', {
         group: ROOM_ID,
-        role: 'viewer'
+        role: 'viewer',
+        groupId: group.id,
+        UID: auth.currentUser.uid,
       });
     }
   }, [socket, ROOM_ID]);

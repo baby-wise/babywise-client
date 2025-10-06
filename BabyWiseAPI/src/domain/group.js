@@ -36,7 +36,8 @@ class Group {
 
         if(!existingCamaraName){
             this.cameras.push({
-                name: camaraName
+                name: camaraName,
+                status: "ONLINE"
             })
         }
 

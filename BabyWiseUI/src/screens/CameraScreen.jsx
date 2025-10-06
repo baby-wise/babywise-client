@@ -8,6 +8,7 @@ import axios from 'axios';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import { useSocket } from '../contexts/SocketContext';
 import Video from 'react-native-video';
+import { auth } from '../config/firebase';
 
 const CameraScreen = ({ route }) => {
   const { group, cameraName } = route.params;
@@ -17,7 +18,7 @@ const CameraScreen = ({ route }) => {
   const [error, setError] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const socket = useSocket();
-  const ROOM_ID = `baby-room-${group.id}`;
+  const ROOM_ID = `${group.id}`;
   // Unirse a la sala como cámara y escuchar eventos cuando el socket esté listo
   useEffect(() => {
     if (socket && socket.connected) {
@@ -25,6 +26,9 @@ const CameraScreen = ({ route }) => {
         group: ROOM_ID,
         role: 'camera',
         cameraIdentity: `camera-${cameraName}`,
+        groupId: group.id,
+        UID: auth.currentUser.uid,
+        baby: cameraName
       });
       const handlePlayAudio = ({ audioUrl }) => setAudioUrl(audioUrl);
       const handleStopAudio = () => setAudioUrl(null);
