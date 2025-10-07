@@ -63,7 +63,7 @@ const getEventsByGroup = async (req, res) => {
   }
 };
 
-// Return 24 hourly buckets for the camera identified by cameraUid
+// Return 24 hourly buckets for the camera identified by cameraUid (can be user id or camera name)
 const getEventsByCamera = async (req, res) => {
   try {
     const { cameraUid } = req.params;
@@ -82,12 +82,20 @@ const getEventsByCamera = async (req, res) => {
     }
 
     // Find the group that contains this camera
-    console.log('Searching for group with camera user:', cameraUid);
-    const group = await Group_DB.findOne({ 'cameras.user': cameraUid });
+    // First try by user ID (legacy), then by camera name (current schema)
+    console.log('Searching for group with camera identifier:', cameraUid);
+    let group = await Group_DB.findOne({ 'cameras.user': cameraUid });
+    if (!group) {
+      group = await Group_DB.findOne({ 'cameras.name': cameraUid });
+    }
     if (!group) return res.status(404).json({ success: false, message: 'Camera not found in any group' });
 
     // Find camera object and its name (baby name mapping)
-    const cameraObj = group.cameras.find(c => String(c.user) === String(cameraUid) || (c.user && String(c.user._id) === String(cameraUid)));
+    const cameraObj = group.cameras.find(c =>
+      String(c.user) === String(cameraUid) ||
+      (c.user && String(c.user._id) === String(cameraUid)) ||
+      c.name === cameraUid
+    );
     if (!cameraObj) return res.status(404).json({ success: false, message: 'Camera not found' });
     const cameraName = cameraObj.name;
 

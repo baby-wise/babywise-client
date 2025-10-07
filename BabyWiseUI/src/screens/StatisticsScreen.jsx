@@ -81,8 +81,8 @@ const StatisticsScreen = ({ navigation, route }) => {
           const first = found.cameras[0];
           if (first) {
             setSelectedCamera(first);
-            // camera object has .user which is a user id; pass that as cameraUid
-            const camUid = first.user && first.user._id ? first.user._id : first.user ? first.user : first.uid;
+            // Prefer camera user id if available; fallback to camera name
+            const camUid = first?.user?._id ?? first?.user ?? first?.uid ?? first?.name;
             await fetchEventsByCamera(camUid);
           }
         } else {
@@ -107,9 +107,7 @@ const StatisticsScreen = ({ navigation, route }) => {
   const fetchEventsByCamera = async (cameraUid) => {
     try {
       setIsLoadingEvents(true);
-      console.log('fetchEventsByCamera called with cameraUid:', cameraUid, 'type:', typeof cameraUid);
-  const url = `${SIGNALING_SERVER_URL}/events/camera/${cameraUid}`;
-      console.log('Fetching from URL:', url);
+      const url = `${SIGNALING_SERVER_URL}/events/camera/${encodeURIComponent(cameraUid)}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data && data.success && data.data && data.data.events) {
@@ -361,8 +359,8 @@ const StatisticsScreen = ({ navigation, route }) => {
               {dropdownOpen && (
                 <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, overflow: 'hidden' }}>
                   {cameras.map((cam, index) => {
-                    // Use the same logic as in fetchCameras to get the camera UID
-                    const camUid = cam.user && cam.user._id ? cam.user._id : cam.user ? cam.user : cam.uid;
+                    // Prefer camera user id if available; fallback to camera name
+                    const camUid = cam?.user?._id ?? cam?.user ?? cam?.uid ?? cam?.name;
                     return (
                       <TouchableOpacity 
                         key={camUid || index} 
@@ -373,7 +371,7 @@ const StatisticsScreen = ({ navigation, route }) => {
                         }} 
                         style={{ 
                           padding: 12, 
-                          backgroundColor: selectedCamera && ((selectedCamera.user && selectedCamera.user._id) === camUid || selectedCamera.user === camUid || selectedCamera.uid === camUid) ? '#eef4ff' : '#fff' 
+                          backgroundColor: selectedCamera && ((selectedCamera?.user?._id === camUid) || (selectedCamera?.user === camUid) || (selectedCamera?.uid === camUid) || (selectedCamera?.name === camUid)) ? '#eef4ff' : '#fff' 
                         }}
                       >
                         <Text style={{ color: '#333' }}>{cam.name}</Text>
@@ -413,16 +411,15 @@ const StatisticsScreen = ({ navigation, route }) => {
             </View>
         )}
 
-        {/* Chat area - Esta es la única zona que controla el scroll vertical */}
-        {/* Usamos el ScrollView del padre (no lo removemos). Hacemos que su content se expanda y permita taps mientras
-            el teclado está abierto para que el botón Enviar sea accesible. */}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+        {/* Chat area - Dejamos que ChatPanel maneje su propio scroll para evitar nested scroll conflicts */}
+        <View style={{ flex: 1 }}>
           <ChatPanel
             groupId={group.id}
-            cameraUid={selectedCamera ? (selectedCamera.user && selectedCamera.user._id ? selectedCamera.user._id : selectedCamera.user ? selectedCamera.user : selectedCamera.uid) : null}
+            cameraUid={selectedCamera ? (selectedCamera?.user?._id ?? selectedCamera?.user ?? selectedCamera?.uid ?? selectedCamera?.name) : null}
+            events={eventsData && eventsData.events ? eventsData.events : []}
             initialMessages={[{ id: 'greeting', role: 'assistant', text: '¡Hola! Soy tu asistente inteligente. ¿Cómo puedo ayudarte?' }]}
           />
-        </ScrollView>
+        </View>
       </View> 
     </SafeAreaView>
   );
