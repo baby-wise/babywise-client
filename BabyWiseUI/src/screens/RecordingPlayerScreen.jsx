@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import Video from 'react-native-video';
-import { GlobalStyles } from '../styles/Styles';
+import { GlobalStyles, Colors } from '../styles/Styles';
 
 const RecordingPlayerScreen = ({ navigation, route }) => {
   const { recording, recordingUrl, eventType, babyName, eventDate, groupId, userName } = route.params;
@@ -86,7 +86,7 @@ const RecordingPlayerScreen = ({ navigation, route }) => {
         <View style={styles.videoContainer}>
           {loading && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#6EDC8A" />
+              <ActivityIndicator size="large" color={Colors.primary} />
               <Text style={styles.loadingText}>Cargando grabación...</Text>
             </View>
           )}
@@ -157,7 +157,7 @@ const RecordingPlayerScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background,
   },
   header: {
     paddingHorizontal: 8,
@@ -170,16 +170,24 @@ const styles = StyleSheet.create({
   titleContainer: {
     marginBottom: 20,
     alignItems: 'center',
+    backgroundColor: Colors.white,
+    padding: 16,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   title: {
-    color: '#fff',
+    color: Colors.primary,
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
-    color: '#aaa',
+    color: Colors.textSecondary,
     fontSize: 16,
     textAlign: 'center',
   },
@@ -190,6 +198,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   video: {
     width: '100%',
@@ -203,13 +216,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: Colors.overlay,
     zIndex: 10,
   },
   loadingText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
     marginTop: 12,
+    fontWeight: '600',
   },
   errorContainer: {
     flex: 1,
@@ -218,58 +232,82 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    color: '#ff6b6b',
+    color: Colors.secondary,
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 12,
   },
   errorSubtext: {
-    color: '#aaa',
+    color: Colors.textSecondary,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 24,
   },
   errorButton: {
-    backgroundColor: '#6EDC8A',
+    backgroundColor: Colors.primary,
     paddingHorizontal: 32,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   errorButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
   retryButton: {
-    backgroundColor: '#6EDC8A',
+    backgroundColor: Colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 8,
     marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   retryButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 14,
     fontWeight: 'bold',
   },
   actionsContainer: {
     marginTop: 20,
     alignItems: 'center',
+    backgroundColor: Colors.white,
+    padding: 20,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   actionHint: {
-    color: '#aaa',
+    color: Colors.textSecondary,
     fontSize: 14,
     marginBottom: 12,
+    textAlign: 'center',
   },
   liveButton: {
-    backgroundColor: '#6EDC8A',
+    backgroundColor: Colors.secondary,
     paddingHorizontal: 32,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   liveButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
