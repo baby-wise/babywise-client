@@ -2,6 +2,7 @@ import fs from 'fs'
 import { S3Client } from '@aws-sdk/client-s3';
 import { ListObjectsV2Command, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
+import { getRecordingsByRoom } from '../services/recordingService.js';
 
 dotenv.config();
 
@@ -140,60 +141,8 @@ export const handleGetRecordings = async (req, res) => {
   if (!room) {
     return res.status(400).json({ error: 'room is required' });
   }
-  const bucket = process.env.CF_BUCKET_NAME;
-  const prefix = `recordings/${room}/`;
   try {
-    // recordingsByParticipant: { [participantIdentity]: { [fecha_hora]: {date, time, playlistUrl, key, duration} } }
-    let recordingsByParticipant = {};
-    let continuationToken = undefined;
-    do {
-      const params = {
-        Bucket: bucket,
-        Prefix: prefix,
-        MaxKeys: 1000,
-        ContinuationToken: continuationToken,
-      };
-      const resp = await s3Client.send(new ListObjectsV2Command(params));
-      for (const obj of resp.Contents || []) {
-        // Esperado: obj.Key = recordings/{room}/{participant}/{fecha}/{hora}/hls000.ts o playlist.m3u8
-        const keyParts = obj.Key.split('/');
-        const participantIdentity = keyParts[2];
-        const date = keyParts[3];
-        const time = keyParts[4];
-
-        if (!participantIdentity || !date || !time) continue;
-        if (!recordingsByParticipant[participantIdentity]) {
-          recordingsByParticipant[participantIdentity] = {};
-        }
-        const recId = `${date}_${time}`;
-        if (!recordingsByParticipant[participantIdentity][recId]) {
-          recordingsByParticipant[participantIdentity][recId] = {
-            date,
-            time,
-            playlistUrl: null,
-            key: null,
-            duration: 0,
-          };
-        }
-        if (obj.Key.endsWith('.m3u8') && !obj.Key.endsWith('-live.m3u8')) {
-          recordingsByParticipant[participantIdentity][recId].playlistUrl = `${process.env.CF_PUBLIC_URL}/${obj.Key}`;
-          recordingsByParticipant[participantIdentity][recId].key = obj.Key;
-        }
-        if (obj.Key.endsWith('.ts')) {
-          recordingsByParticipant[participantIdentity][recId].duration += 6;
-        }
-      }
-      continuationToken = resp.IsTruncated ? resp.NextContinuationToken : undefined;
-    } while (continuationToken);
-    // Convertir a formato de respuesta: array de { participant, recordings: [ ... ] }
-    let result = [];
-    for (const [participant, recMap] of Object.entries(recordingsByParticipant)) {
-      console.log(`[DEBUG] Procesando grabaciones de ${participant}: ${JSON.stringify(recMap)}`);
-      const recordings = Object.values(recMap).filter(r => r.playlistUrl);
-      if (recordings.length > 0) {
-        result.push({ participant, recordings });
-      }
-    }
+    const result = await getRecordingsByRoom(room);
     console.log(`[API] Grabaciones encontradas en el room ${room}: `, result);
     res.json({ recordingsByParticipant: result });
   } catch (err) {

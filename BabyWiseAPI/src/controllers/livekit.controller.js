@@ -7,7 +7,7 @@ import { updateCameraStatus } from './group.controller.js';
 dotenv.config();
 
 const TOGGLE_AUDIO_TRACK_EGRESS = false;
-const TOGGLE_S3_HLS_EGRESS = false;
+const TOGGLE_S3_HLS_EGRESS = true;
 const TOGGLE_AGENT_DISPATCH = true;
 
 // Livekit vars
@@ -65,7 +65,7 @@ function dispatchHLSParticipantEgress(event) {
             filenamePrefix: `${pathPrefix}/hls`,
             playlistName: `${pathPrefix}/playlist.m3u8`,
             livePlaylistName: `${pathPrefix}/playlist-live.m3u8`,
-            segmentDuration: 6,
+            segmentDuration: 10,
             output: {
             case: 's3',
             value: {

@@ -15,13 +15,13 @@ const MediaOptionsScreen = ({ navigation, route }) => {
       <Text style={GlobalStyles.title}>Archivos multimedia</Text>
       <TouchableOpacity
         style={GlobalStyles.optionButton}
-        onPress={() => navigation.navigate('RecordingsListScreen', { room: `baby-room-${group.id}` })}
+        onPress={() => navigation.navigate('RecordingsListScreen', { room: `${group.id}` })}
       >
         <Text style={GlobalStyles.optionButtonText}>Ver videos</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={GlobalStyles.optionButton}
-        onPress={() => navigation.navigate('AudioListScreen', { room: `baby-room-${group.id}` })}
+        onPress={() => navigation.navigate('AudioListScreen', { room: `${group.id}` })}
       >
         <Text style={GlobalStyles.optionButtonText}>Ver audios</Text>
       </TouchableOpacity>
