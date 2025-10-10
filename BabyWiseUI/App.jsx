@@ -51,6 +51,9 @@ const App = () => {
   const navigationRef = useRef();
   // Guardar el email globalmente
   const [userEmail, setUserEmail] = useState(null);
+  // Flag para procesar initial notification solo una vez
+  const initialNotificationProcessed = useRef(false);
+  
   // Recibir el email desde HomeGroupsScreen
   const handleSetUserEmail = (email) => {
     setUserEmail(email);
@@ -159,17 +162,21 @@ const App = () => {
     });
 
     // Killed: notificación que abrió la app desde estado cerrado (cold start)
-    messaging()
-      .getInitialNotification()
-      .then(remoteMessage => {
-        if (remoteMessage) {
-          console.log('[FCM] Notificación abrió la app desde cold start:', remoteMessage);
-          // Delay para asegurar que la navegación esté lista
-          setTimeout(() => {
-            handleBackgroundNotification(remoteMessage);
-          }, 1000);
-        }
-      });
+    // Solo procesar si no se ha procesado antes
+    if (!initialNotificationProcessed.current) {
+      messaging()
+        .getInitialNotification()
+        .then(remoteMessage => {
+          if (remoteMessage) {
+            console.log('[FCM] Notificación abrió la app desde cold start:', remoteMessage);
+            initialNotificationProcessed.current = true;
+            // Delay para asegurar que la navegación esté lista
+            setTimeout(() => {
+              handleBackgroundNotification(remoteMessage);
+            }, 1000);
+          }
+        });
+    }
 
     return () => {
       unsubscribeOnMessage();
