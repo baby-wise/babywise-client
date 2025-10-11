@@ -212,9 +212,104 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           <Text style={GlobalStyles.backButtonText}>‹</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
-          <Text style={styles.settingsButtonText}>⚙️</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: -45 }}>
+          <TouchableOpacity style={[styles.settingsButton, { marginRight: 35 }]} onPress={addMembers}>
+            <Text style={styles.settingsButtonText}>👥</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
+            {/* Ícono de engranaje (configuración) */}
+            <View style={{ width: 22, height: 22, position: 'relative' }}>
+              {/* Dientes del engranaje */}
+              <View style={{
+                position: 'absolute',
+                top: -1,
+                left: 9,
+                width: 4,
+                height: 4,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                bottom: -1,
+                left: 9,
+                width: 4,
+                height: 4,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                top: 9,
+                left: 0,
+                width: 4,
+                height: 4,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                top: 9,
+                right: -1,
+                width: 4,
+                height: 4,
+                backgroundColor: Colors.text,
+              }} />
+              {/* Dientes diagonales */}
+              <View style={{
+                position: 'absolute',
+                top: 2,
+                left: 2,
+                width: 5,
+                height: 5,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                width: 5,
+                height: 5,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                bottom: 2,
+                left: 2,
+                width: 5,
+                height: 5,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                bottom: 2,
+                right: 2,
+                width: 5,
+                height: 5,
+                backgroundColor: Colors.text,
+              }} />
+              {/* Anillo exterior desde donde salen los dientes */}
+              <View style={{
+                position: 'absolute',
+                top: 3,
+                left: 3,
+                width: 16,
+                height: 16,
+                borderRadius: 8,
+                borderWidth: 3,
+                borderColor: Colors.text,
+                backgroundColor: Colors.background,
+              }} />
+              {/* Círculo central sólido */}
+              <View style={{
+                position: 'absolute',
+                top: 8,
+                left: 8,
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: Colors.text,
+              }} />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.headerInfoCentered}>
@@ -253,35 +348,56 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               )
             )}
         </ScrollView>
-        <View>
-          <TouchableOpacity style={GlobalStyles.fab} onPress={goToCamera}>
-                  <Text style={GlobalStyles.fabText}>+</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
-      {/* Actions section */}
-      <View style={[GlobalStyles.optionList, {marginTop: -150}]}>
-      <TouchableOpacity
-        style={GlobalStyles.optionButton}
-        onPress={() => navigation.navigate('MediaOptionsScreen', { group })}>
-        <Text style={GlobalStyles.cardTitle}>🖼️ Multimedia</Text>
-        <Text style={GlobalStyles.cardSubtitle}>Fotos y videos</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={GlobalStyles.optionButton}
-        onPress={goToStatistics}>
-        <Text style={GlobalStyles.cardTitle}>📈Estadísticas</Text>
-        <Text style={GlobalStyles.cardSubtitle}>{group.members} Actividad</Text>
-      </TouchableOpacity>
-      </View>
+      {/* Barra de navegación inferior */}
+      <View style={styles.bottomNavBar}>
+        {/* Botón de Estadísticas */}
+        <TouchableOpacity 
+          style={styles.navButton}
+          onPress={goToStatistics}
+        >
+          <View style={styles.navIconContainer}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
+              <View style={{ width: 4, height: 12, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
+              <View style={{ width: 4, height: 18, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
+              <View style={{ width: 4, height: 10, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
+              <View style={{ width: 4, height: 16, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
+            </View>
+          </View>
+        </TouchableOpacity>
 
-       <TouchableOpacity
-        style={[GlobalStyles.googleButton, {backgroundColor: Colors.primary}]}
-        onPress={addMembers}>
-        <Text style={GlobalStyles.cardTitle}>Agregar Miembros</Text>
-        <Text style={GlobalStyles.cardSubtitle}>Invitar familia</Text>
-      </TouchableOpacity>
+        {/* Botón central de Agregar Bebé */}
+        <TouchableOpacity 
+          style={styles.navButtonCenter}
+          onPress={goToCamera}
+        >
+          <View style={styles.navIconContainerCenter}>
+            <Text style={styles.navIconCenter}>+</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Botón de Grabaciones */}
+        <TouchableOpacity 
+          style={styles.navButton}
+          onPress={() => navigation.navigate('MediaOptionsScreen', { group })}
+        >
+          <View style={styles.navIconContainer}>
+            {/* Ícono de play (reproducir) */}
+            <View style={{ 
+              width: 0, 
+              height: 0, 
+              borderLeftWidth: 16,
+              borderTopWidth: 10,
+              borderBottomWidth: 10,
+              borderLeftColor: Colors.textSecondary,
+              borderTopColor: 'transparent',
+              borderBottomColor: 'transparent',
+              marginLeft: 4,
+            }} />
+          </View>
+        </TouchableOpacity>
+      </View>
 
       {/* Modal para agregar miembro */}
       <Modal
@@ -490,7 +606,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   settingsButtonText: {
-    fontSize: 20,
+    fontSize: 26,
     color: '#0F172A',
   },
   title: {
@@ -656,6 +772,64 @@ const styles = StyleSheet.create({
   inviteCode: { fontSize: 24, fontWeight: 'bold', color: '#3E5F8A', backgroundColor: '#f5f5f5', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginBottom: 10, letterSpacing: 2 },
   copyButton: { backgroundColor: '#E8F4FD', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 5 },
   copyButtonText: { color: '#3E5F8A', fontSize: 14, fontWeight: 'bold' },
+  
+  // Barra de navegación inferior
+  bottomNavBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  navButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  navButtonCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    marginTop: -10,
+  },
+  navIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navIconContainerCenter: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  navIconCenter: {
+    fontSize: 36,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 });
 
   
