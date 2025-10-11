@@ -317,9 +317,11 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         <Text style={styles.subtitle}>{group.members} miembros</Text>
       </View>
 
+      {/* Título fijo de cámaras */}
+      <Text style={styles.sectionTitle}>Cámaras</Text>
+
       {/* Camera list */}
       <ScrollView style={styles.cameraListContainer} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionTitle}>Cámaras</Text>
         {isLoadingCameras ? (
           <View style={styles.noCameraCard}>
             <ActivityIndicator />
@@ -638,7 +640,6 @@ const styles = StyleSheet.create({
   },
   cameraListContainer: { 
     flex: 1,
-    marginTop: 24, 
     paddingHorizontal: 12,
     marginBottom: 100, // Espacio para el bottom nav
   },
@@ -646,8 +647,9 @@ const styles = StyleSheet.create({
     fontSize: 18, 
     fontWeight: '700', 
     color: '#0F172A', 
-    marginBottom: 16,
-    paddingHorizontal: 6,
+    marginBottom: 12,
+    marginTop: 8,
+    paddingHorizontal: 18,
   },
   cameraCardVertical: {
     backgroundColor: '#FFFFFF',
@@ -817,7 +819,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingVertical: 20,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
@@ -836,31 +838,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    marginTop: -10,
+    marginTop: -40,
   },
   navIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   navIconContainerCenter: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   navIconCenter: {
-    fontSize: 36,
+    fontSize: 40,
     color: '#fff',
     fontWeight: 'bold',
   },
