@@ -35,6 +35,11 @@ const CameraScreen = ({ route }) => {
       socket.on('play-audio', handlePlayAudio);
       socket.on('stop-audio', handleStopAudio);
       return () => {
+        // Cuando se desmonta el componente, notificar que la cámara se desconecta
+        socket.emit('camera-disconnect', {
+          groupId: group.id,
+          cameraName: cameraName
+        });
         socket.off('play-audio', handlePlayAudio);
         socket.off('stop-audio', handleStopAudio);
       };

@@ -43,11 +43,27 @@ export function setUpClientMessageSocket(socket) {
         }
     });
 
-
+    // Manejar desconexión explícita de cámara (cuando sale de la pantalla)
+    socket.on('camera-disconnect', ({ groupId, cameraName }) => {
+        console.log(`[SOCKET] Cámara ${cameraName} desconectándose explícitamente del grupo ${groupId}`);
+        updateCameraStatus(groupId, cameraName, 'OFFLINE');
+    });
 
     socket.on('disconnect', () => {
         console.log(`Cliente desconectado: ${socket.id}`);
         const idx = clients.findIndex(c => c.socket.id === socket.id);
-        if (idx !== -1) clients.splice(idx, 1);
+        if (idx !== -1) {
+            const disconnectedClient = clients[idx];
+            
+            // Si era una cámara, actualizar su status a OFFLINE
+            if (disconnectedClient.role === 'camera' && disconnectedClient.cameraIdentity) {
+                const cameraName = disconnectedClient.cameraIdentity.replace('camera-', '');
+                const groupId = disconnectedClient.group.replace('baby-room-', '');
+                updateCameraStatus(groupId, cameraName, 'OFFLINE');
+                console.log(`[SOCKET] Cámara ${cameraName} marcada como OFFLINE en grupo ${groupId}`);
+            }
+            
+            clients.splice(idx, 1);
+        }
     });
 }
