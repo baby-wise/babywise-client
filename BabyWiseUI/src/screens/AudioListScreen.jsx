@@ -108,8 +108,8 @@ const AudioListScreen = () => {
   if (loading) {
     return (
       <View style={GlobalStyles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007bff" />
-        <Text style={{ color: '#fff', marginTop: 16, fontWeight: 'bold', fontSize: 18, textAlign: 'center' }}>Cargando audios...</Text>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ color: Colors.primary, marginTop: 16, fontWeight: 'bold', fontSize: 18, textAlign: 'center' }}>Cargando audios...</Text>
       </View>
     );
   }
@@ -117,8 +117,13 @@ const AudioListScreen = () => {
   if (error) {
     return (
       <View style={GlobalStyles.loadingContainer}>
-        <Text style={{ color: 'red', fontWeight: 'bold' }}>{error}</Text>
-        <Button title="Volver" onPress={() => navigation.goBack()} />
+        <Text style={{ color: Colors.secondary, fontWeight: 'bold', fontSize: 18, marginBottom: 20 }}>{error}</Text>
+        <TouchableOpacity 
+          style={[GlobalStyles.button, GlobalStyles.buttonPrimary]} 
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={GlobalStyles.buttonText}>Volver</Text>
+        </TouchableOpacity>
       </View>
     );
   }

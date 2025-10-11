@@ -51,6 +51,9 @@ const App = () => {
   const navigationRef = useRef();
   // Guardar el email globalmente
   const [userEmail, setUserEmail] = useState(null);
+  // Flag para procesar initial notification solo una vez
+  const initialNotificationProcessed = useRef(false);
+  
   // Recibir el email desde HomeGroupsScreen
   const handleSetUserEmail = (email) => {
     setUserEmail(email);
@@ -151,11 +154,37 @@ const App = () => {
       if (notifTimeout.current) clearTimeout(notifTimeout.current);
       notifTimeout.current = setTimeout(() => setNotifPopup(p => ({ ...p, visible: false })), 7000);
     });
+
+    // Background: notificación tocada cuando la app está en background
+    const unsubscribeOnNotificationOpenedApp = messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log('[FCM] Notificación abrió la app desde background:', remoteMessage);
+      handleBackgroundNotification(remoteMessage);
+    });
+
+    // Killed: notificación que abrió la app desde estado cerrado (cold start)
+    // Solo procesar si no se ha procesado antes
+    if (!initialNotificationProcessed.current) {
+      messaging()
+        .getInitialNotification()
+        .then(remoteMessage => {
+          if (remoteMessage) {
+            console.log('[FCM] Notificación abrió la app desde cold start:', remoteMessage);
+            initialNotificationProcessed.current = true;
+            // Delay para asegurar que la navegación esté lista
+            setTimeout(() => {
+              handleBackgroundNotification(remoteMessage);
+            }, 1000);
+          }
+        });
+    }
+
     return () => {
       unsubscribeOnMessage();
+      unsubscribeOnNotificationOpenedApp();
     };
   }, []);
 
+  // Maneja notificaciones en foreground (popup → Viewer en vivo)
   const handleNotifPress = () => {
     setNotifPopup(p => ({ ...p, visible: false }));
     const groupId = notifPopup.groupId;
@@ -165,6 +194,52 @@ const App = () => {
     }
     if (groupId && navigationRef.current) {
       navigationRef.current.navigate('Viewer', { group: { id: groupId }, userName });
+    }
+  };
+
+  // Maneja notificaciones en background/killed (ir directo a reproducir grabación)
+  const handleBackgroundNotification = (remoteMessage) => {
+    if (!remoteMessage?.data) {
+      console.log('[FCM] No hay datos en la notificación');
+      return;
+    }
+
+    const { recordingUrl, type, baby, date, group } = remoteMessage.data;
+
+    console.log('[FCM] Datos de notificación:', {
+      recordingUrl,
+      type,
+      baby,
+      date,
+      group
+    });
+
+    // Obtener userName del email si está disponible
+    let userName = 'anonimo';
+    if (userEmail) {
+      userName = userEmail.split('@')[0];
+    }
+
+    // Si hay URL de grabación, navegar al reproductor
+    if (recordingUrl && recordingUrl !== '' && navigationRef.current) {
+      console.log('[FCM] Navegando a RecordingPlayerScreen con grabación');
+      navigationRef.current.navigate('RecordingPlayerScreen', {
+        recordingUrl,
+        eventType: type,
+        babyName: baby,
+        eventDate: date,
+        groupId: group,
+        userName: userName
+      });
+    } 
+    // Si no hay grabación pero hay groupId, navegar al viewer en vivo
+    else if (group && navigationRef.current) {
+      console.log('[FCM] No hay grabación, navegando a Viewer en vivo');
+      navigationRef.current.navigate('Viewer', { group: { id: group }, userName });
+    }
+    // Fallback: mostrar mensaje
+    else {
+      console.log('[FCM] No hay suficientes datos para navegar');
     }
   };
 

@@ -5,6 +5,7 @@ import { Event_DB, Event } from "../domain/event.js"
 import { Group, Group_DB } from "../domain/group.js"
 import { getUserById } from "./user.controller.js"
 import { getGroupById } from "./group.controller.js"
+import { getLatestSegmentWithDelay } from "../services/recordingService.js"
 
 // Cooldown en memoria para notificaciones push
 const lastPushSent = {}; // { [key]: timestamp }
@@ -140,8 +141,39 @@ const receiveDetectionEvent = async (req, res) => {
     if (!group || !baby || !type) {
       return res.status(400).json({ error: 'Faltan campos requeridos: group, baby, type' });
     }
-    // Persistir evento
-    const event = new Event_DB({ group, baby, type, date: date || new Date() });
+
+    // Buscar el segmento de grabación asociado al evento
+    // El room name es el groupId, el participantIdentity es el nombre del bebé
+    const eventDate = date ? new Date(date) : new Date();
+    let recordingUrl = null;
+    let recordingSegmentName = null;
+
+    try {
+      console.log(`[EVENT] Buscando segmento de grabación para room=${group}, baby=${baby}, timestamp=${eventDate}`);
+      // Delay mínimo (1s) para respuesta rápida - si encuentra segmento, genial; si no, la notificación va al viewer en vivo
+      const segment = await getLatestSegmentWithDelay(group, baby, eventDate, 0);
+      
+      if (segment) {
+        recordingUrl = segment.segmentUrl;
+        recordingSegmentName = segment.fileName;
+        console.log(`[EVENT] Segmento encontrado: ${recordingSegmentName} - ${recordingUrl}`);
+      } else {
+        console.log(`[EVENT] No se encontró segmento de grabación para este evento`);
+      }
+    } catch (segmentError) {
+      console.error('[EVENT] Error al buscar segmento (continuando sin grabación):', segmentError);
+      // No fallar el evento si no se encuentra grabación
+    }
+
+    // Persistir evento con URL de grabación (si existe)
+    const event = new Event_DB({ 
+      group, 
+      baby, 
+      type, 
+      date: eventDate,
+      recordingUrl,
+      recordingSegmentName
+    });
     await event.save();
     console.log(`[EVENT] Evento guardado: ${type} de ${baby} en grupo ${group} a las ${event.date.toLocaleTimeString()}`);
 
@@ -170,10 +202,11 @@ const receiveDetectionEvent = async (req, res) => {
               baby: String(baby),
               type: String(type),
               date: event.date.toISOString(),
+              recordingUrl: recordingUrl || '', // Incluir URL de grabación en la notificación
             },
           };
           try {
-            console.log('Notificando del evento a', userData.email);
+            console.log('Notificando del evento a', userData.email, recordingUrl ? 'con grabación' : 'sin grabación');
             await admin.messaging().send(message);
           } catch (err) {
             console.error('Error enviando push a', user.user.UID, err);

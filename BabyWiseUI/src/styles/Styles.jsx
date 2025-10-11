@@ -247,7 +247,7 @@ export const GlobalStyles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#3E5F8A',
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
