@@ -317,38 +317,40 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         <Text style={styles.subtitle}>{group.members} miembros</Text>
       </View>
 
-      {/* Camera carousel */}
-      <View style={styles.carouselContainer}>
+      {/* Camera list */}
+      <ScrollView style={styles.cameraListContainer} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>Cámaras</Text>
-        <ScrollView
-          horizontal={true}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.cameraScroll}
-          decelerationRate={'fast'}
-          snapToInterval={152}
-          snapToAlignment={'start'}
-          directionalLockEnabled={true}
-        >
-            {isLoadingCameras ? (
-              <View style={styles.noCameraCard}>
-                <ActivityIndicator />
-              </View>
-            ) : (
-              (fetchedCameras && fetchedCameras.length > 0) ? (
-                fetchedCameras.map((cam, idx) => (
-                  <TouchableOpacity key={cam._id || cam.user || idx} style={styles.cameraCard} onPress={() => navigation.navigate('BabyHome', { group, babyName: cam.name})}>
-                    <View style={styles.cameraAvatar} />
-                    <Text style={styles.cameraName}>{cam.name || `Cam ${idx+1}`}</Text>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View style={styles.noCameraCard}>
-                  <Text style={styles.noCameraText}>No hay cámaras añadidas</Text>
+        {isLoadingCameras ? (
+          <View style={styles.noCameraCard}>
+            <ActivityIndicator />
+          </View>
+        ) : (
+          (fetchedCameras && fetchedCameras.length > 0) ? (
+            fetchedCameras.map((cam, idx) => (
+              <TouchableOpacity 
+                key={cam._id || cam.user || idx} 
+                style={styles.cameraCardVertical} 
+                onPress={() => navigation.navigate('BabyHome', { group, babyName: cam.name})}
+              >
+                {/* Thumbnail placeholder con relación de aspecto 16:9 */}
+                <View style={styles.cameraAvatarVertical} />
+                
+                {/* Información debajo del thumbnail */}
+                <View style={styles.cameraInfo}>
+                  <Text style={styles.cameraNameVertical}>{cam.name || `Cámara ${idx+1}`}</Text>
+                  <Text style={styles.cameraStatus}>
+                    {cam.status === 'ONLINE' ? '🟢 En línea' : '⚫ Desconectada'}
+                  </Text>
                 </View>
-              )
-            )}
-        </ScrollView>
-      </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.noCameraCard}>
+              <Text style={styles.noCameraText}>No hay cámaras añadidas</Text>
+            </View>
+          )
+        )}
+      </ScrollView>
 
       {/* Barra de navegación inferior */}
       <View style={styles.bottomNavBar}>
@@ -634,30 +636,62 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 18,
   },
-  carouselContainer: { marginTop: 24, paddingLeft: 18 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
-  cameraScroll: { paddingRight: 18, paddingVertical: 8 },
-  cameraCard: {
-    width: 140,
-    height: 120,
-    backgroundColor: '#FBFBFD',
-    borderRadius: 12,
-    marginRight: 12,
+  cameraListContainer: { 
+    flex: 1,
+    marginTop: 24, 
+    paddingHorizontal: 12,
+    marginBottom: 100, // Espacio para el bottom nav
+  },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#0F172A', 
+    marginBottom: 16,
+    paddingHorizontal: 6,
+  },
+  cameraCardVertical: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginBottom: 16,
     padding: 12,
-    justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#EFEFF1'
+    borderColor: '#EFEFF1',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  cameraAvatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 10,
+  cameraAvatarVertical: {
+    width: '100%',
+    aspectRatio: 16 / 9, // Relación de aspecto 16:9
+    borderRadius: 16,
     backgroundColor: '#E6EEF8',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  cameraName: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
-  noCameraCard: { padding: 12 },
-  noCameraText: { color: '#94A3B8' },
+  cameraInfo: {
+    paddingHorizontal: 4,
+  },
+  cameraNameVertical: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  cameraStatus: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  noCameraCard: { 
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noCameraText: { 
+    color: '#94A3B8',
+    fontSize: 15,
+  },
   actionsSection: { marginTop: 24, paddingLeft: 18 },
   actionsGridRowFirst: { paddingHorizontal: 18, flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   actionsGridRow: { paddingHorizontal: 18, flexDirection: 'row', justifyContent: 'space-between', marginTop: 0 },
