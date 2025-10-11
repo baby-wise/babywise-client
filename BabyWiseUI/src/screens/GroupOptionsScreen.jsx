@@ -214,7 +214,58 @@ const GroupOptionsScreen = ({ navigation, route }) => {
 
         <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: -45 }}>
           <TouchableOpacity style={[styles.settingsButton, { marginRight: 35 }]} onPress={addMembers}>
-            <Text style={styles.settingsButtonText}>👥</Text>
+            {/* Ícono de personas (agregar miembros) */}
+            <View style={{ width: 26, height: 22, position: 'relative' }}>
+              {/* Primera persona (atrás/izquierda) */}
+              <View style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+              }}>
+                {/* Cabeza */}
+                <View style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: Colors.text,
+                  marginLeft: 3,
+                }} />
+                {/* Cuerpo */}
+                <View style={{
+                  width: 13,
+                  height: 12,
+                  borderTopLeftRadius: 7,
+                  borderTopRightRadius: 7,
+                  backgroundColor: Colors.text,
+                  marginTop: 1,
+                }} />
+              </View>
+              
+              {/* Segunda persona (adelante/derecha) - superpuesta */}
+              <View style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+              }}>
+                {/* Cabeza */}
+                <View style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: Colors.text,
+                  marginLeft: 2.5,
+                }} />
+                {/* Cuerpo */}
+                <View style={{
+                  width: 13,
+                  height: 12,
+                  borderTopLeftRadius: 7,
+                  borderTopRightRadius: 7,
+                  backgroundColor: Colors.text,
+                  marginTop: 1,
+                }} />
+              </View>
+            </View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
             {/* Ícono de engranaje (configuración) */}
