@@ -9,6 +9,8 @@ import axios from 'axios';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import { useSocket } from '../contexts/SocketContext';
 import { auth } from '../config/firebase';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
+import { Colors } from '../styles/Styles';
 
 
 const ViewerScreen = ({ route, navigation }) => {
@@ -358,9 +360,36 @@ const RoomView = ({ navigation, group, userName, socket }) => {
       )}
 
       {/* Botones de control - posicionados abajo */}
-      {selectedCamera && (
-        <View style={styles.controlsContainer}>
-          {/* Botón de reproducir audio - izquierda */}
+      <View style={styles.controlsContainer}>
+        {/* Botón de asistente/agente - izquierda (solo si hay cámara) */}
+        {selectedCamera && (
+          <TouchableOpacity 
+            style={[styles.floatingButton, styles.agentFloatingButton]} 
+            onPress={() => navigation.navigate('Statistics', { group, baby: selectedCamera?.replace('camera-', '') })}
+          >
+            <MaterialDesignIcons name="face-agent" size={28} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
+
+        {/* Botón de hablar - centro, más grande (solo si hay cámara) */}
+        {selectedCamera && (
+          <TouchableOpacity
+            style={[styles.floatingButton, styles.talkFloatingButton, isTalking && styles.talkButtonActive]}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            activeOpacity={1}
+          >
+            {/* Icono de micrófono */}
+            <View style={styles.micIcon}>
+              <View style={[styles.micBody, isTalking && styles.micBodyActive]} />
+              <View style={[styles.micStand, isTalking && styles.micStandActive]} />
+              <View style={[styles.micBase, isTalking && styles.micBaseActive]} />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Botón de reproducir audio - derecha (solo si hay cámara) */}
+        {selectedCamera && (
           <TouchableOpacity 
             style={[styles.floatingButton, styles.audioFloatingButton, reproduciendoAudio && styles.audioButtonPlaying]} 
             onPress={() => reproduciendoAudio ? handleStopAudio() : setAudioModalVisible(true)}
@@ -384,23 +413,8 @@ const RoomView = ({ navigation, group, userName, socket }) => {
               </View>
             )}
           </TouchableOpacity>
-
-          {/* Botón de hablar - centro, más grande */}
-          <TouchableOpacity
-            style={[styles.floatingButton, styles.talkFloatingButton, isTalking && styles.talkButtonActive]}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
-            activeOpacity={1}
-          >
-            {/* Icono de micrófono */}
-            <View style={styles.micIcon}>
-              <View style={[styles.micBody, isTalking && styles.micBodyActive]} />
-              <View style={[styles.micStand, isTalking && styles.micStandActive]} />
-              <View style={[styles.micBase, isTalking && styles.micBaseActive]} />
-            </View>
-          </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
 
       <AudioSelectModal
         visible={audioModalVisible}
@@ -467,10 +481,16 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     position: 'absolute',
-    left: 40,
+    right: 40,
   },
   audioButtonPlaying: {
     backgroundColor: '#d9534f',
+  },
+  agentFloatingButton: {
+    width: 56,
+    height: 56,
+    position: 'absolute',
+    left: 40,
   },
   // Icono de micrófono
   micIcon: {
@@ -482,7 +502,7 @@ const styles = StyleSheet.create({
   micBody: {
     width: 14,
     height: 18,
-    backgroundColor: '#333',
+    backgroundColor: Colors.secondary,
     borderRadius: 7,
     marginBottom: 2,
   },
@@ -492,7 +512,7 @@ const styles = StyleSheet.create({
   micStand: {
     width: 2,
     height: 6,
-    backgroundColor: '#333',
+    backgroundColor: Colors.secondary,
   },
   micStandActive: {
     backgroundColor: '#FFF',
@@ -500,7 +520,7 @@ const styles = StyleSheet.create({
   micBase: {
     width: 12,
     height: 2,
-    backgroundColor: '#333',
+    backgroundColor: Colors.secondary,
     borderRadius: 1,
   },
   micBaseActive: {
@@ -519,20 +539,20 @@ const styles = StyleSheet.create({
   musicNoteHead: {
     width: 9,
     height: 9,
-    backgroundColor: '#333',
+    backgroundColor: Colors.primary,
     borderRadius: 4.5,
     position: 'absolute',
   },
   musicNoteStem: {
     width: 2.5,
     height: 17,
-    backgroundColor: '#333',
+    backgroundColor: Colors.primary,
     position: 'absolute',
   },
   musicBeam: {
     width: 13,
     height: 2.5,
-    backgroundColor: '#333',
+    backgroundColor: Colors.primary,
     position: 'absolute',
     top: 1,
     left: 8,
