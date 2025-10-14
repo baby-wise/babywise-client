@@ -167,9 +167,13 @@ const RoomView = ({ setStatus }) => {
   return (
     <View style={styles.tracksContainer}>
       {localVideoTrack ? (
-        <VideoTrack trackRef={localVideoTrack} style={styles.video} />
+        <VideoTrack 
+          trackRef={localVideoTrack} 
+          style={styles.video} 
+          objectFit="cover"
+        />
       ) : (
-        <Text style={{ color: 'white', marginTop: 20 }}>Esperando transmisión local...</Text>
+        <Text style={styles.waitingText}>Esperando transmisión local...</Text>
       )}
     </View>
   );
@@ -213,14 +217,20 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   video: {
+    flex: 1,
     width: '100%',
-    height: 300,
-    marginVertical: 10,
+    height: '100%',
   },
   tracksContainer: {
     flex: 1,
     width: '100%',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  waitingText: {
+    color: 'white',
+    fontSize: 18,
+    textAlign: 'center',
   },
 });
 
