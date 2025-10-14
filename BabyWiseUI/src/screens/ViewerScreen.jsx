@@ -311,6 +311,16 @@ const RoomView = ({ navigation, group, userName, socket }) => {
 
   return (
     <View style={styles.tracksContainer}>
+      {/* Video o texto de espera */}
+      {selectedTrack ? (
+        <VideoTrack trackRef={selectedTrack} style={styles.video} objectFit="cover" />
+      ) : (
+        <View style={styles.waitingContainer}>
+          <Text style={styles.waitingText}>Esperando transmisión de cámara...</Text>
+        </View>
+      )}
+
+      {/* Selector de cámaras - posicionado arriba */}
       {cameraParticipants.length > 1 && (
         <View style={styles.cameraButtonsRow}>
           <FlatList
@@ -318,7 +328,7 @@ const RoomView = ({ navigation, group, userName, socket }) => {
             keyExtractor={item => item}
             horizontal
             contentContainerStyle={{ alignItems: 'center', paddingVertical: 0 }}
-            style={{ maxHeight: 48, marginBottom: 8 }}
+            style={{ maxHeight: 48 }}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={[styles.cameraItem, selectedCamera === item && styles.cameraItemSelected]}
@@ -330,53 +340,68 @@ const RoomView = ({ navigation, group, userName, socket }) => {
           />
         </View>
       )}
-      {/* Mostrar nombres de viewers hablando */}
+
+      {/* Indicador de viewers hablando */}
       {speakingViewers.length > 0 && (
-        <View style={{ marginBottom: 12, alignItems: 'center' }}>
-          <Text style={{ color: '#00FF00', fontWeight: 'bold', fontSize: 18 }}>
+        <View style={styles.speakingIndicator}>
+          <Text style={styles.speakingText}>
             {speakingViewers.length === 1
               ? `Hablando: ${speakingViewers[0].replace('viewer-', '')}`
               : `Hablando: ${speakingViewers.map(id => id.replace('viewer-', '')).join(', ')}`}
           </Text>
         </View>
       )}
-      {selectedTrack ? (
-        <>
-          <VideoTrack trackRef={selectedTrack} style={styles.video} />
-          <Text style={styles.cameraNameLabel}>{selectedCamera.replace('camera-', '')}</Text>
-        </>
-      ) : (
-        <Text style={{ color: 'white', marginTop: 20 }}>Esperando transmisión de cámara...</Text>
+
+      {/* Nombre de la cámara seleccionada */}
+      {selectedTrack && (
+        <Text style={styles.cameraNameLabel}>{selectedCamera.replace('camera-', '')}</Text>
       )}
+
+      {/* Botones de control - posicionados abajo */}
       {selectedCamera && (
-        <TouchableOpacity
-          style={{
-            marginTop: 24,
-            backgroundColor: isTalking ? '#007AFF' : '#aaa',
-            padding: 18,
-            borderRadius: 32,
-            alignSelf: 'center',
-          }}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          activeOpacity={1}
-        >
-          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18, flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ fontSize: 20 }}>🎙️ </Text>
-            {isTalking ? 'Hablando...' : 'Mantener para hablar'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.controlsContainer}>
+          {/* Botón de reproducir audio - izquierda */}
+          <TouchableOpacity 
+            style={[styles.floatingButton, styles.audioFloatingButton, reproduciendoAudio && styles.audioButtonPlaying]} 
+            onPress={() => reproduciendoAudio ? handleStopAudio() : setAudioModalVisible(true)}
+          >
+            {reproduciendoAudio ? (
+              // Icono de stop (cuadrado)
+              <View style={styles.stopIcon} />
+            ) : (
+              // Icono de notas musicales dobles
+              <View style={styles.musicIcon}>
+                {/* Primera nota - izquierda */}
+                <View style={[styles.musicNoteHead, { bottom: 5, left: 1 }]} />
+                <View style={[styles.musicNoteStem, { bottom: 10, left: 7.5 }]} />
+                
+                {/* Segunda nota - derecha */}
+                <View style={[styles.musicNoteHead, { bottom: 5, right: 6 }]} />
+                <View style={[styles.musicNoteStem, { bottom: 10, right: 6 }]} />
+                
+                {/* Barra horizontal que une las notas */}
+                <View style={styles.musicBeam} />
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Botón de hablar - centro, más grande */}
+          <TouchableOpacity
+            style={[styles.floatingButton, styles.talkFloatingButton, isTalking && styles.talkButtonActive]}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            activeOpacity={1}
+          >
+            {/* Icono de micrófono */}
+            <View style={styles.micIcon}>
+              <View style={[styles.micBody, isTalking && styles.micBodyActive]} />
+              <View style={[styles.micStand, isTalking && styles.micStandActive]} />
+              <View style={[styles.micBase, isTalking && styles.micBaseActive]} />
+            </View>
+          </TouchableOpacity>
+        </View>
       )}
-      {selectedTrack && !reproduciendoAudio && (
-        <TouchableOpacity style={[styles.audioButton, { marginTop: 18 }]} onPress={() => setAudioModalVisible(true)}>
-          <Text style={styles.audioButtonText}>🎵 Reproducir audio</Text>
-        </TouchableOpacity>
-      )}
-      {selectedTrack && reproduciendoAudio && (
-        <TouchableOpacity style={[styles.stopButton, { marginTop: 18 }]} onPress={handleStopAudio}>
-          <Text style={styles.stopButtonText}>⏹ Detener audio</Text>
-        </TouchableOpacity>
-      )}
+
       <AudioSelectModal
         visible={audioModalVisible}
         onClose={() => setAudioModalVisible(false)}
@@ -394,46 +419,147 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#000',
   },
-  audioButton: {
-    backgroundColor: '#007bff',
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 24,
-    marginBottom: 8,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  audioButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  stopButton: {
-    backgroundColor: '#d9534f',
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  stopButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
   tracksContainer: {
     flex: 1,
     width: '100%',
+  },
+  waitingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  waitingText: {
+    color: 'white',
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  controlsContainer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    paddingHorizontal: 20,
+  },
+  floatingButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  talkFloatingButton: {
+    width: 70,
+    height: 70,
+  },
+  talkButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  audioFloatingButton: {
+    width: 56,
+    height: 56,
+    position: 'absolute',
+    left: 40,
+  },
+  audioButtonPlaying: {
+    backgroundColor: '#d9534f',
+  },
+  // Icono de micrófono
+  micIcon: {
+    width: 24,
+    height: 30,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  micBody: {
+    width: 14,
+    height: 18,
+    backgroundColor: '#333',
+    borderRadius: 7,
+    marginBottom: 2,
+  },
+  micBodyActive: {
+    backgroundColor: '#FFF',
+  },
+  micStand: {
+    width: 2,
+    height: 6,
+    backgroundColor: '#333',
+  },
+  micStandActive: {
+    backgroundColor: '#FFF',
+  },
+  micBase: {
+    width: 12,
+    height: 2,
+    backgroundColor: '#333',
+    borderRadius: 1,
+  },
+  micBaseActive: {
+    backgroundColor: '#FFF',
+  },
+  // Icono de notas musicales
+  musicIcon: {
+    width: 28,
+    height: 28,
+    justifyContent: 'flex-end',
+    position: 'relative',
+  },
+  musicNote: {
+    position: 'absolute',
+  },
+  musicNoteHead: {
+    width: 9,
+    height: 9,
+    backgroundColor: '#333',
+    borderRadius: 4.5,
+    position: 'absolute',
+  },
+  musicNoteStem: {
+    width: 2.5,
+    height: 17,
+    backgroundColor: '#333',
+    position: 'absolute',
+  },
+  musicBeam: {
+    width: 13,
+    height: 2.5,
+    backgroundColor: '#333',
+    position: 'absolute',
+    top: 1,
+    left: 8,
+  },
+  // Icono de stop
+  stopIcon: {
+    width: 16,
+    height: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 2,
+  },
+  speakingIndicator: {
+    position: 'absolute',
+    top: 160,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  speakingText: {
+    color: '#00FF00',
+    fontWeight: 'bold',
+    fontSize: 18,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   backButton: {
     position: 'absolute',
@@ -457,13 +583,9 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   video: {
+    flex: 1,
     width: '100%',
-    height: 260,
-    marginTop: 10,
-    marginBottom: 0,
-    alignSelf: 'center',
-    borderRadius: 12,
-    backgroundColor: '#222',
+    height: '100%',
   },
   statusText: {
     color: 'white',
@@ -477,12 +599,15 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   cameraButtonsRow: {
+    position: 'absolute',
+    top: 140,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
-    marginTop: 8,
-    marginBottom: 0,
+    zIndex: 10,
   },
   cameraItem: {
     paddingVertical: 6,
@@ -506,11 +631,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   cameraNameLabel: {
+    position: 'absolute',
+    top: 200,
+    left: 0,
+    right: 0,
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 12,
     textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 8,
+    zIndex: 5,
   },
 });
 
