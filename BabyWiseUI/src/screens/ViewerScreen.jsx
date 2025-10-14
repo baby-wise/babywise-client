@@ -65,8 +65,6 @@ const ViewerScreen = ({ route, navigation }) => {
       <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack()}>
         <Text style={styles.backButtonText}>‹</Text>
       </TouchableOpacity>
-      <Text style={styles.title}>{group.name}</Text>
-      <Text style={styles.statusText}>{status}</Text>
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
       {token && (
         <LiveKitRoom
@@ -122,13 +120,13 @@ const RoomView = ({ navigation, group, userName, socket }) => {
       Alert.alert('Error', 'No hay conexión con el servidor');
       return;
     }
-    const cameraIdentity = selectedCamera;
+    const cameraIdentity = selectedCamera.replace('camera-', '');
     if (!cameraIdentity) {
       Alert.alert('Error', 'No hay cámara seleccionada');
       return;
     }
     socket.emit('play-audio', {
-      group: `baby-room-${group.id}`,
+      group: `${group.id}`,
       cameraIdentity,
       audioUrl: audio.url,
     });
@@ -142,13 +140,13 @@ const RoomView = ({ navigation, group, userName, socket }) => {
       Alert.alert('Error', 'No hay conexión con el servidor');
       return;
     }
-    const cameraIdentity = selectedCamera;
+    const cameraIdentity = selectedCamera.replace('camera-', '');
     if (!cameraIdentity) {
       Alert.alert('Error', 'No hay cámara seleccionada');
       return;
     }
     socket.emit('stop-audio', {
-      group: `baby-room-${group.id}`,
+      group: `${group.id}`,
       cameraIdentity,
     });
     setReproduciendoAudio(false);
@@ -320,6 +318,13 @@ const RoomView = ({ navigation, group, userName, socket }) => {
         </View>
       )}
 
+      {/* Título con nombre del bebé */}
+      {selectedCamera && (
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{selectedCamera.replace('camera-', '')}</Text>
+        </View>
+      )}
+
       {/* Selector de cámaras - posicionado arriba */}
       {cameraParticipants.length > 1 && (
         <View style={styles.cameraButtonsRow}>
@@ -350,11 +355,6 @@ const RoomView = ({ navigation, group, userName, socket }) => {
               : `Hablando: ${speakingViewers.map(id => id.replace('viewer-', '')).join(', ')}`}
           </Text>
         </View>
-      )}
-
-      {/* Nombre de la cámara seleccionada */}
-      {selectedTrack && (
-        <Text style={styles.cameraNameLabel}>{selectedCamera.replace('camera-', '')}</Text>
       )}
 
       {/* Botones de control - posicionados abajo */}
@@ -571,16 +571,22 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: '#fff',
   },
-  title: {
+  titleContainer: {
     position: 'absolute',
     top: 90,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  title: {
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
     backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 10,
-    borderRadius: 5,
-    zIndex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   video: {
     flex: 1,

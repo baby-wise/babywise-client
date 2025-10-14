@@ -25,7 +25,7 @@ const CameraScreen = ({ route }) => {
       socket.emit('join-room', {
         group: ROOM_ID,
         role: 'camera',
-        cameraIdentity: `camera-${cameraName}`,
+        cameraIdentity: `${cameraName}`,
         groupId: group.id,
         UID: auth.currentUser.uid,
         baby: cameraName

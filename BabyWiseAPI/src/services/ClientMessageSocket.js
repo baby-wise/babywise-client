@@ -45,7 +45,7 @@ export function setUpClientMessageSocket(socket) {
 
     // Manejar desconexión explícita de cámara (cuando sale de la pantalla)
     socket.on('camera-disconnect', ({ groupId, cameraName }) => {
-        console.log(`[SOCKET] Cámara ${cameraName} desconectándose explícitamente del grupo ${groupId}`);
+        console.log(`[SOCKET] Cámara ${cameraName} dejó de transmitir en el grupo ${groupId}`);
         updateCameraStatus(groupId, cameraName, 'OFFLINE');
     });
 
