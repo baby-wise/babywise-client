@@ -43,6 +43,9 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
   
   // Estado para menú de perfil
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  
+  // Estado para menú de opciones del botón +
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
  // Función para registrar el token push en el backend
   const registerPushToken = async (UID) => {
@@ -604,25 +607,8 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
       </View>
     )}
     
-    {/* Botones principales */}
-    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10, marginBottom: 30 }}>
-      <TouchableOpacity 
-        style={[GlobalStyles.button, GlobalStyles.buttonPrimary]} 
-        onPress={createGroup}
-      >
-        <Text style={GlobalStyles.buttonText}>Crear Grupo</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={[GlobalStyles.button, GlobalStyles.buttonSecondary]} 
-        onPress={openJoinModal}
-      >
-        <Text style={GlobalStyles.buttonText}>Unirse a Grupo</Text>
-      </TouchableOpacity>
-    </View>
-
     {/* Lista de grupos */}
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ marginBottom: 100 }}>
       <Text style={GlobalStyles.sectionTitle}>Mis Grupos</Text>
       
       {isLoadingGroups ? (
@@ -769,6 +755,125 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
         <Text style={{ color: Colors.text, fontSize: 16, fontWeight: "600", textAlign: "center" }}>{toastMessage}</Text>
       </View>
     )}
+
+    {/* Menú de opciones del botón + */}
+    {showAddMenu && (
+      <View style={{
+        position: 'absolute',
+        bottom: 100,
+        alignSelf: 'center',
+        backgroundColor: Colors.white,
+        borderRadius: 12,
+        padding: 8,
+        width: 200,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        zIndex: 1000,
+      }}>
+        <TouchableOpacity
+          onPress={() => {
+            setShowAddMenu(false);
+            createGroup();
+          }}
+          style={{
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: '#f0f0f0',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ 
+            fontSize: 16, 
+            color: Colors.text, 
+            fontWeight: '600'
+          }}>
+            Crear Grupo Nuevo
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          onPress={() => {
+            setShowAddMenu(false);
+            openJoinModal();
+          }}
+          style={{
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ 
+            fontSize: 16, 
+            color: Colors.text, 
+            fontWeight: '600'
+          }}>
+            Unirse a Grupo
+          </Text>
+        </TouchableOpacity>
+      </View>
+    )}
+
+    {/* Barra de navegación inferior */}
+    <View style={{
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 74,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#fff',
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderTopWidth: 1,
+      borderTopColor: '#f0f0f0',
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }}>
+      {/* Botón central de Agregar */}
+      <TouchableOpacity 
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: -40,
+        }}
+        onPress={() => {
+          if (!isLoggedIn) {
+            Alert.alert('Iniciar Sesión', 'Debes iniciar sesión para crear o unirte a un grupo');
+            return;
+          }
+          setShowAddMenu(!showAddMenu);
+        }}
+      >
+        <View style={{
+          width: 70,
+          height: 70,
+          borderRadius: 35,
+          backgroundColor: Colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          elevation: 6,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        }}>
+          <Text style={{
+            fontSize: 40,
+            color: '#fff',
+            fontWeight: 'bold',
+          }}>+</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   </SafeAreaView>
   );
 };
