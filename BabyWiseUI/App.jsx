@@ -11,9 +11,7 @@ import CameraScreen from './src/screens/CameraScreen';
 import RecordingsListScreen from './src/screens/RecordingsListScreen';
 import RecordingPlayerScreen from './src/screens/RecordingPlayerScreen';
 import AudioListScreen from './src/screens/AudioListScreen';
-import MediaOptionsScreen from './src/screens/MediaOptionsScreen';
 import StatisticsScreen from './src/screens/StatisticsScreen';
-import BabyHomeScreen from './src/screens/BabyHomeScreen';
 
 const Stack = createStackNavigator();
 
@@ -267,11 +265,6 @@ const App = () => {
             options={({ route }) => ({ title: `${route.params?.group?.name || 'Group'} Options` })}
           />
           <Stack.Screen 
-            name="BabyHome" 
-            component={BabyHomeScreen} 
-            options={{ title: `Baby Home Screen` }}
-          />
-          <Stack.Screen 
             name="Viewer" 
             component={ViewerScreen} 
             options={{ title: 'Baby Monitor Viewer' }}
@@ -280,11 +273,6 @@ const App = () => {
             name="Camera" 
             component={CameraScreen} 
             options={{ title: 'Baby Monitor Camera' }}
-          />
-          <Stack.Screen 
-            name="MediaOptionsScreen" 
-            component={MediaOptionsScreen} 
-            options={{ title: 'Archivos multimedia' }}
           />
           <Stack.Screen 
             name="RecordingsListScreen" 

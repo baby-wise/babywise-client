@@ -9,7 +9,8 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
-  Alert
+  Alert,
+  Dimensions
 } from 'react-native';
 import { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
@@ -25,6 +26,14 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  
+  // Estado para el modal de media
+  const [showMediaModal, setShowMediaModal] = useState(false);
+  
+  // Estado para el modal de opciones de cámara
+  const [showCameraOptionsModal, setShowCameraOptionsModal] = useState(false);
+  const [selectedCamera, setSelectedCamera] = useState(null);
+  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
   
   // Estados para el modal de settings
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -383,7 +392,42 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               <TouchableOpacity 
                 key={cam._id || cam.user || idx} 
                 style={styles.cameraCardVertical} 
-                onPress={() => navigation.navigate('BabyHome', { group, babyName: cam.name})}
+                onPress={(event) => {
+                  const { pageX, pageY } = event.nativeEvent;
+                  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+                  
+                  // Dimensiones aproximadas del modal
+                  const modalWidth = 300;
+                  const modalHeight = 220;
+                  
+                  // Calcular posición ajustada para que no se salga de la pantalla
+                  let adjustedX = pageX;
+                  let adjustedY = pageY;
+                  
+                  // Ajustar si se sale por la derecha
+                  if (pageX + modalWidth > screenWidth) {
+                    adjustedX = screenWidth - modalWidth - 20;
+                  }
+                  
+                  // Ajustar si se sale por abajo
+                  if (pageY + modalHeight > screenHeight) {
+                    adjustedY = screenHeight - modalHeight - 20;
+                  }
+                  
+                  // Ajustar si se sale por la izquierda (mínimo 20px de margen)
+                  if (adjustedX < 20) {
+                    adjustedX = 20;
+                  }
+                  
+                  // Ajustar si se sale por arriba (mínimo 20px de margen)
+                  if (adjustedY < 20) {
+                    adjustedY = 20;
+                  }
+                  
+                  setModalPosition({ x: adjustedX, y: adjustedY });
+                  setSelectedCamera(cam);
+                  setShowCameraOptionsModal(true);
+                }}
               >
                 {/* Thumbnail placeholder con relación de aspecto 16:9 */}
                 <View style={styles.cameraAvatarVertical} />
@@ -435,7 +479,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         {/* Botón de Grabaciones */}
         <TouchableOpacity 
           style={styles.navButton}
-          onPress={() => navigation.navigate('MediaOptionsScreen', { group })}
+          onPress={() => setShowMediaModal(!showMediaModal)}
         >
           <View style={styles.navIconContainer}>
             {/* Ícono de play (reproducir) */}
@@ -453,6 +497,31 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           </View>
         </TouchableOpacity>
       </View>
+      
+      {/* Menú de opciones de Media */}
+      {showMediaModal && (
+        <View style={styles.mediaMenuContainer}>
+          <TouchableOpacity
+            onPress={() => {
+              setShowMediaModal(false);
+              navigation.navigate('AudioListScreen', { room: group._id || group.id });
+            }}
+            style={styles.mediaMenuOption}
+          >
+            <Text style={styles.mediaMenuText}>Audios</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            onPress={() => {
+              setShowMediaModal(false);
+              navigation.navigate('RecordingsListScreen', { room: group._id || group.id });
+            }}
+            style={[styles.mediaMenuOption, { borderBottomWidth: 0 }]}
+          >
+            <Text style={styles.mediaMenuText}>Grabaciones</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Modal para agregar miembro */}
       <Modal
@@ -618,6 +687,67 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de opciones de cámara */}
+      {showCameraOptionsModal && (
+        <>
+          {/* Overlay invisible para cerrar al tocar fuera */}
+          <TouchableOpacity 
+            style={styles.cameraOptionsOverlay}
+            activeOpacity={1}
+            onPress={() => setShowCameraOptionsModal(false)}
+          />
+          
+          <View style={[styles.cameraOptionsContainer, { top: modalPosition.y, left: modalPosition.x }]}>
+            {/* Ver en vivo */}
+            <TouchableOpacity
+              style={styles.cameraOptionButton}
+              onPress={() => {
+                setShowCameraOptionsModal(false);
+                navigation.navigate('Viewer', { group, userName });
+              }}
+            >
+              <Text style={styles.cameraOptionButtonText}>Ver en vivo</Text>
+            </TouchableOpacity>
+            
+            {/* Grabar en vivo */}
+            <TouchableOpacity
+              style={styles.cameraOptionButton}
+              onPress={() => {
+                setShowCameraOptionsModal(false);
+                navigation.navigate('Camera', { group, cameraName: selectedCamera?.name, userName });
+              }}
+            >
+              <Text style={styles.cameraOptionButtonText}>Grabar en vivo</Text>
+            </TouchableOpacity>
+            
+            {/* Ver grabaciones */}
+            <TouchableOpacity
+              style={styles.cameraOptionButton}
+              onPress={() => {
+                setShowCameraOptionsModal(false);
+                navigation.navigate('RecordingsListScreen', { 
+                  room: group._id || group.id, 
+                  babyName: selectedCamera?.name 
+                });
+              }}
+            >
+              <Text style={styles.cameraOptionButtonText}>Ver grabaciones</Text>
+            </TouchableOpacity>
+            
+            {/* Ver estadísticas */}
+            <TouchableOpacity
+              style={[styles.cameraOptionButton, { borderBottomWidth: 0 }]}
+              onPress={() => {
+                setShowCameraOptionsModal(false);
+                navigation.navigate('Statistics', { group, baby: selectedCamera?.name });
+              }}
+            >
+              <Text style={styles.cameraOptionButtonText}>Ver estadísticas</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
 
       {/* Toast de éxito */}
       {showToast && (
@@ -916,6 +1046,70 @@ const styles = StyleSheet.create({
     fontSize: 40,
     color: '#fff',
     fontWeight: 'bold',
+  },
+  
+  // Menú de opciones de Media
+  mediaMenuContainer: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 8,
+    minWidth: 150,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    zIndex: 1000,
+  },
+  mediaMenuOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  mediaMenuText: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  
+  // Modal de opciones de cámara
+  cameraOptionsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+  },
+  cameraOptionsContainer: {
+    position: 'absolute',
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 8,
+    minWidth: 300,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    zIndex: 1000,
+  },
+  cameraOptionButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  cameraOptionButtonText: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '600',
   },
 });
 
