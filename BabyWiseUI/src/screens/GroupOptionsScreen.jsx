@@ -9,7 +9,8 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
-  Alert
+  Alert,
+  Dimensions
 } from 'react-native';
 import { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
@@ -25,6 +26,14 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  
+  // Estado para el modal de media
+  const [showMediaModal, setShowMediaModal] = useState(false);
+  
+  // Estado para el modal de opciones de cámara
+  const [showCameraOptionsModal, setShowCameraOptionsModal] = useState(false);
+  const [selectedCamera, setSelectedCamera] = useState(null);
+  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
   
   // Estados para el modal de settings
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -212,9 +221,155 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           <Text style={GlobalStyles.backButtonText}>‹</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
-          <Text style={styles.settingsButtonText}>⚙️</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: -45 }}>
+          <TouchableOpacity style={[styles.settingsButton, { marginRight: 35 }]} onPress={addMembers}>
+            {/* Ícono de personas (agregar miembros) */}
+            <View style={{ width: 26, height: 22, position: 'relative' }}>
+              {/* Primera persona (atrás/izquierda) */}
+              <View style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+              }}>
+                {/* Cabeza */}
+                <View style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: Colors.text,
+                  marginLeft: 3,
+                }} />
+                {/* Cuerpo */}
+                <View style={{
+                  width: 13,
+                  height: 12,
+                  borderTopLeftRadius: 7,
+                  borderTopRightRadius: 7,
+                  backgroundColor: Colors.text,
+                  marginTop: 1,
+                }} />
+              </View>
+              
+              {/* Segunda persona (adelante/derecha) - superpuesta */}
+              <View style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+              }}>
+                {/* Cabeza */}
+                <View style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: Colors.text,
+                  marginLeft: 2.5,
+                }} />
+                {/* Cuerpo */}
+                <View style={{
+                  width: 13,
+                  height: 12,
+                  borderTopLeftRadius: 7,
+                  borderTopRightRadius: 7,
+                  backgroundColor: Colors.text,
+                  marginTop: 1,
+                }} />
+              </View>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
+            {/* Ícono de engranaje (configuración) */}
+            <View style={{ width: 22, height: 22, position: 'relative' }}>
+              {/* Dientes del engranaje */}
+              <View style={{
+                position: 'absolute',
+                top: -1,
+                left: 9,
+                width: 4,
+                height: 4,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                bottom: -1,
+                left: 9,
+                width: 4,
+                height: 4,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                top: 9,
+                left: 0,
+                width: 4,
+                height: 4,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                top: 9,
+                right: -1,
+                width: 4,
+                height: 4,
+                backgroundColor: Colors.text,
+              }} />
+              {/* Dientes diagonales */}
+              <View style={{
+                position: 'absolute',
+                top: 2,
+                left: 2,
+                width: 5,
+                height: 5,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                width: 5,
+                height: 5,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                bottom: 2,
+                left: 2,
+                width: 5,
+                height: 5,
+                backgroundColor: Colors.text,
+              }} />
+              <View style={{
+                position: 'absolute',
+                bottom: 2,
+                right: 2,
+                width: 5,
+                height: 5,
+                backgroundColor: Colors.text,
+              }} />
+              {/* Anillo exterior desde donde salen los dientes */}
+              <View style={{
+                position: 'absolute',
+                top: 3,
+                left: 3,
+                width: 16,
+                height: 16,
+                borderRadius: 8,
+                borderWidth: 3,
+                borderColor: Colors.text,
+                backgroundColor: Colors.background,
+              }} />
+              {/* Círculo central sólido */}
+              <View style={{
+                position: 'absolute',
+                top: 8,
+                left: 8,
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: Colors.text,
+              }} />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.headerInfoCentered}>
@@ -222,66 +377,151 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         <Text style={styles.subtitle}>{group.members} miembros</Text>
       </View>
 
-      {/* Camera carousel */}
-      <View style={styles.carouselContainer}>
-        <Text style={styles.sectionTitle}>Cámaras</Text>
-        <ScrollView
-          horizontal={true}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.cameraScroll}
-          decelerationRate={'fast'}
-          snapToInterval={152}
-          snapToAlignment={'start'}
-          directionalLockEnabled={true}
-        >
-            {isLoadingCameras ? (
-              <View style={styles.noCameraCard}>
-                <ActivityIndicator />
-              </View>
-            ) : (
-              (fetchedCameras && fetchedCameras.length > 0) ? (
-                fetchedCameras.map((cam, idx) => (
-                  <TouchableOpacity key={cam._id || cam.user || idx} style={styles.cameraCard} onPress={() => navigation.navigate('BabyHome', { group, babyName: cam.name})}>
-                    <View style={styles.cameraAvatar} />
-                    <Text style={styles.cameraName}>{cam.name || `Cam ${idx+1}`}</Text>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View style={styles.noCameraCard}>
-                  <Text style={styles.noCameraText}>No hay cámaras añadidas</Text>
+      {/* Título fijo de cámaras */}
+      <Text style={styles.sectionTitle}>Cámaras</Text>
+
+      {/* Camera list */}
+      <ScrollView style={styles.cameraListContainer} showsVerticalScrollIndicator={false}>
+        {isLoadingCameras ? (
+          <View style={styles.noCameraCard}>
+            <ActivityIndicator />
+          </View>
+        ) : (
+          (fetchedCameras && fetchedCameras.length > 0) ? (
+            fetchedCameras.map((cam, idx) => (
+              <TouchableOpacity 
+                key={cam._id || cam.user || idx} 
+                style={styles.cameraCardVertical} 
+                onPress={(event) => {
+                  const { pageX, pageY } = event.nativeEvent;
+                  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+                  
+                  // Dimensiones aproximadas del modal
+                  const modalWidth = 300;
+                  const modalHeight = 220;
+                  
+                  // Calcular posición ajustada para que no se salga de la pantalla
+                  let adjustedX = pageX;
+                  let adjustedY = pageY;
+                  
+                  // Ajustar si se sale por la derecha
+                  if (pageX + modalWidth > screenWidth) {
+                    adjustedX = screenWidth - modalWidth - 20;
+                  }
+                  
+                  // Ajustar si se sale por abajo
+                  if (pageY + modalHeight > screenHeight) {
+                    adjustedY = screenHeight - modalHeight - 20;
+                  }
+                  
+                  // Ajustar si se sale por la izquierda (mínimo 20px de margen)
+                  if (adjustedX < 20) {
+                    adjustedX = 20;
+                  }
+                  
+                  // Ajustar si se sale por arriba (mínimo 20px de margen)
+                  if (adjustedY < 20) {
+                    adjustedY = 20;
+                  }
+                  
+                  setModalPosition({ x: adjustedX, y: adjustedY });
+                  setSelectedCamera(cam);
+                  setShowCameraOptionsModal(true);
+                }}
+              >
+                {/* Thumbnail placeholder con relación de aspecto 16:9 */}
+                <View style={styles.cameraAvatarVertical} />
+                
+                {/* Información debajo del thumbnail */}
+                <View style={styles.cameraInfo}>
+                  <Text style={styles.cameraNameVertical}>{cam.name || `Cámara ${idx+1}`}</Text>
+                  <Text style={styles.cameraStatus}>
+                    {cam.status === 'ONLINE' ? '🟢 En línea' : '⚫ Desconectada'}
+                  </Text>
                 </View>
-              )
-            )}
-        </ScrollView>
-        <View>
-          <TouchableOpacity style={GlobalStyles.fab} onPress={goToCamera}>
-                  <Text style={GlobalStyles.fabText}>+</Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.noCameraCard}>
+              <Text style={styles.noCameraText}>No hay cámaras añadidas</Text>
+            </View>
+          )
+        )}
+      </ScrollView>
+
+      {/* Barra de navegación inferior */}
+      <View style={styles.bottomNavBar}>
+        {/* Botón de Estadísticas */}
+        <TouchableOpacity 
+          style={styles.navButton}
+          onPress={goToStatistics}
+        >
+          <View style={styles.navIconContainer}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
+              <View style={{ width: 4, height: 12, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
+              <View style={{ width: 4, height: 18, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
+              <View style={{ width: 4, height: 10, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
+              <View style={{ width: 4, height: 16, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Botón central de Agregar Bebé */}
+        <TouchableOpacity 
+          style={styles.navButtonCenter}
+          onPress={goToCamera}
+        >
+          <View style={styles.navIconContainerCenter}>
+            <Text style={styles.navIconCenter}>+</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Botón de Grabaciones */}
+        <TouchableOpacity 
+          style={styles.navButton}
+          onPress={() => setShowMediaModal(!showMediaModal)}
+        >
+          <View style={styles.navIconContainer}>
+            {/* Ícono de play (reproducir) */}
+            <View style={{ 
+              width: 0, 
+              height: 0, 
+              borderLeftWidth: 16,
+              borderTopWidth: 10,
+              borderBottomWidth: 10,
+              borderLeftColor: Colors.textSecondary,
+              borderTopColor: 'transparent',
+              borderBottomColor: 'transparent',
+              marginLeft: 4,
+            }} />
+          </View>
+        </TouchableOpacity>
+      </View>
+      
+      {/* Menú de opciones de Media */}
+      {showMediaModal && (
+        <View style={styles.mediaMenuContainer}>
+          <TouchableOpacity
+            onPress={() => {
+              setShowMediaModal(false);
+              navigation.navigate('AudioListScreen', { room: group._id || group.id });
+            }}
+            style={styles.mediaMenuOption}
+          >
+            <Text style={styles.mediaMenuText}>Audios</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            onPress={() => {
+              setShowMediaModal(false);
+              navigation.navigate('RecordingsListScreen', { room: group._id || group.id });
+            }}
+            style={[styles.mediaMenuOption, { borderBottomWidth: 0 }]}
+          >
+            <Text style={styles.mediaMenuText}>Grabaciones</Text>
           </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Actions section */}
-      <View style={[GlobalStyles.optionList, {marginTop: -150}]}>
-      <TouchableOpacity
-        style={GlobalStyles.optionButton}
-        onPress={() => navigation.navigate('MediaOptionsScreen', { group })}>
-        <Text style={GlobalStyles.cardTitle}>🖼️ Multimedia</Text>
-        <Text style={GlobalStyles.cardSubtitle}>Fotos y videos</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={GlobalStyles.optionButton}
-        onPress={goToStatistics}>
-        <Text style={GlobalStyles.cardTitle}>📈Estadísticas</Text>
-        <Text style={GlobalStyles.cardSubtitle}>{group.members} Actividad</Text>
-      </TouchableOpacity>
-      </View>
-
-       <TouchableOpacity
-        style={[GlobalStyles.googleButton, {backgroundColor: Colors.primary}]}
-        onPress={addMembers}>
-        <Text style={GlobalStyles.cardTitle}>Agregar Miembros</Text>
-        <Text style={GlobalStyles.cardSubtitle}>Invitar familia</Text>
-      </TouchableOpacity>
+      )}
 
       {/* Modal para agregar miembro */}
       <Modal
@@ -448,6 +688,67 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         </View>
       </Modal>
 
+      {/* Modal de opciones de cámara */}
+      {showCameraOptionsModal && (
+        <>
+          {/* Overlay invisible para cerrar al tocar fuera */}
+          <TouchableOpacity 
+            style={styles.cameraOptionsOverlay}
+            activeOpacity={1}
+            onPress={() => setShowCameraOptionsModal(false)}
+          />
+          
+          <View style={[styles.cameraOptionsContainer, { top: modalPosition.y, left: modalPosition.x }]}>
+            {/* Ver en vivo */}
+            <TouchableOpacity
+              style={styles.cameraOptionButton}
+              onPress={() => {
+                setShowCameraOptionsModal(false);
+                navigation.navigate('Viewer', { group, userName });
+              }}
+            >
+              <Text style={styles.cameraOptionButtonText}>Ver en vivo</Text>
+            </TouchableOpacity>
+            
+            {/* Grabar en vivo */}
+            <TouchableOpacity
+              style={styles.cameraOptionButton}
+              onPress={() => {
+                setShowCameraOptionsModal(false);
+                navigation.navigate('Camera', { group, cameraName: selectedCamera?.name, userName });
+              }}
+            >
+              <Text style={styles.cameraOptionButtonText}>Grabar en vivo</Text>
+            </TouchableOpacity>
+            
+            {/* Ver grabaciones */}
+            <TouchableOpacity
+              style={styles.cameraOptionButton}
+              onPress={() => {
+                setShowCameraOptionsModal(false);
+                navigation.navigate('RecordingsListScreen', { 
+                  room: group._id || group.id, 
+                  babyName: selectedCamera?.name 
+                });
+              }}
+            >
+              <Text style={styles.cameraOptionButtonText}>Ver grabaciones</Text>
+            </TouchableOpacity>
+            
+            {/* Ver estadísticas */}
+            <TouchableOpacity
+              style={[styles.cameraOptionButton, { borderBottomWidth: 0 }]}
+              onPress={() => {
+                setShowCameraOptionsModal(false);
+                navigation.navigate('Statistics', { group, baby: selectedCamera?.name });
+              }}
+            >
+              <Text style={styles.cameraOptionButtonText}>Ver estadísticas</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
       {/* Toast de éxito */}
       {showToast && (
         <View style={styles.toastContainer}>
@@ -490,7 +791,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   settingsButtonText: {
-    fontSize: 20,
+    fontSize: 26,
     color: '#0F172A',
   },
   title: {
@@ -518,30 +819,62 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 18,
   },
-  carouselContainer: { marginTop: 24, paddingLeft: 18 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
-  cameraScroll: { paddingRight: 18, paddingVertical: 8 },
-  cameraCard: {
-    width: 140,
-    height: 120,
-    backgroundColor: '#FBFBFD',
-    borderRadius: 12,
-    marginRight: 12,
+  cameraListContainer: { 
+    flex: 1,
+    paddingHorizontal: 12,
+    marginBottom: 100, // Espacio para el bottom nav
+  },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#0F172A', 
+    marginBottom: 12,
+    marginTop: 8,
+    paddingHorizontal: 18,
+  },
+  cameraCardVertical: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginBottom: 16,
     padding: 12,
-    justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#EFEFF1'
+    borderColor: '#EFEFF1',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  cameraAvatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 10,
+  cameraAvatarVertical: {
+    width: '100%',
+    aspectRatio: 16 / 9, // Relación de aspecto 16:9
+    borderRadius: 16,
     backgroundColor: '#E6EEF8',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  cameraName: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
-  noCameraCard: { padding: 12 },
-  noCameraText: { color: '#94A3B8' },
+  cameraInfo: {
+    paddingHorizontal: 4,
+  },
+  cameraNameVertical: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  cameraStatus: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  noCameraCard: { 
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noCameraText: { 
+    color: '#94A3B8',
+    fontSize: 15,
+  },
   actionsSection: { marginTop: 24, paddingLeft: 18 },
   actionsGridRowFirst: { paddingHorizontal: 18, flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   actionsGridRow: { paddingHorizontal: 18, flexDirection: 'row', justifyContent: 'space-between', marginTop: 0 },
@@ -656,6 +989,128 @@ const styles = StyleSheet.create({
   inviteCode: { fontSize: 24, fontWeight: 'bold', color: '#3E5F8A', backgroundColor: '#f5f5f5', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginBottom: 10, letterSpacing: 2 },
   copyButton: { backgroundColor: '#E8F4FD', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 5 },
   copyButtonText: { color: '#3E5F8A', fontSize: 14, fontWeight: 'bold' },
+  
+  // Barra de navegación inferior
+  bottomNavBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  navButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  navButtonCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    marginTop: -40,
+  },
+  navIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navIconContainerCenter: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  navIconCenter: {
+    fontSize: 40,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  
+  // Menú de opciones de Media
+  mediaMenuContainer: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 8,
+    minWidth: 150,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    zIndex: 1000,
+  },
+  mediaMenuOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  mediaMenuText: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  
+  // Modal de opciones de cámara
+  cameraOptionsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+  },
+  cameraOptionsContainer: {
+    position: 'absolute',
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 8,
+    minWidth: 300,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    zIndex: 1000,
+  },
+  cameraOptionButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  cameraOptionButtonText: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '600',
+  },
 });
 
   

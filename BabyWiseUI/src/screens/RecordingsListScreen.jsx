@@ -4,7 +4,7 @@ import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import { GlobalStyles } from '../styles/Styles';
 
 const RecordingsListScreen = ({ navigation, route }) => {
-  const { room } = route.params;
+  const { room, babyName } = route.params;
   const [recordingsByParticipant, setRecordingsByParticipant] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,7 +16,17 @@ const RecordingsListScreen = ({ navigation, route }) => {
         setError(null);
         const res = await fetch(`${SIGNALING_SERVER_URL}/recordings?room=${room}`);
         const data = await res.json();
-        setRecordingsByParticipant(data.recordingsByParticipant || []);
+        let recordings = data.recordingsByParticipant || [];
+        
+        // Si se recibe babyName, filtrar solo las grabaciones de ese bebé
+        if (babyName) {
+          recordings = recordings.filter(item => {
+            const participantName = item.participant.replace("camera-", "");
+            return participantName === babyName;
+          });
+        }
+        
+        setRecordingsByParticipant(recordings);
       } catch (err) {
         setError('Error cargando grabaciones');
       } finally {
@@ -24,7 +34,7 @@ const RecordingsListScreen = ({ navigation, route }) => {
       }
     };
     fetchRecordings();
-  }, [room]);
+  }, [room, babyName]);
 
 
   const handleSelect = (rec) => {
@@ -43,7 +53,9 @@ const RecordingsListScreen = ({ navigation, route }) => {
           <ActivityIndicator size="large" />
         ) : recordingsByParticipant.length === 0 ? (
           <View>
-            <Text style={GlobalStyles.title}>Grabaciones</Text>
+            <Text style={GlobalStyles.title}>
+              {babyName ? `Grabaciones de ${babyName}` : 'Grabaciones'}
+            </Text>
             <Text style={GlobalStyles.cardSubtitle}>No hay grabaciones disponibles</Text>
           </View>
         ) : (
@@ -52,7 +64,7 @@ const RecordingsListScreen = ({ navigation, route }) => {
                keyExtractor={(item) => item.participant}
                ListHeaderComponent={
                   <Text style={[GlobalStyles.title, { textAlign: "center", marginBottom: 20 }]}>
-                    Grabaciones
+                    {babyName ? `Grabaciones de ${babyName}` : 'Grabaciones'}
                   </Text>
                 }
                contentContainerStyle={{

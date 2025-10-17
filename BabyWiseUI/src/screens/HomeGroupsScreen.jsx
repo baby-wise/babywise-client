@@ -40,6 +40,12 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [isJoiningGroup, setIsJoiningGroup] = useState(false);
+  
+  // Estado para menú de perfil
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  
+  // Estado para menú de opciones del botón +
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
  // Función para registrar el token push en el backend
   const registerPushToken = async (UID) => {
@@ -447,28 +453,162 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
 
   return (
     <SafeAreaView style={GlobalStyles.container}>
-    {/* Título */}
-    <Text style={GlobalStyles.title}>Baby Monitor</Text>
-    
-    {/* Botones principales */}
-    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10, marginBottom: 30 }}>
-      <TouchableOpacity 
-        style={[GlobalStyles.button, GlobalStyles.buttonPrimary]} 
-        onPress={createGroup}
-      >
-        <Text style={GlobalStyles.buttonText}>Crear Grupo</Text>
-      </TouchableOpacity>
+    {/* Header con título y perfil */}
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+      <View style={{ flex: 1 }} />
       
-      <TouchableOpacity 
-        style={[GlobalStyles.button, GlobalStyles.buttonSecondary]} 
-        onPress={openJoinModal}
-      >
-        <Text style={GlobalStyles.buttonText}>Unirse a Grupo</Text>
-      </TouchableOpacity>
+      {/* Título centrado */}
+      <View style={{ alignItems: 'center' }}>
+        <Text style={[GlobalStyles.title, { marginBottom: 0 }]}>
+          <Text style={{ color: Colors.primary }}>Baby</Text>
+          <Text style={{ color: Colors.secondary }}>Wise</Text>
+        </Text>
+      </View>
+      
+      {/* Ícono de perfil - siempre visible */}
+      <View style={{ flex: 1, alignItems: 'flex-end' }}>
+        <TouchableOpacity
+          onPress={() => setShowProfileMenu(!showProfileMenu)}
+          style={{
+            width: 40,
+            height: 40,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {/* Ícono de perfil con círculo y persona */}
+          <View style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            borderWidth: 2.5,
+            borderColor: isLoggedIn ? Colors.primary : Colors.textSecondary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+          }}>
+            {/* Cabeza */}
+            <View style={{
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: isLoggedIn ? Colors.primary : Colors.textSecondary,
+              marginBottom: 1,
+              marginTop: -2,
+            }} />
+            {/* Cuerpo */}
+            <View style={{
+              width: 16,
+              height: 10,
+              borderTopLeftRadius: 8,
+              borderTopRightRadius: 8,
+              backgroundColor: isLoggedIn ? Colors.primary : Colors.textSecondary,
+            }} />
+          </View>
+        </TouchableOpacity>
+      </View>
     </View>
 
+    {/* Menú desplegable de perfil */}
+    {showProfileMenu && (
+      <View style={{
+        position: 'absolute',
+        top: 80,
+        right: 20,
+        backgroundColor: Colors.white,
+        borderRadius: 12,
+        padding: 16,
+        minWidth: 200,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        zIndex: 1000,
+      }}>
+        {isLoggedIn ? (
+          <>
+            {/* Email del usuario */}
+            <Text style={{ 
+              fontSize: 14, 
+              color: Colors.text, 
+              marginBottom: 12,
+              paddingBottom: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: '#eee'
+            }}>
+              {displayEmail}
+            </Text>
+            
+            {/* Botón de cerrar sesión */}
+            <TouchableOpacity
+              onPress={() => {
+                setShowProfileMenu(false);
+                signIn(); // Esta función ya maneja el logout cuando isLoggedIn es true
+              }}
+              disabled={isLoading}
+              style={{ paddingVertical: 8 }}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#ff4444" />
+              ) : (
+                <Text style={{ 
+                  fontSize: 16, 
+                  color: '#ff4444', 
+                  fontWeight: '600',
+                  textAlign: 'center'
+                }}>
+                  Cerrar Sesión
+                </Text>
+              )}
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            {/* Mensaje cuando no está logueado */}
+            <Text style={{ 
+              fontSize: 14, 
+              color: Colors.textSecondary, 
+              marginBottom: 12,
+              textAlign: 'center'
+            }}>
+              No has iniciado sesión
+            </Text>
+            
+            {/* Botón de iniciar sesión */}
+            <TouchableOpacity
+              onPress={() => {
+                setShowProfileMenu(false);
+                signIn();
+              }}
+              disabled={isLoading}
+              style={{ 
+                backgroundColor: Colors.primary,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderRadius: 8,
+                alignItems: 'center'
+              }}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <Text style={{ 
+                  fontSize: 16, 
+                  color: Colors.white, 
+                  fontWeight: '600'
+                }}>
+                  Iniciar Sesión
+                </Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    )}
+    
     {/* Lista de grupos */}
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ marginBottom: 100 }}>
       <Text style={GlobalStyles.sectionTitle}>Mis Grupos</Text>
       
       {isLoadingGroups ? (
@@ -501,26 +641,6 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
         </View>
       )}
     </ScrollView>
-
-    {/* Botón de Google */}
-    <TouchableOpacity 
-      style={[GlobalStyles.googleButton, isLoading && { backgroundColor: "#ccc" }]} 
-      onPress={signIn}
-      disabled={isLoading}
-    >
-      {isLoading ? (
-        <ActivityIndicator size="small" color={Colors.white} />
-      ) : (
-        <Text style={GlobalStyles.buttonText}>{googleText}</Text>
-      )}
-    </TouchableOpacity>
-
-    {/* Debug info */}
-    <View style={{ marginTop: 10, backgroundColor: "rgba(0,0,0,0.7)", padding: 10, borderRadius: 8, alignItems: "center" }}>
-      <Text style={{ fontSize: 12, color: Colors.white, textAlign: "center" }}>
-        Email: {displayEmail || "No hay email"}
-      </Text>
-    </View>
 
     {/* Modal para crear grupo */}
     <Modal
@@ -635,6 +755,125 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
         <Text style={{ color: Colors.text, fontSize: 16, fontWeight: "600", textAlign: "center" }}>{toastMessage}</Text>
       </View>
     )}
+
+    {/* Menú de opciones del botón + */}
+    {showAddMenu && (
+      <View style={{
+        position: 'absolute',
+        bottom: 100,
+        alignSelf: 'center',
+        backgroundColor: Colors.white,
+        borderRadius: 12,
+        padding: 8,
+        width: 200,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        zIndex: 1000,
+      }}>
+        <TouchableOpacity
+          onPress={() => {
+            setShowAddMenu(false);
+            createGroup();
+          }}
+          style={{
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: '#f0f0f0',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ 
+            fontSize: 16, 
+            color: Colors.text, 
+            fontWeight: '600'
+          }}>
+            Crear Grupo Nuevo
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          onPress={() => {
+            setShowAddMenu(false);
+            openJoinModal();
+          }}
+          style={{
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ 
+            fontSize: 16, 
+            color: Colors.text, 
+            fontWeight: '600'
+          }}>
+            Unirse a Grupo
+          </Text>
+        </TouchableOpacity>
+      </View>
+    )}
+
+    {/* Barra de navegación inferior */}
+    <View style={{
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 74,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#fff',
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderTopWidth: 1,
+      borderTopColor: '#f0f0f0',
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }}>
+      {/* Botón central de Agregar */}
+      <TouchableOpacity 
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: -40,
+        }}
+        onPress={() => {
+          if (!isLoggedIn) {
+            Alert.alert('Iniciar Sesión', 'Debes iniciar sesión para crear o unirte a un grupo');
+            return;
+          }
+          setShowAddMenu(!showAddMenu);
+        }}
+      >
+        <View style={{
+          width: 70,
+          height: 70,
+          borderRadius: 35,
+          backgroundColor: Colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          elevation: 6,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        }}>
+          <Text style={{
+            fontSize: 40,
+            color: '#fff',
+            fontWeight: 'bold',
+          }}>+</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   </SafeAreaView>
   );
 };
