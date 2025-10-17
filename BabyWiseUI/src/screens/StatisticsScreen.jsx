@@ -25,7 +25,7 @@ import { groupService } from '../services/apiService';
   {/* note: ensure we measure the same container that renders the ChartWebView */}
 
 const StatisticsScreen = ({ navigation, route }) => {
-  const { group } = route.params;
+  const { group, cameraName } = route.params;
   const [eventsData, setEventsData] = useState(null);
   const [llmResponse, setLlmResponse] = useState('');
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
@@ -54,6 +54,11 @@ const StatisticsScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchCameras();
+    if(cameraName){
+      console.log("Camera name: ", cameraName)
+      setSelectedCamera(cameraName)
+      fetchEventsByCamera(cameraName);
+    }
   }, []);
 
   // Listen to keyboard to show a dismiss-overlay when open
@@ -79,13 +84,6 @@ const StatisticsScreen = ({ navigation, route }) => {
         const found = data.find(g => String(g._id) === String(group.id) || String(g.id) === String(group.id));
         if (found && found.cameras) {
           setCameras(found.cameras);
-          const first = found.cameras[0];
-          if (first) {
-            setSelectedCamera(first);
-            // Prefer camera user id if available; fallback to camera name
-            const camUid = first?.user?._id ?? first?.user ?? first?.uid ?? first?.name;
-            await fetchEventsByCamera(camUid);
-          }
         } else {
           // group not found or no cameras
           console.warn('fetchCameras: group not found in /groups response or no cameras present');
@@ -351,7 +349,7 @@ const StatisticsScreen = ({ navigation, route }) => {
             <View>
               {/* Collapsed picklist: show only selected camera. Tap to toggle list. */}
               <TouchableOpacity onPress={() => setDropdownOpen(o => !o)} style={{ padding: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, backgroundColor: '#fff' }}>
-                <Text style={{ color: '#333' }}>{selectedCamera ? selectedCamera.name : 'Seleccionar cámara'}</Text>
+                <Text style={{ color: '#333' }}>{selectedCamera ? selectedCamera : 'Seleccionar cámara'}</Text>
               </TouchableOpacity>
 
               {/* Expanded list */}
@@ -365,7 +363,7 @@ const StatisticsScreen = ({ navigation, route }) => {
                         key={camUid || index} 
                         onPress={async () => { 
                           setDropdownOpen(false); 
-                          setSelectedCamera(cam); 
+                          setSelectedCamera(camUid); 
                           await fetchEventsByCamera(camUid); 
                         }} 
                         style={{ 

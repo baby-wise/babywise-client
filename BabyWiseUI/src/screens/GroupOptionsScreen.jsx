@@ -740,7 +740,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               style={[styles.cameraOptionButton, { borderBottomWidth: 0 }]}
               onPress={() => {
                 setShowCameraOptionsModal(false);
-                navigation.navigate('Statistics', { group, baby: selectedCamera?.name });
+                navigation.navigate('Statistics', { group, cameraName: selectedCamera?.name });
               }}
             >
               <Text style={styles.cameraOptionButtonText}>Ver estadísticas</Text>
