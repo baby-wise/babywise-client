@@ -67,39 +67,8 @@ const getEventsByGroup = async (req, res) => {
 // Return 24 hourly buckets for the camera identified by cameraUid (can be user id or camera name)
 const getEventsByCamera = async (req, res) => {
   try {
-    const { cameraUid } = req.params;
+    const { groupId, cameraName } = req.params;
     
-    // Debug logging
-    console.log('getEventsByCamera called with cameraUid:', cameraUid, 'type:', typeof cameraUid);
-
-    // Validate cameraUid parameter
-    if (!cameraUid || cameraUid === 'undefined' || cameraUid === 'null' || cameraUid.trim() === '') {
-      console.log('Invalid cameraUid detected:', cameraUid);
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid camera ID provided',
-        receivedValue: cameraUid
-      });
-    }
-
-    // Find the group that contains this camera
-    // First try by user ID (legacy), then by camera name (current schema)
-    console.log('Searching for group with camera identifier:', cameraUid);
-    let group = await Group_DB.findOne({ 'cameras.user': cameraUid });
-    if (!group) {
-      group = await Group_DB.findOne({ 'cameras.name': cameraUid });
-    }
-    if (!group) return res.status(404).json({ success: false, message: 'Camera not found in any group' });
-
-    // Find camera object and its name (baby name mapping)
-    const cameraObj = group.cameras.find(c =>
-      String(c.user) === String(cameraUid) ||
-      (c.user && String(c.user._id) === String(cameraUid)) ||
-      c.name === cameraUid
-    );
-    if (!cameraObj) return res.status(404).json({ success: false, message: 'Camera not found' });
-    const cameraName = cameraObj.name;
-
     // compute last 24 hours window ending at current rounded hour
     const now = new Date();
     const end = new Date(now);
@@ -109,7 +78,7 @@ const getEventsByCamera = async (req, res) => {
 
     // fetch events for this group and baby name within the time window
     const rawEvents = await Event_DB.find({
-      group: group._id,
+      group: groupId,
       baby: cameraName,
       date: { $gte: start, $lte: new Date(end.getTime() + (60 * 60 * 1000)) }
     }).lean();

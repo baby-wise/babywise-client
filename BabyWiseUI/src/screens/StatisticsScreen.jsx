@@ -18,6 +18,7 @@ import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import ChartWebView from '../components/ChartWebView';
 import ChatPanel from '../components/ChatPanel';
 import { GlobalStyles } from '../styles/Styles';
+import { groupService } from '../services/apiService';
 
 
   {/* Chart container layout measurement for overlay */}
@@ -107,9 +108,7 @@ const StatisticsScreen = ({ navigation, route }) => {
   const fetchEventsByCamera = async (cameraUid) => {
     try {
       setIsLoadingEvents(true);
-      const url = `${SIGNALING_SERVER_URL}/events/camera/${encodeURIComponent(cameraUid)}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      const data = await groupService.getEventByCamera(group.id, cameraUid)
       if (data && data.success && data.data && data.data.events) {
         setEventsData({ groupId: group.id, events: data.data.events, period: data.data.period, generatedAt: data.data.generatedAt });
       } else {
