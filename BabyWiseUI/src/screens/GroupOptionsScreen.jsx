@@ -704,7 +704,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               style={styles.cameraOptionButton}
               onPress={() => {
                 setShowCameraOptionsModal(false);
-                navigation.navigate('Viewer', { group, userName });
+                navigation.navigate('Viewer', { group, userName, cameraName: selectedCamera?.name });
               }}
             >
               <Text style={styles.cameraOptionButtonText}>Ver en vivo</Text>

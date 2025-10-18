@@ -14,7 +14,7 @@ import { Colors } from '../styles/Styles';
 
 
 const ViewerScreen = ({ route, navigation }) => {
-  const { group, userName } = route.params || {};
+  const { group, userName, cameraName } = route.params || {};
   const socket = useSocket();
   const ROOM_ID = `${group.id}`;
   const [token, setToken] = useState(null);
@@ -87,6 +87,7 @@ const ViewerScreen = ({ route, navigation }) => {
             group={group}
             userName={userName}
             socket={socket}
+            cameraName={cameraName}
           />
         </LiveKitRoom>
       )}
@@ -99,7 +100,7 @@ const ViewerScreen = ({ route, navigation }) => {
 
 import { useRemoteParticipants, useRoomContext, useLocalParticipant } from '@livekit/react-native';
 
-const RoomView = ({ navigation, group, userName, socket }) => {
+const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
   // Audio modal y reproducción
   const [audioModalVisible, setAudioModalVisible] = useState(false);
   const [reproduciendoAudio, setReproduciendoAudio] = useState(false);
@@ -160,7 +161,7 @@ const RoomView = ({ navigation, group, userName, socket }) => {
   // Filtrar solo participantes que son cámaras
   const cameraTracks = tracks.filter(t => t.participant.identity && t.participant.identity.startsWith('camera-'));
   const cameraParticipants = Array.from(new Set(cameraTracks.map(t => t.participant.identity)));
-  const [selectedCamera, setSelectedCamera] = useState(cameraParticipants[0] || null);
+  const [selectedCamera, setSelectedCamera] = useState(null);
   const [isTalking, setIsTalking] = useState(false);
   const [speakingViewers, setSpeakingViewers] = useState([]); // array de identities
   // Escuchar eventos de mute/unmute de viewers
@@ -236,13 +237,17 @@ const RoomView = ({ navigation, group, userName, socket }) => {
   }, [room, remoteParticipants]);
 
   useEffect(() => {
-    if (cameraParticipants.length > 0 && !selectedCamera) {
+    if (cameraParticipants.length === 0) {
+      setSelectedCamera(null);
+      return;
+    }
+    // Si hay cameraName como prop y está en la lista de participantes → usarla
+    if (cameraName && cameraParticipants.includes(`camera-${cameraName}`)) {
+      setSelectedCamera(`camera-${cameraName}`);
+    }else if (!selectedCamera) {
       setSelectedCamera(cameraParticipants[0]);
     }
-    if (cameraParticipants.length === 0 && selectedCamera) {
-      setSelectedCamera(null);
-    }
-  }, [cameraParticipants.length]);
+  }, [cameraParticipants, cameraName]);
 
   // Push-to-talk handlers
 
@@ -365,7 +370,7 @@ const RoomView = ({ navigation, group, userName, socket }) => {
         {selectedCamera && (
           <TouchableOpacity 
             style={[styles.floatingButton, styles.agentFloatingButton]} 
-            onPress={() => navigation.navigate('Statistics', { group, baby: selectedCamera?.replace('camera-', '') })}
+            onPress={() => navigation.navigate('Statistics', { group, cameraName: selectedCamera?.replace('camera-', '') })}
           >
             <MaterialDesignIcons name="face-agent" size={28} color={Colors.primary} />
           </TouchableOpacity>
