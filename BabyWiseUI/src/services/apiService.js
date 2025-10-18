@@ -190,6 +190,15 @@ export const groupService = {
     } catch (error) {
       console.log(error)
     }
+  },
+
+  async getEventByCamera(groupId, cameraName){
+    try {
+      const response = await apiClient.get(`/events/group/${groupId}/camera/${encodeURIComponent(cameraName)}`)
+      return response.data
+    } catch (error) {
+      console.log(error)
+    }
   }
 };
 

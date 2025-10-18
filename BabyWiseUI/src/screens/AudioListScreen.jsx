@@ -74,7 +74,8 @@ const AudioListScreen = () => {
         setAudios(data2.audios || []);
       }
     } catch (err) {
-      if (err?.code !== 'DOCUMENT_PICKER_CANCELED') {
+      const isCanceled = err?.code === 'DOCUMENT_PICKER_CANCELED' || err?.message?.toLowerCase().includes('user canceled');
+      if (!isCanceled) {
         Alert.alert('Error', err.message || 'No se pudo subir el audio');
       }
     } finally {
@@ -221,6 +222,7 @@ const AudioListScreen = () => {
           onEnd={() => setPlayingAudio(null)}
           onError={e => {
             setPlayingAudio(null);
+            console.log(e)
             Alert.alert('Error', 'No se pudo reproducir el audio');
           }}
           style={{ width: 0, height: 0 }}
