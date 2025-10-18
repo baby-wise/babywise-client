@@ -6,6 +6,7 @@ import Video from 'react-native-video';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import { GlobalStyles, Colors } from '../styles/Styles';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 
 const AudioListScreen = () => {
   const navigation = useNavigation();
@@ -173,7 +174,7 @@ const AudioListScreen = () => {
         </Text>
       </TouchableOpacity>
       <TouchableOpacity style={GlobalStyles.deleteButton} onPress={() => handleDeleteAudio(audio)}>
-        <Text >❌</Text>
+        <MaterialDesignIcons name="delete-outline" size={24} color="#ff4444" />
       </TouchableOpacity>
     </View>
   );
