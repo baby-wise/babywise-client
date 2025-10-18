@@ -53,11 +53,13 @@ const StatisticsScreen = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    fetchCameras();
     if(cameraName){
+      fetchCameras();
       console.log("Camera name: ", cameraName)
       setSelectedCamera(cameraName)
       fetchEventsByCamera(cameraName);
+    }else{
+      fetchCameras(1)
     }
   }, []);
 
@@ -72,7 +74,7 @@ const StatisticsScreen = ({ navigation, route }) => {
   }, []);
 
   // Fetch cameras for the group (HARDCODED from backend for now)
-  const fetchCameras = async () => {
+  const fetchCameras = async (cameraNameFlag = 0) => {
     try {
       setIsLoadingEvents(true);
       // Use existing public endpoint /groups to obtain group info (includes cameras)
@@ -84,6 +86,15 @@ const StatisticsScreen = ({ navigation, route }) => {
         const found = data.find(g => String(g._id) === String(group.id) || String(g.id) === String(group.id));
         if (found && found.cameras) {
           setCameras(found.cameras);
+          if(cameraNameFlag !== 0){
+            const first = found.cameras[0];
+          if (first) {
+            // Prefer camera user id if available; fallback to camera name
+            const camUid = first?.user?._id ?? first?.user ?? first?.uid ?? first?.name;
+            setSelectedCamera(camUid);
+            await fetchEventsByCamera(camUid);
+          }
+          }
         } else {
           // group not found or no cameras
           console.warn('fetchCameras: group not found in /groups response or no cameras present');
