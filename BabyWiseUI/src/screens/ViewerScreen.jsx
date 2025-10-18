@@ -99,6 +99,7 @@ const ViewerScreen = ({ route, navigation }) => {
 
 
 import { useRemoteParticipants, useRoomContext, useLocalParticipant } from '@livekit/react-native';
+import { useRef } from 'react';
 
 const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
   // Audio modal y reproducción
@@ -236,16 +237,23 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
     };
   }, [room, remoteParticipants]);
 
+  const hasSelectedInitialCamera = useRef(null)
+
   useEffect(() => {
     if (cameraParticipants.length === 0) {
       setSelectedCamera(null);
+      hasSelectedInitialCamera.current = false;
       return;
     }
-    // Si hay cameraName como prop y está en la lista de participantes → usarla
-    if (cameraName && cameraParticipants.includes(`camera-${cameraName}`)) {
-      setSelectedCamera(`camera-${cameraName}`);
-    }else if (!selectedCamera) {
-      setSelectedCamera(cameraParticipants[0]);
+
+    // Solo seleccionar automáticamente la primera vez
+    if (!hasSelectedInitialCamera.current) {
+      if (cameraName && cameraParticipants.includes(`camera-${cameraName}`)) {
+        setSelectedCamera(`camera-${cameraName}`);
+      } else {
+        setSelectedCamera(cameraParticipants[0]);
+      }
+      hasSelectedInitialCamera.current = true;
     }
   }, [cameraParticipants, cameraName]);
 
