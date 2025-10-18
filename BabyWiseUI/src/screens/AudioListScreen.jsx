@@ -174,7 +174,7 @@ const AudioListScreen = () => {
         </Text>
       </TouchableOpacity>
       <TouchableOpacity style={GlobalStyles.deleteButton} onPress={() => handleDeleteAudio(audio)}>
-        <MaterialDesignIcons name="delete-outline" size={24} color="#ff4444" />
+        <MaterialDesignIcons name="delete-outline" size={24} color="#c54040ff" />
       </TouchableOpacity>
     </View>
   );
