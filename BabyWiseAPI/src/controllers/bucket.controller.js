@@ -39,7 +39,7 @@ export const listAudios = async (req, res) => {
       for (const obj of resp.Contents || []) {
         audios.push({
           key: obj.Key,
-          url: `${process.env.CF_PUBLIC_URL}/${obj.Key}`,
+          url: `${process.env.CF_PUBLIC_URL}${obj.Key}`,
           size: obj.Size,
           lastModified: obj.LastModified,
         });

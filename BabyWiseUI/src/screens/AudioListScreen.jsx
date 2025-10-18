@@ -221,6 +221,7 @@ const AudioListScreen = () => {
           onEnd={() => setPlayingAudio(null)}
           onError={e => {
             setPlayingAudio(null);
+            console.log(e)
             Alert.alert('Error', 'No se pudo reproducir el audio');
           }}
           style={{ width: 0, height: 0 }}
