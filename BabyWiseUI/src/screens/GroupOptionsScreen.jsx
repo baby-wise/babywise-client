@@ -396,8 +396,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   const { pageX, pageY } = event.nativeEvent;
                   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
                   
-                  // Dimensiones aproximadas del modal
-                  const modalWidth = 300;
+                  // Dimensiones aproximadas del modal (flexible)
+                  const modalWidth = 200; // Ancho estimado basado en el texto más largo
                   const modalHeight = 220;
                   
                   // Calcular posición ajustada para que no se salga de la pantalla
@@ -1091,7 +1091,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 8,
-    minWidth: 300,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
