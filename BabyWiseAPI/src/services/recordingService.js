@@ -60,7 +60,7 @@ export const getRecordingsByRoom = async (room) => {
       }
       
       if (obj.Key.endsWith('.m3u8') && !obj.Key.endsWith('-live.m3u8')) {
-        recordingsByParticipant[participantIdentity][recId].playlistUrl = `${process.env.CF_PUBLIC_URL}/${obj.Key}`;
+        recordingsByParticipant[participantIdentity][recId].playlistUrl = `${process.env.CF_PUBLIC_URL}${obj.Key}`;
         recordingsByParticipant[participantIdentity][recId].key = obj.Key;
       }
       
@@ -80,7 +80,6 @@ export const getRecordingsByRoom = async (room) => {
       result.push({ participant, recordings });
     }
   }
-  
   return result;
 };
 
