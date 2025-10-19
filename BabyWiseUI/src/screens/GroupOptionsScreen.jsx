@@ -15,6 +15,7 @@ import {
 import { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
 import { GlobalStyles, Colors} from '../styles/Styles';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 
 
 const GroupOptionsScreen = ({ navigation, route }) => {
@@ -430,7 +431,17 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 }}
               >
                 {/* Thumbnail placeholder con relación de aspecto 16:9 */}
-                <View style={styles.cameraAvatarVertical} />
+                <View style={styles.cameraAvatarVertical}>
+                  {cam.status !== 'ONLINE' && (
+                    <View style={styles.offlineIconContainer}>
+                      <MaterialDesignIcons 
+                        name="video-off-outline" 
+                        size={48} 
+                        color="#94A3B8" 
+                      />
+                    </View>
+                  )}
+                </View>
                 
                 {/* Información debajo del thumbnail */}
                 <View style={styles.cameraInfo}>
@@ -851,6 +862,18 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#E6EEF8',
     marginBottom: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  offlineIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  offlineText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
   cameraInfo: {
     paddingHorizontal: 4,
