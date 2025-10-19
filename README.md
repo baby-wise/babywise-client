@@ -19,5 +19,19 @@
 
  ### Consola 4: React native android build
  npx react-native run-android
+
+## Build Release (Android)
+
+1. Abrí una consola en `BabyWiseUI/android`.
+2. Ejecutá la limpieza y la build firmada con el keystore de debug (por ahora):
+	```cmd
+	gradlew.bat clean
+	gradlew.bat assembleRelease
+	```
+3. La APK queda en `BabyWiseUI\android\app\build\outputs\apk\release\app-release.apk`.
+4. Instalala en el dispositivo:
+	```cmd
+	adb install -r BabyWiseUI\android\app\build\outputs\apk\release\app-release.apk
+	```
  
 
