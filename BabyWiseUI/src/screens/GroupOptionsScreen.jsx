@@ -15,6 +15,7 @@ import {
 import { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
 import { GlobalStyles, Colors} from '../styles/Styles';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 
 
 const GroupOptionsScreen = ({ navigation, route }) => {
@@ -396,8 +397,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   const { pageX, pageY } = event.nativeEvent;
                   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
                   
-                  // Dimensiones aproximadas del modal
-                  const modalWidth = 300;
+                  // Dimensiones aproximadas del modal (flexible)
+                  const modalWidth = 200; // Ancho estimado basado en el texto más largo
                   const modalHeight = 220;
                   
                   // Calcular posición ajustada para que no se salga de la pantalla
@@ -430,7 +431,17 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 }}
               >
                 {/* Thumbnail placeholder con relación de aspecto 16:9 */}
-                <View style={styles.cameraAvatarVertical} />
+                <View style={styles.cameraAvatarVertical}>
+                  {cam.status !== 'ONLINE' && (
+                    <View style={styles.offlineIconContainer}>
+                      <MaterialDesignIcons 
+                        name="video-off-outline" 
+                        size={48} 
+                        color="#94A3B8" 
+                      />
+                    </View>
+                  )}
+                </View>
                 
                 {/* Información debajo del thumbnail */}
                 <View style={styles.cameraInfo}>
@@ -851,6 +862,18 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#E6EEF8',
     marginBottom: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  offlineIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  offlineText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
   cameraInfo: {
     paddingHorizontal: 4,
@@ -1091,7 +1114,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 8,
-    minWidth: 300,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

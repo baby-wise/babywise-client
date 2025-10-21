@@ -35,11 +35,21 @@ const RecordingPlayerScreen = ({ navigation, route }) => {
   } else if (isFromRecordingsList && recording?.playlistUrl) {
     // Viene desde la lista de grabaciones
     videoUrl = recording.playlistUrl;
-    titleText = 'Grabación';
-    subtitleText = `Fecha: ${recording.date || 'N/A'}, Hora: ${recording.time || 'N/A'}`;
+    
+    // Formatear fecha y hora igual que en RecordingsList
+    const months = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    
+    const [year, month, day] = recording.date.split('-');
+    const monthName = months[parseInt(month) - 1];
+    const formattedTime = recording.time.replace(/_/g, ':');
+    
+    titleText = `${parseInt(day)} de ${monthName} de ${year} a las ${formattedTime}`;
     
     if (recording.duration) {
-      subtitleText += ` (${recording.duration}s)`;
+      subtitleText = `Duración: ${recording.duration}s`;
     }
   }
 
@@ -78,10 +88,9 @@ const RecordingPlayerScreen = ({ navigation, route }) => {
       </View>
 
       <View style={styles.content}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>{titleText}</Text>
-          {subtitleText && <Text style={styles.subtitle}>{subtitleText}</Text>}
-        </View>
+        {/* Título minimalista */}
+        <Text style={styles.title}>{titleText}</Text>
+        {subtitleText && <Text style={styles.subtitle}>{subtitleText}</Text>}
 
         <View style={styles.videoContainer}>
           {loading && (
@@ -167,28 +176,19 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  titleContainer: {
-    marginBottom: 20,
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    padding: 16,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
   title: {
-    color: Colors.primary,
-    fontSize: 24,
-    fontWeight: 'bold',
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+    paddingHorizontal: 4,
     textAlign: 'center',
-    marginBottom: 8,
   },
   subtitle: {
     color: Colors.textSecondary,
-    fontSize: 16,
+    fontSize: 14,
+    marginBottom: 16,
+    paddingHorizontal: 4,
     textAlign: 'center',
   },
   videoContainer: {
