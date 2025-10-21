@@ -129,12 +129,23 @@ export const groupService = {
   // Remover miembro del grupo
   async removeMember(userId, groupId) {
     try {
-      console.log('Deleting user:', userId);
-      const response = await apiClient.delete(`/users/${userId}`);
-      console.log('User deleted successfully:', response.data);
+      console.log('=== removeMember API Call ===');
+      console.log('userId:', userId);
+      console.log('groupId:', groupId);
+      console.log('Payload:', { UID: userId, groupId: groupId });
+      
+      const response = await apiClient.post('/secure/remove-member', { 
+        UID: userId, 
+        groupId: groupId 
+      });
+      
+      console.log('removeMember success:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error removing member:', error);
+      console.error('=== removeMember ERROR ===');
+      console.error('Status:', error.response?.status);
+      console.error('Data:', error.response?.data);
+      console.error('Full error:', error);
       throw error;
     }
   },
