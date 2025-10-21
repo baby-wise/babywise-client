@@ -127,9 +127,11 @@ export const groupService = {
   },
 
   // Remover miembro del grupo
-  async removeMember(UID, groupId) {
+  async removeMember(userId, groupId) {
     try {
-      const response = await apiClient.post('/secure/remove-member', { UID, groupId });
+      console.log('Deleting user:', userId);
+      const response = await apiClient.delete(`/users/${userId}`);
+      console.log('User deleted successfully:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error removing member:', error);
@@ -237,6 +239,17 @@ export const userService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching users:', error);
+      throw error;
+    }
+  },
+
+  // Obtener usuario por UID
+  async getUserByUID(UID) {
+    try {
+      const response = await apiClient.get(`/users/${UID}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user by UID:', error);
       throw error;
     }
   }

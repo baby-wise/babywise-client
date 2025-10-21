@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Keyboard, FlatList } from 'react-native';
 import { completeChat } from '../services/cerebrasClient';
 import { Colors, GlobalStyles } from '../styles/Styles';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 
 const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null, events = [] }) => {
   const [messages, setMessages] = useState(initialMessages);
@@ -70,10 +71,18 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null, eve
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={[styles.msgRow, item.role === 'user' ? styles.userRow : styles.assistantRow]}>
-              <Text style={item.role === 'user' ? styles.msgTextUser : styles.msgTextAssistant} selectable={true}>
-                {item.text}
-              </Text>
+            <View style={{ marginVertical: 6, marginHorizontal: 10 }}>
+              {item.role === 'assistant' && (
+                <View style={styles.agentHeader}>
+                  <MaterialDesignIcons name="face-agent" size={18} color={Colors.primary} />
+                  <Text style={styles.agentName}>Name</Text>
+                </View>
+              )}
+              <View style={[styles.msgRow, item.role === 'user' ? styles.userRow : styles.assistantRow]}>
+                <Text style={item.role === 'user' ? styles.msgTextUser : styles.msgTextAssistant} selectable={true}>
+                  {item.text}
+                </Text>
+              </View>
             </View>
           )}
           contentContainerStyle={{ paddingVertical: 8, paddingBottom: bottomSpacerHeight + 8, flexGrow: 1 }}
@@ -111,9 +120,19 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null, eve
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  agentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+  agentName: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginLeft: 4,
+    fontWeight: '600',
+  },
   msgRow: {
-    marginVertical: 6,
-    marginHorizontal: 10,
     padding: 10,
     borderRadius: 8,
     maxWidth: '85%',
