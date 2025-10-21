@@ -127,12 +127,25 @@ export const groupService = {
   },
 
   // Remover miembro del grupo
-  async removeMember(UID, groupId) {
+  async removeMember(userId, groupId) {
     try {
-      const response = await apiClient.post('/secure/remove-member', { UID, groupId });
+      console.log('=== removeMember API Call ===');
+      console.log('userId:', userId);
+      console.log('groupId:', groupId);
+      console.log('Payload:', { UID: userId, groupId: groupId });
+      
+      const response = await apiClient.post('/secure/remove-member', { 
+        UID: userId, 
+        groupId: groupId 
+      });
+      
+      console.log('removeMember success:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error removing member:', error);
+      console.error('=== removeMember ERROR ===');
+      console.error('Status:', error.response?.status);
+      console.error('Data:', error.response?.data);
+      console.error('Full error:', error);
       throw error;
     }
   },
@@ -237,6 +250,17 @@ export const userService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching users:', error);
+      throw error;
+    }
+  },
+
+  // Obtener usuario por UID
+  async getUserByUID(UID) {
+    try {
+      const response = await apiClient.get(`/users/${UID}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user by UID:', error);
       throw error;
     }
   }

@@ -12,10 +12,11 @@ import {
   Alert,
   Dimensions
 } from 'react-native';
-import { groupService } from '../services/apiService';
+import { groupService, userService } from '../services/apiService';
 import { auth } from '../config/firebase';
 import { GlobalStyles, Colors} from '../styles/Styles';
 import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 
 const GroupOptionsScreen = ({ navigation, route }) => {
@@ -47,6 +48,11 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [localSettingsDB, setLocalSettingsDB] = useState({});
   const [fetchedCameras, setFetchedCameras] = useState(null);
   const [isLoadingCameras, setIsLoadingCameras] = useState(false);
+  
+  // Estados para miembros del grupo
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isDeletingMember, setIsDeletingMember] = useState(null);
 
   // Cargar settings al montar el componente
   useEffect(() => {
@@ -83,6 +89,108 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     } finally {
       setIsLoadingCameras(false);
     }
+  };
+
+  // Función para cargar miembros del grupo
+  const fetchGroupMembers = async () => {
+    setIsLoadingMembers(true);
+    try {
+      const url = `${SIGNALING_SERVER_URL}/groups`;
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      if (Array.isArray(data)) {
+        const found = data.find(g => String(g._id) === String(group.id) || String(g.id) === String(group.id));
+        if (found && found.users && found.users.length > 0) {
+          // Check if users array contains objects or just IDs
+          const firstUser = found.users[0];
+          console.log('First user object:', JSON.stringify(firstUser, null, 2));
+          
+          if (typeof firstUser === 'object' && firstUser !== null) {
+            // Users array already contains user objects
+            // Map to ensure we have the email field in the right format
+            const mappedUsers = found.users.map(user => ({
+              _id: user._id || user.UID || user.uid,
+              UID: user.UID || user._id || user.uid,
+              email: user.email || user.user?.email || 'Usuario sin email'
+            }));
+            console.log('Mapped users:', JSON.stringify(mappedUsers, null, 2));
+            setGroupMembers(mappedUsers);
+          } else {
+            // Users array contains just IDs - need to fetch user details
+            // Try to use the /users endpoint to get all users, then filter
+            try {
+              const allUsers = await userService.getAllUsers();
+              const filteredUsers = allUsers.filter(user => 
+                found.users.includes(user._id) || found.users.includes(user.UID)
+              );
+              setGroupMembers(filteredUsers);
+            } catch (error) {
+              console.error('Error fetching users:', error);
+              // Fallback: show user IDs
+              const usersWithIds = found.users.map(userId => ({
+                _id: userId,
+                UID: userId,
+                email: `Usuario ${userId}`
+              }));
+              setGroupMembers(usersWithIds);
+            }
+          }
+        } else {
+          setGroupMembers([]);
+        }
+      } else {
+        setGroupMembers([]);
+      }
+    } catch (error) {
+      console.error('Error al obtener miembros del grupo:', error);
+      Alert.alert('Error', 'No se pudo obtener la lista de miembros');
+      setGroupMembers([]);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  // Función para eliminar miembro del grupo
+  const handleDeleteMember = async (member) => {
+    console.log('=== handleDeleteMember ===');
+    console.log('Member object:', JSON.stringify(member, null, 2));
+    console.log('Member._id:', member._id);
+    console.log('Member.UID:', member.UID);
+    console.log('Member.uid:', member.uid);
+    
+    Alert.alert(
+      'Eliminar miembro',
+      '¿Estás seguro de que deseas eliminar a este miembro del grupo?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            const memberUID = member._id || member.UID || member.uid;
+            console.log('Using memberUID:', memberUID);
+            setIsDeletingMember(memberUID);
+            try {
+              await groupService.removeMember(memberUID, group._id || group.id);
+              
+              // Recargar la lista de miembros
+              await fetchGroupMembers();
+              
+              showSuccessToast('Miembro eliminado exitosamente');
+            } catch (error) {
+              console.error('Error al eliminar miembro:', error);
+              Alert.alert('Error', 'No se pudo eliminar al miembro del grupo');
+            } finally {
+              setIsDeletingMember(null);
+            }
+          }
+        }
+      ]
+    );
   };
 
   // HARDCODED: Función para cargar settings (simulando llamada a backend)
@@ -277,7 +385,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               </View>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
+          <TouchableOpacity style={styles.settingsButton} onPress={() => {
+            setShowSettingsModal(true);
+            fetchGroupMembers();
+          }}>
             {/* Ícono de engranaje (configuración) */}
             <View style={{ width: 22, height: 22, position: 'relative' }}>
               {/* Dientes del engranaje */}
@@ -638,41 +749,87 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         onRequestClose={() => setShowSettingsModal(false)}
       >
         <View style={GlobalStyles.modalOverlay}>
-          <View style={GlobalStyles.modalContainer}>
+          <View style={[GlobalStyles.modalContainer, { maxHeight: '80%' }]}>
             <Text style={GlobalStyles.modalTitle}>Configuración</Text>
             
-            {isLoadingSettings ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#4CAF50" />
-                <Text style={styles.loadingText}>Cargando configuración...</Text>
-              </View>
-            ) : (
-              <>
-                {/* Toggle para detección de llanto */}
-                <View style={styles.settingItem}>
-                  <Text style={styles.settingLabel}>Detección de llanto</Text>
-                  <TouchableOpacity 
-                    style={[styles.toggle, cryingDetection && styles.toggleActive]}
-                    onPress={() => setCryingDetection(!cryingDetection)}
-                    disabled={isSavingSettings}
-                  >
-                    <View style={[styles.toggleCircle, cryingDetection && styles.toggleCircleActive]} />
-                  </TouchableOpacity>
+            <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={true}>
+              {isLoadingSettings ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#4CAF50" />
+                  <Text style={styles.loadingText}>Cargando configuración...</Text>
                 </View>
-                
-                {/* Toggle para grabación de audio y video */}
-                <View style={styles.settingItem}>
-                  <Text style={styles.settingLabel}>Grabación de audio y video</Text>
-                  <TouchableOpacity 
-                    style={[styles.toggle, audioVideoRecording && styles.toggleActive]}
-                    onPress={() => setAudioVideoRecording(!audioVideoRecording)}
-                    disabled={isSavingSettings}
-                  >
-                    <View style={[styles.toggleCircle, audioVideoRecording && styles.toggleCircleActive]} />
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+              ) : (
+                <>
+                  {/* Toggle para detección de llanto */}
+                  <View style={styles.settingItem}>
+                    <Text style={styles.settingLabel}>Detección de llanto</Text>
+                    <TouchableOpacity 
+                      style={[styles.toggle, cryingDetection && styles.toggleActive]}
+                      onPress={() => setCryingDetection(!cryingDetection)}
+                      disabled={isSavingSettings}
+                    >
+                      <View style={[styles.toggleCircle, cryingDetection && styles.toggleCircleActive]} />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Toggle para grabación de audio y video */}
+                  <View style={[styles.settingItem, { borderBottomWidth: 0 }]}>
+                    <Text style={styles.settingLabel}>Grabación de audio y video</Text>
+                    <TouchableOpacity 
+                      style={[styles.toggle, audioVideoRecording && styles.toggleActive]}
+                      onPress={() => setAudioVideoRecording(!audioVideoRecording)}
+                      disabled={isSavingSettings}
+                    >
+                      <View style={[styles.toggleCircle, audioVideoRecording && styles.toggleCircleActive]} />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Sección de Miembros */}
+                  <View style={{ borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 16 }}>
+                    <Text style={[styles.settingLabel, { marginBottom: 4, fontSize: 16, fontWeight: 'bold' }]}>
+                      Miembros del Grupo
+                    </Text>
+                    
+                    {isLoadingMembers ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="small" color="#4CAF50" />
+                        <Text style={styles.loadingText}>Cargando miembros...</Text>
+                      </View>
+                    ) : groupMembers.length > 0 ? (
+                      groupMembers.map((member, index) => (
+                        <View 
+                          key={member._id || member.UID || index} 
+                          style={styles.memberItem}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.memberEmail}>
+                              {member.email || 'Usuario sin email'}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => handleDeleteMember(member)}
+                            disabled={isDeletingMember === (member._id || member.UID)}
+                            style={styles.deleteMemberButton}
+                          >
+                            {isDeletingMember === (member._id || member.UID) ? (
+                              <ActivityIndicator size="small" color="#c54040ff" />
+                            ) : (
+                              <MaterialDesignIcons 
+                                name="delete-outline" 
+                                size={22} 
+                                color="#c54040ff" 
+                              />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.noMembersText}>No hay miembros en el grupo</Text>
+                    )}
+                  </View>
+                </>
+              )}
+            </ScrollView>
             
             <View style={GlobalStyles.modalButtons}>
               <TouchableOpacity 
@@ -680,7 +837,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 onPress={() => setShowSettingsModal(false)}
                 disabled={isSavingSettings}
               >
-                <Text style={GlobalStyles.cancelButtonText}>Cancelar</Text>
+                <Text style={GlobalStyles.cancelButtonText}>Cerrar</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -1132,6 +1289,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
     fontWeight: '600',
+  },
+  
+  // Estilos para la lista de miembros
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  memberEmail: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  deleteMemberButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  noMembersText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingVertical: 16,
+    fontStyle: 'italic',
   },
 });
 
