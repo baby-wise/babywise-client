@@ -10,12 +10,14 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Dimensions
+  Dimensions,
+  RefreshControl
 } from 'react-native';
 import { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
 import { GlobalStyles, Colors} from '../styles/Styles';
 import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
+import CameraThumbnailPreview from '../components/CameraThumbnailPreview';
 
 
 const GroupOptionsScreen = ({ navigation, route }) => {
@@ -47,6 +49,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [localSettingsDB, setLocalSettingsDB] = useState({});
   const [fetchedCameras, setFetchedCameras] = useState(null);
   const [isLoadingCameras, setIsLoadingCameras] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [camerasRuntimeStatus, setCamerasRuntimeStatus] = useState({});
 
   // Cargar settings al montar el componente
   useEffect(() => {
@@ -83,6 +87,25 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     } finally {
       setIsLoadingCameras(false);
     }
+  };
+
+  // Función para refrescar las cámaras
+  const onRefresh = async () => {
+    setRefreshing(true);
+    console.log('Refrescando lista de cámaras...');
+    await fetchCamerasFromBackend();
+    // Resetear el estado de runtime al refrescar
+    setCamerasRuntimeStatus({});
+    setRefreshing(false);
+  };
+
+  // Manejar cuando una cámara se desconecta en tiempo real
+  const handleCameraDisconnected = (cameraId) => {
+    console.log('[GroupOptions] Cámara desconectada en runtime:', cameraId);
+    setCamerasRuntimeStatus(prev => ({
+      ...prev,
+      [cameraId]: 'OFFLINE'
+    }));
   };
 
   // HARDCODED: Función para cargar settings (simulando llamada a backend)
@@ -382,16 +405,36 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       <Text style={styles.sectionTitle}>Cámaras</Text>
 
       {/* Camera list */}
-      <ScrollView style={styles.cameraListContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.cameraListContainer} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.primary]}
+            tintColor={Colors.primary}
+            title="Actualizando cámaras..."
+            titleColor="#64748B"
+          />
+        }
+      >
         {isLoadingCameras ? (
           <View style={styles.noCameraCard}>
             <ActivityIndicator />
           </View>
         ) : (
           (fetchedCameras && fetchedCameras.length > 0) ? (
-            fetchedCameras.map((cam, idx) => (
+            fetchedCameras.map((cam, idx) => {
+              // Determinar el estado real: runtime status tiene prioridad sobre el del backend
+              const cameraId = cam._id || cam.user || idx;
+              const runtimeStatus = camerasRuntimeStatus[cameraId];
+              const effectiveStatus = runtimeStatus || cam.status;
+              const isCurrentlyOnline = effectiveStatus === 'ONLINE';
+
+              return (
               <TouchableOpacity 
-                key={cam._id || cam.user || idx} 
+                key={cameraId} 
                 style={styles.cameraCardVertical} 
                 onPress={(event) => {
                   const { pageX, pageY } = event.nativeEvent;
@@ -432,7 +475,21 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               >
                 {/* Thumbnail placeholder con relación de aspecto 16:9 */}
                 <View style={styles.cameraAvatarVertical}>
-                  {cam.status !== 'ONLINE' && (
+                  {isCurrentlyOnline ? (
+                    <>
+                      <CameraThumbnailPreview
+                        roomId={group._id || group.id}
+                        cameraName={cam.name}
+                        isOnline={true}
+                        onDisconnected={() => handleCameraDisconnected(cameraId)}
+                      />
+                      {/* Badge de "EN VIVO" */}
+                      <View style={styles.liveBadge}>
+                        <View style={styles.liveIndicator} />
+                        <Text style={styles.liveText}>EN VIVO</Text>
+                      </View>
+                    </>
+                  ) : (
                     <View style={styles.offlineIconContainer}>
                       <MaterialDesignIcons 
                         name="video-off-outline" 
@@ -446,12 +503,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 {/* Información debajo del thumbnail */}
                 <View style={styles.cameraInfo}>
                   <Text style={styles.cameraNameVertical}>{cam.name || `Cámara ${idx+1}`}</Text>
-                  <Text style={styles.cameraStatus}>
-                    {cam.status === 'ONLINE' ? '🟢 En línea' : '⚫ Desconectada'}
-                  </Text>
                 </View>
               </TouchableOpacity>
-            ))
+              );
+            })
           ) : (
             <View style={styles.noCameraCard}>
               <Text style={styles.noCameraText}>No hay cámaras añadidas</Text>
@@ -864,6 +919,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden', // Importante para que el video respete el borderRadius
+    position: 'relative',
   },
   offlineIconContainer: {
     justifyContent: 'center',
@@ -884,11 +941,38 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     marginBottom: 4,
   },
-  cameraStatus: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
+  
+  // Badge de "EN VIVO"
+  liveBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(220, 38, 38, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
   },
+  liveIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+    marginRight: 6,
+  },
+  liveText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  
   noCameraCard: { 
     padding: 20,
     alignItems: 'center',
