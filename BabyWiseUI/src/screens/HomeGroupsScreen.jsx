@@ -19,6 +19,7 @@ import { auth } from '../config/firebase';
 import { signInWithCredential, GoogleAuthProvider, signOut } from '@react-native-firebase/auth';
 import { groupService, userService } from '../services/apiService';
 import { GlobalStyles, Colors } from '../styles/Styles';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 
 const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
   // Estado para el popup de notificación
@@ -46,6 +47,12 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
   
   // Estado para menú de opciones del botón +
   const [showAddMenu, setShowAddMenu] = useState(false);
+  
+  // Estados para configuración de usuario
+  const [showUserSettingsModal, setShowUserSettingsModal] = useState(false);
+  const [userSettings, setUserSettings] = useState({ allowNotifications: true });
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
  // Función para registrar el token push en el backend
   const registerPushToken = async (UID) => {
@@ -440,6 +447,63 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
     return email.current.split('@')[0];
   };
 
+  // Función para cargar configuración del usuario
+  const loadUserSettings = async () => {
+    setIsLoadingSettings(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      const response = await userService.getUserSettings(currentUser.uid);
+      
+      if (response.success && response.settings) {
+        setUserSettings(response.settings);
+      } else {
+        // Default values
+        setUserSettings({ allowNotifications: true });
+      }
+    } catch (error) {
+      console.error('Error loading user settings:', error);
+      setUserSettings({ allowNotifications: true });
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  // Función para guardar configuración del usuario
+  const saveUserSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      const response = await userService.updateUserSettings(currentUser.uid, userSettings);
+      
+      if (response.success) {
+        showSuccessToast('Configuración guardada exitosamente');
+        setShowUserSettingsModal(false);
+      } else {
+        throw new Error('Error guardando configuración');
+      }
+    } catch (error) {
+      console.error('Error saving user settings:', error);
+      Alert.alert('Error', 'No se pudo guardar la configuración');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  // Función para abrir el modal de configuración
+  const openUserSettings = async () => {
+    setShowProfileMenu(false);
+    setShowUserSettingsModal(true);
+    await loadUserSettings();
+  };
+
   const joinGroup = (group) => {
     if (!isLoggedIn) {
       Alert.alert('Iniciar Sesión', 'Debes iniciar sesión para unirte a un grupo');
@@ -476,35 +540,11 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
             justifyContent: 'center',
           }}
         >
-          {/* Ícono de perfil con círculo y persona */}
-          <View style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            borderWidth: 2.5,
-            borderColor: isLoggedIn ? Colors.primary : Colors.textSecondary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-          }}>
-            {/* Cabeza */}
-            <View style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: isLoggedIn ? Colors.primary : Colors.textSecondary,
-              marginBottom: 1,
-              marginTop: -2,
-            }} />
-            {/* Cuerpo */}
-            <View style={{
-              width: 16,
-              height: 10,
-              borderTopLeftRadius: 8,
-              borderTopRightRadius: 8,
-              backgroundColor: isLoggedIn ? Colors.primary : Colors.textSecondary,
-            }} />
-          </View>
+          <MaterialDesignIcons 
+            name="account-circle" 
+            size={40} 
+            color={isLoggedIn ? Colors.primary : Colors.textSecondary}
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -518,7 +558,6 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
         backgroundColor: Colors.white,
         borderRadius: 12,
         padding: 16,
-        minWidth: 200,
         elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -528,17 +567,40 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
       }}>
         {isLoggedIn ? (
           <>
-            {/* Email del usuario */}
-            <Text style={{ 
-              fontSize: 14, 
-              color: Colors.text, 
-              marginBottom: 12,
-              paddingBottom: 12,
+            {/* Nombre del usuario */}
+            <View style={{ 
+              paddingVertical: 12,
               borderBottomWidth: 1,
               borderBottomColor: '#eee'
             }}>
-              {displayEmail}
-            </Text>
+              <Text style={{ 
+                fontSize: 16, 
+                color: Colors.text, 
+                fontWeight: '500',
+                textAlign: 'center'
+              }}>
+                {displayEmail?.split('@')[0]}
+              </Text>
+            </View>
+            
+            {/* Botón de Configuración */}
+            <TouchableOpacity
+              onPress={openUserSettings}
+              style={{ 
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: '#eee'
+              }}
+            >
+              <Text style={{ 
+                fontSize: 16, 
+                color: Colors.text, 
+                fontWeight: '500',
+                textAlign: 'center'
+              }}>
+                Configuración
+              </Text>
+            </TouchableOpacity>
             
             {/* Botón de cerrar sesión */}
             <TouchableOpacity
@@ -547,7 +609,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
                 signIn(); // Esta función ya maneja el logout cuando isLoggedIn es true
               }}
               disabled={isLoading}
-              style={{ paddingVertical: 8 }}
+              style={{ paddingVertical: 8, marginTop: 4 }}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#ff4444" />
@@ -751,10 +813,119 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
 
     {/* Toast */}
     {showToast && (
-      <View style={{ position: "absolute", top: 10, left: 20, right: 20, backgroundColor: Colors.accent, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, elevation: 10 }}>
-        <Text style={{ color: Colors.text, fontSize: 16, fontWeight: "600", textAlign: "center" }}>{toastMessage}</Text>
+      <View style={{ position: "absolute", top: 10, left: 20, right: 20, backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, elevation: 10 }}>
+        <Text style={{ color: Colors.white, fontSize: 16, fontWeight: "600", textAlign: "center" }}>{toastMessage}</Text>
       </View>
     )}
+
+    {/* Modal de Configuración de Usuario */}
+    <Modal
+      visible={showUserSettingsModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowUserSettingsModal(false)}
+    >
+      <View style={GlobalStyles.modalOverlay}>
+        <View style={[GlobalStyles.modalContainer, { maxWidth: 400 }]}>
+          <Text style={GlobalStyles.modalTitle}>Configuración</Text>
+
+          {isLoadingSettings ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={{ color: Colors.textSecondary, marginTop: 10 }}>
+                Cargando configuración...
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Toggle para permitir notificaciones */}
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 16,
+                paddingHorizontal: 12,
+                backgroundColor: '#f9f9f9',
+                borderRadius: 8,
+                marginBottom: 16
+              }}>
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <Text style={{ 
+                    fontSize: 16, 
+                    fontWeight: '600', 
+                    color: Colors.text,
+                    marginBottom: 4
+                  }}>
+                    Permitir Notificaciones
+                  </Text>
+                  <Text style={{ 
+                    fontSize: 13, 
+                    color: Colors.textSecondary 
+                  }}>
+                    Recibir alertas de eventos de llanto y movimiento
+                  </Text>
+                </View>
+                
+                <TouchableOpacity
+                  onPress={() => {
+                    setUserSettings(prev => ({
+                      ...prev,
+                      allowNotifications: !prev.allowNotifications
+                    }));
+                  }}
+                  style={{
+                    width: 50,
+                    height: 30,
+                    borderRadius: 15,
+                    backgroundColor: userSettings.allowNotifications ? Colors.primary : '#ccc',
+                    padding: 2,
+                    justifyContent: 'center',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 13,
+                      backgroundColor: '#fff',
+                      transform: [{ translateX: userSettings.allowNotifications ? 20 : 0 }],
+                    }}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View style={GlobalStyles.modalButtons}>
+                {/* Cancelar */}
+                <TouchableOpacity
+                  style={[GlobalStyles.modalButton, GlobalStyles.cancelButton]}
+                  onPress={() => setShowUserSettingsModal(false)}
+                  disabled={isSavingSettings}
+                >
+                  <Text style={GlobalStyles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                {/* Guardar */}
+                <TouchableOpacity
+                  style={[
+                    GlobalStyles.modalButton,
+                    GlobalStyles.addButton,
+                    isSavingSettings && GlobalStyles.disabledButton,
+                  ]}
+                  onPress={saveUserSettings}
+                  disabled={isSavingSettings}
+                >
+                  {isSavingSettings ? (
+                    <ActivityIndicator size="small" color={Colors.white} />
+                  ) : (
+                    <Text style={GlobalStyles.addButtonText}>Guardar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
 
     {/* Menú de opciones del botón + */}
     {showAddMenu && (

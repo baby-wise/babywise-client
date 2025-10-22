@@ -291,6 +291,39 @@ export const userService = {
       console.error('Error fetching users:', error);
       throw error;
     }
+  },
+
+  // Obtener configuraciones del usuario
+  async getUserSettings(UID) {
+    try {
+      console.log('=== getUserSettings API call ===');
+      console.log('UID:', UID);
+      const response = await apiClient.get(`/secure/user-settings/${UID}`);
+      console.log('User settings received:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting user settings:', error);
+      throw error;
+    }
+  },
+
+  // Actualizar configuraciones del usuario
+  async updateUserSettings(UID, settings) {
+    try {
+      console.log('=== updateUserSettings API call ===');
+      console.log('UID:', UID);
+      console.log('settings:', settings);
+      
+      const response = await apiClient.post('/secure/update-user-settings', {
+        UID,
+        settings
+      });
+      console.log('User settings updated:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating user settings:', error);
+      throw error;
+    }
   }
 };
 
