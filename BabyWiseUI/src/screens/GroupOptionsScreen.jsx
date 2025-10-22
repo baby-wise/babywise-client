@@ -43,11 +43,9 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [cryingDetection, setCryingDetection] = useState(false);
   const [audioVideoRecording, setAudioVideoRecording] = useState(false);
+  const [motionDetection, setMotionDetection] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-
-  // HARDCODED: Simulación de base de datos local para settings
-  const [localSettingsDB, setLocalSettingsDB] = useState({});
   const [fetchedCameras, setFetchedCameras] = useState(null);
   const [isLoadingCameras, setIsLoadingCameras] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -243,24 +241,18 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const loadGroupSettings = async () => {
     setIsLoadingSettings(true);
     try {
-      console.log(`HARDCODED: Cargando settings para grupo: ${group.id}`);
+      console.log(`Loading settings for group: ${group._id || group.id}`);
       
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const settings = await groupService.getGroupSettings(group._id || group.id);
       
-      // Si no existen settings para este grupo, usar defaults
-      const groupSettings = localSettingsDB[group.id] || {
-        cryDetection: false,
-        audioVideoRecording: false,
-        updatedAt: new Date().toISOString()
-      };
-      
-      setCryingDetection(groupSettings.cryDetection);
-      setAudioVideoRecording(groupSettings.audioVideoRecording);
-      console.log('HARDCODED: Settings cargados:', groupSettings);
+      setCryingDetection(settings.cryDetection);
+      setAudioVideoRecording(settings.audioVideoRecording);
+      setMotionDetection(settings.motionDetection);
+      console.log('Settings loaded:', settings);
       
     } catch (error) {
-      console.error('HARDCODED: Error al cargar settings:', error);
+      console.error('Error loading settings:', error);
+      Alert.alert('Error', 'No se pudieron cargar las configuraciones');
     } finally {
       setIsLoadingSettings(false);
     }
@@ -270,35 +262,32 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const saveGroupSettings = async () => {
     setIsSavingSettings(true);
     try {
-      console.log(`HARDCODED: Guardando settings para grupo: ${group.id}`, {
-        cryDetection: cryingDetection,
-        audioVideoRecording: audioVideoRecording
-      });
-      
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Actualizar "base de datos" local
-      const newSettings = {
+      console.log(`Saving settings for group: ${group._id || group.id}`, {
         cryDetection: cryingDetection,
         audioVideoRecording: audioVideoRecording,
-        updatedAt: new Date().toISOString()
-      };
+        motionDetection: motionDetection
+      });
       
-      setLocalSettingsDB(prev => ({
-        ...prev,
-        [group.id]: newSettings
-      }));
+      await groupService.updateGroupSettings(group._id || group.id, {
+        cryDetection: cryingDetection,
+        audioVideoRecording: audioVideoRecording,
+        motionDetection: motionDetection
+      });
       
-      console.log('HARDCODED: Settings guardados exitosamente:', newSettings);
-      console.log('HARDCODED: Estado actual de la "base de datos":', { ...localSettingsDB, [group.id]: newSettings });
+      console.log('Settings saved successfully');
       
-      showSuccessToast('Settings actualizados correctamente');
+      showSuccessToast('Configuración guardada correctamente');
       setShowSettingsModal(false);
       
     } catch (error) {
-      console.error('HARDCODED: Error al guardar settings:', error);
-      Alert.alert('Error', 'Error simulado al guardar settings');
+      console.error('Error saving settings:', error);
+      
+      // Verificar si es error 403 (no admin)
+      if (error.response?.status === 403) {
+        Alert.alert('Sin permisos', 'Solo los administradores pueden cambiar la configuración');
+      } else {
+        Alert.alert('Error', 'No se pudo guardar la configuración');
+      }
     } finally {
       setIsSavingSettings(false);
     }
@@ -839,8 +828,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   <Text style={styles.settingLabel}>Detección de llanto</Text>
                   <TouchableOpacity 
                     style={[styles.toggle, cryingDetection && styles.toggleActive]}
-                    onPress={() => setCryingDetection(!cryingDetection)}
-                    disabled={isSavingSettings}
+                    onPress={() => isAdmin && setCryingDetection(!cryingDetection)}
+                    disabled={isSavingSettings || !isAdmin}
                   >
                     <View style={[styles.toggleCircle, cryingDetection && styles.toggleCircleActive]} />
                   </TouchableOpacity>
@@ -851,10 +840,22 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   <Text style={styles.settingLabel}>Grabación de audio y video</Text>
                   <TouchableOpacity 
                     style={[styles.toggle, audioVideoRecording && styles.toggleActive]}
-                    onPress={() => setAudioVideoRecording(!audioVideoRecording)}
-                    disabled={isSavingSettings}
+                    onPress={() => isAdmin && setAudioVideoRecording(!audioVideoRecording)}
+                    disabled={isSavingSettings || !isAdmin}
                   >
                     <View style={[styles.toggleCircle, audioVideoRecording && styles.toggleCircleActive]} />
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Toggle para detección de movimiento */}
+                <View style={styles.settingItem}>
+                  <Text style={styles.settingLabel}>Detección de movimiento</Text>
+                  <TouchableOpacity 
+                    style={[styles.toggle, motionDetection && styles.toggleActive]}
+                    onPress={() => isAdmin && setMotionDetection(!motionDetection)}
+                    disabled={isSavingSettings || !isAdmin}
+                  >
+                    <View style={[styles.toggleCircle, motionDetection && styles.toggleCircleActive]} />
                   </TouchableOpacity>
                 </View>
               </>
@@ -866,20 +867,22 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 onPress={() => setShowSettingsModal(false)}
                 disabled={isSavingSettings}
               >
-                <Text style={GlobalStyles.cancelButtonText}>Cancelar</Text>
+                <Text style={GlobalStyles.cancelButtonText}>{isAdmin ? 'Cancelar' : 'Cerrar'}</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={[GlobalStyles.modalButton, GlobalStyles.addButton]} 
-                onPress={saveGroupSettings}
-                disabled={isSavingSettings || isLoadingSettings}
-              >
-                {isSavingSettings ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.addButtonText}>Guardar</Text>
-                )}
-              </TouchableOpacity>
+              {isAdmin && (
+                <TouchableOpacity 
+                  style={[GlobalStyles.modalButton, GlobalStyles.addButton]} 
+                  onPress={saveGroupSettings}
+                  disabled={isSavingSettings || isLoadingSettings}
+                >
+                  {isSavingSettings ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.addButtonText}>Guardar</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>

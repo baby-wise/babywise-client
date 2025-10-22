@@ -212,6 +212,45 @@ export const groupService = {
     } catch (error) {
       console.log(error)
     }
+  },
+
+  // Obtener configuraciones del grupo
+  async getGroupSettings(groupId) {
+    try {
+      console.log('=== getGroupSettings API call ===');
+      console.log('groupId:', groupId);
+      const response = await apiClient.get(`/secure/group-settings/${groupId}`);
+      console.log('Settings received:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting group settings:', error);
+      throw error;
+    }
+  },
+
+  // Actualizar configuraciones del grupo
+  async updateGroupSettings(groupId, settings) {
+    try {
+      console.log('=== updateGroupSettings API call ===');
+      console.log('groupId:', groupId);
+      console.log('settings:', settings);
+      
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      const response = await apiClient.post('/secure/update-group-settings', {
+        groupId,
+        settings,
+        UID: currentUser.uid
+      });
+      console.log('Settings updated:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating group settings:', error);
+      throw error;
+    }
   }
 };
 
