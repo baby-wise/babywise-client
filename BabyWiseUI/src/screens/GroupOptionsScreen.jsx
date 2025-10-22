@@ -18,6 +18,7 @@ import { auth } from '../config/firebase';
 import { GlobalStyles, Colors} from '../styles/Styles';
 import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 import CameraThumbnailPreview from '../components/CameraThumbnailPreview';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 
 const GroupOptionsScreen = ({ navigation, route }) => {
@@ -52,10 +53,19 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [camerasRuntimeStatus, setCamerasRuntimeStatus] = useState({});
 
+  // Estados para el modal de miembros
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserUID, setCurrentUserUID] = useState(null);
+
   // Cargar settings al montar el componente
   useEffect(() => {
     loadGroupSettings();
     fetchCamerasFromBackend();
+    checkIfUserIsAdmin();
+    getCurrentUserUID();
   }, []);
 
   const fetchCamerasFromBackend = async () => {
@@ -87,6 +97,127 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     } finally {
       setIsLoadingCameras(false);
     }
+  };
+
+  // Función para verificar si el usuario actual es admin
+  const checkIfUserIsAdmin = async () => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      const response = await groupService.isAdmin(currentUser.uid, group._id || group.id);
+      // El backend retorna {message: "Is admin"} o {message: "Is not admin"}
+      setIsAdmin(response.message === "Is admin");
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+    }
+  };
+
+  // Función para obtener el UID del usuario actual
+  const getCurrentUserUID = () => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      setCurrentUserUID(currentUser.uid);
+    }
+  };
+
+  // Función para obtener miembros del grupo
+  const fetchGroupMembers = async () => {
+    setIsLoadingMembers(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      // Obtener los grupos del usuario y encontrar el grupo actual
+      const groups = await groupService.getUserGroups(currentUser.uid);
+      const currentGroup = groups.find(g => String(g._id) === String(group._id || group.id));
+      
+      if (currentGroup && currentGroup.users) {
+        // Extraer los usuarios del array de objetos {user: {...}, role: "..."}
+        const members = currentGroup.users.map(userObj => userObj.user);
+        setGroupMembers(members);
+      } else {
+        setGroupMembers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching group members:', error);
+      Alert.alert('Error', 'No se pudo cargar la lista de miembros');
+      setGroupMembers([]);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  // Función para manejar la eliminación de un miembro
+  const handleRemoveMember = async (member) => {
+    console.log('=== handleRemoveMember: Iniciando eliminación ===');
+    console.log('Member to remove:', member);
+    console.log('Member UID (Firebase):', member.UID);
+    console.log('Member _id (MongoDB):', member._id);
+    console.log('Group ID:', group._id || group.id);
+    console.log('Current user is admin:', isAdmin);
+    console.log('Current user UID:', currentUserUID);
+
+    // Verificar que el usuario sea admin
+    if (!isAdmin) {
+      Alert.alert('Sin permisos', 'Solo los administradores pueden eliminar miembros');
+      return;
+    }
+
+    // Verificar que no se esté intentando eliminar a sí mismo
+    if (member.UID === currentUserUID) {
+      Alert.alert('Acción no permitida', 'No puedes eliminarte a ti mismo del grupo');
+      return;
+    }
+
+    // Mostrar confirmación
+    Alert.alert(
+      'Confirmar eliminación',
+      `¿Estás seguro de que deseas eliminar a ${member.email} del grupo?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('Calling removeMember with:', {
+                UID: member.UID,
+                groupId: group._id || group.id
+              });
+              
+              const result = await groupService.removeMember(member.UID, group._id || group.id);
+              
+              console.log('removeMember result:', result);
+              showSuccessToast('Miembro eliminado correctamente');
+              // Refrescar la lista de miembros
+              await fetchGroupMembers();
+            } catch (error) {
+              console.error('=== Error removing member ===');
+              console.error('Error object:', error);
+              console.error('Error message:', error.message);
+              console.error('Error response:', error.response);
+              console.error('Error response data:', error.response?.data);
+              console.error('Error response status:', error.response?.status);
+              Alert.alert('Error', `No se pudo eliminar al miembro: ${error.response?.data?.error || error.message}`);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // Función para abrir el modal de miembros
+  const openMembersModal = async () => {
+    setShowMembersModal(true);
+    await fetchGroupMembers();
   };
 
   // Función para refrescar las cámaras
@@ -396,10 +527,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         </View>
       </View>
 
-      <View style={styles.headerInfoCentered}>
+      <TouchableOpacity style={styles.headerInfoCentered} onPress={openMembersModal}>
         <Text style={styles.title}>{group.name}</Text>
         <Text style={styles.subtitle}>{group.members} miembros</Text>
-      </View>
+      </TouchableOpacity>
 
       {/* Título fijo de cámaras */}
       <Text style={styles.sectionTitle}>Cámaras</Text>
@@ -822,6 +953,73 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         </View>
       )}
 
+      {/* Modal de miembros del grupo */}
+      <Modal
+        visible={showMembersModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMembersModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Miembros del Grupo</Text>
+            
+            {isLoadingMembers ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#3E5F8A" />
+                <Text style={styles.loadingText}>Cargando miembros...</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.membersListContainer} showsVerticalScrollIndicator={false}>
+                {groupMembers.length > 0 ? (
+                  groupMembers.map((member, index) => {
+                    const isCurrentUser = member.UID === currentUserUID;
+                    return (
+                      <View key={member._id || index} style={styles.memberItem}>
+                        <View style={styles.memberInfo}>
+                          <MaterialDesignIcons name="account-circle" size={24} color="#64748B" />
+                          <View style={styles.memberTextContainer}>
+                            <Text style={styles.memberEmail}>{member.email}</Text>
+                            {isCurrentUser && (
+                              <Text style={styles.currentUserLabel}>(Tú)</Text>
+                            )}
+                          </View>
+                        </View>
+                        {isAdmin && !isCurrentUser && (
+                          <TouchableOpacity
+                            style={styles.removeButton}
+                            onPress={() => handleRemoveMember(member)}
+                          >
+                            <MaterialDesignIcons 
+                              name="account-remove" 
+                              size={24} 
+                              color="#DC2626" 
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View style={styles.noMembersContainer}>
+                    <Text style={styles.noMembersText}>No hay miembros en este grupo</Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => setShowMembersModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
   </SafeAreaView>
   );
 };
@@ -1216,6 +1414,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
     fontWeight: '600',
+  },
+  
+  // Estilos para el modal de miembros
+  membersListContainer: {
+    maxHeight: 400,
+    marginVertical: 10,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  memberTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+    flex: 1,
+  },
+  memberEmail: {
+    fontSize: 15,
+    color: '#0F172A',
+    fontWeight: '500',
+  },
+  currentUserLabel: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  removeButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#FEE2E2',
+  },
+  noMembersContainer: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  noMembersText: {
+    fontSize: 15,
+    color: '#94A3B8',
   },
 });
 
