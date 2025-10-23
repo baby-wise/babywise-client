@@ -10,12 +10,15 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Dimensions
+  Dimensions,
+  RefreshControl
 } from 'react-native';
 import { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
 import { GlobalStyles, Colors} from '../styles/Styles';
 import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
+import CameraThumbnailPreview from '../components/CameraThumbnailPreview';
+import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 
 const GroupOptionsScreen = ({ navigation, route }) => {
@@ -40,18 +43,27 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [cryingDetection, setCryingDetection] = useState(false);
   const [audioVideoRecording, setAudioVideoRecording] = useState(false);
+  const [motionDetection, setMotionDetection] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-
-  // HARDCODED: Simulación de base de datos local para settings
-  const [localSettingsDB, setLocalSettingsDB] = useState({});
   const [fetchedCameras, setFetchedCameras] = useState(null);
   const [isLoadingCameras, setIsLoadingCameras] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [camerasRuntimeStatus, setCamerasRuntimeStatus] = useState({});
+
+  // Estados para el modal de miembros
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserUID, setCurrentUserUID] = useState(null);
 
   // Cargar settings al montar el componente
   useEffect(() => {
     loadGroupSettings();
     fetchCamerasFromBackend();
+    checkIfUserIsAdmin();
+    getCurrentUserUID();
   }, []);
 
   const fetchCamerasFromBackend = async () => {
@@ -85,28 +97,162 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     }
   };
 
+  // Función para verificar si el usuario actual es admin
+  const checkIfUserIsAdmin = async () => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      const response = await groupService.isAdmin(currentUser.uid, group._id || group.id);
+      // El backend retorna {message: "Is admin"} o {message: "Is not admin"}
+      setIsAdmin(response.message === "Is admin");
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+    }
+  };
+
+  // Función para obtener el UID del usuario actual
+  const getCurrentUserUID = () => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      setCurrentUserUID(currentUser.uid);
+    }
+  };
+
+  // Función para obtener miembros del grupo
+  const fetchGroupMembers = async () => {
+    setIsLoadingMembers(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      // Obtener los grupos del usuario y encontrar el grupo actual
+      const groups = await groupService.getUserGroups(currentUser.uid);
+      const currentGroup = groups.find(g => String(g._id) === String(group._id || group.id));
+      
+      if (currentGroup && currentGroup.users) {
+        // Extraer los usuarios del array de objetos {user: {...}, role: "..."}
+        const members = currentGroup.users.map(userObj => userObj.user);
+        setGroupMembers(members);
+      } else {
+        setGroupMembers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching group members:', error);
+      Alert.alert('Error', 'No se pudo cargar la lista de miembros');
+      setGroupMembers([]);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  // Función para manejar la eliminación de un miembro
+  const handleRemoveMember = async (member) => {
+    console.log('=== handleRemoveMember: Iniciando eliminación ===');
+    console.log('Member to remove:', member);
+    console.log('Member UID (Firebase):', member.UID);
+    console.log('Member _id (MongoDB):', member._id);
+    console.log('Group ID:', group._id || group.id);
+    console.log('Current user is admin:', isAdmin);
+    console.log('Current user UID:', currentUserUID);
+
+    // Verificar que el usuario sea admin
+    if (!isAdmin) {
+      Alert.alert('Sin permisos', 'Solo los administradores pueden eliminar miembros');
+      return;
+    }
+
+    // Verificar que no se esté intentando eliminar a sí mismo
+    if (member.UID === currentUserUID) {
+      Alert.alert('Acción no permitida', 'No puedes eliminarte a ti mismo del grupo');
+      return;
+    }
+
+    // Mostrar confirmación
+    Alert.alert(
+      'Confirmar eliminación',
+      `¿Estás seguro de que deseas eliminar a ${member.email} del grupo?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('Calling removeMember with:', {
+                UID: member.UID,
+                groupId: group._id || group.id
+              });
+              
+              const result = await groupService.removeMember(member.UID, group._id || group.id);
+              
+              console.log('removeMember result:', result);
+              showSuccessToast('Miembro eliminado correctamente');
+              // Refrescar la lista de miembros
+              await fetchGroupMembers();
+            } catch (error) {
+              console.error('=== Error removing member ===');
+              console.error('Error object:', error);
+              console.error('Error message:', error.message);
+              console.error('Error response:', error.response);
+              console.error('Error response data:', error.response?.data);
+              console.error('Error response status:', error.response?.status);
+              Alert.alert('Error', `No se pudo eliminar al miembro: ${error.response?.data?.error || error.message}`);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // Función para abrir el modal de miembros
+  const openMembersModal = async () => {
+    setShowMembersModal(true);
+    await fetchGroupMembers();
+  };
+
+  // Función para refrescar las cámaras
+  const onRefresh = async () => {
+    setRefreshing(true);
+    console.log('Refrescando lista de cámaras...');
+    await fetchCamerasFromBackend();
+    // Resetear el estado de runtime al refrescar
+    setCamerasRuntimeStatus({});
+    setRefreshing(false);
+  };
+
+  // Manejar cuando una cámara se desconecta en tiempo real
+  const handleCameraDisconnected = (cameraId) => {
+    console.log('[GroupOptions] Cámara desconectada en runtime:', cameraId);
+    setCamerasRuntimeStatus(prev => ({
+      ...prev,
+      [cameraId]: 'OFFLINE'
+    }));
+  };
+
   // HARDCODED: Función para cargar settings (simulando llamada a backend)
   const loadGroupSettings = async () => {
     setIsLoadingSettings(true);
     try {
-      console.log(`HARDCODED: Cargando settings para grupo: ${group.id}`);
+      console.log(`Loading settings for group: ${group._id || group.id}`);
       
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const settings = await groupService.getGroupSettings(group._id || group.id);
       
-      // Si no existen settings para este grupo, usar defaults
-      const groupSettings = localSettingsDB[group.id] || {
-        cryDetection: false,
-        audioVideoRecording: false,
-        updatedAt: new Date().toISOString()
-      };
-      
-      setCryingDetection(groupSettings.cryDetection);
-      setAudioVideoRecording(groupSettings.audioVideoRecording);
-      console.log('HARDCODED: Settings cargados:', groupSettings);
+      setCryingDetection(settings.cryDetection);
+      setAudioVideoRecording(settings.audioVideoRecording);
+      setMotionDetection(settings.motionDetection);
+      console.log('Settings loaded:', settings);
       
     } catch (error) {
-      console.error('HARDCODED: Error al cargar settings:', error);
+      console.error('Error loading settings:', error);
+      Alert.alert('Error', 'No se pudieron cargar las configuraciones');
     } finally {
       setIsLoadingSettings(false);
     }
@@ -116,35 +262,32 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const saveGroupSettings = async () => {
     setIsSavingSettings(true);
     try {
-      console.log(`HARDCODED: Guardando settings para grupo: ${group.id}`, {
-        cryDetection: cryingDetection,
-        audioVideoRecording: audioVideoRecording
-      });
-      
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Actualizar "base de datos" local
-      const newSettings = {
+      console.log(`Saving settings for group: ${group._id || group.id}`, {
         cryDetection: cryingDetection,
         audioVideoRecording: audioVideoRecording,
-        updatedAt: new Date().toISOString()
-      };
+        motionDetection: motionDetection
+      });
       
-      setLocalSettingsDB(prev => ({
-        ...prev,
-        [group.id]: newSettings
-      }));
+      await groupService.updateGroupSettings(group._id || group.id, {
+        cryDetection: cryingDetection,
+        audioVideoRecording: audioVideoRecording,
+        motionDetection: motionDetection
+      });
       
-      console.log('HARDCODED: Settings guardados exitosamente:', newSettings);
-      console.log('HARDCODED: Estado actual de la "base de datos":', { ...localSettingsDB, [group.id]: newSettings });
+      console.log('Settings saved successfully');
       
-      showSuccessToast('Settings actualizados correctamente');
+      showSuccessToast('Configuración guardada correctamente');
       setShowSettingsModal(false);
       
     } catch (error) {
-      console.error('HARDCODED: Error al guardar settings:', error);
-      Alert.alert('Error', 'Error simulado al guardar settings');
+      console.error('Error saving settings:', error);
+      
+      // Verificar si es error 403 (no admin)
+      if (error.response?.status === 403) {
+        Alert.alert('Sin permisos', 'Solo los administradores pueden cambiar la configuración');
+      } else {
+        Alert.alert('Error', 'No se pudo guardar la configuración');
+      }
     } finally {
       setIsSavingSettings(false);
     }
@@ -224,174 +367,53 @@ const GroupOptionsScreen = ({ navigation, route }) => {
 
         <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: -45 }}>
           <TouchableOpacity style={[styles.settingsButton, { marginRight: 35 }]} onPress={addMembers}>
-            {/* Ícono de personas (agregar miembros) */}
-            <View style={{ width: 26, height: 22, position: 'relative' }}>
-              {/* Primera persona (atrás/izquierda) */}
-              <View style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-              }}>
-                {/* Cabeza */}
-                <View style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: Colors.text,
-                  marginLeft: 3,
-                }} />
-                {/* Cuerpo */}
-                <View style={{
-                  width: 13,
-                  height: 12,
-                  borderTopLeftRadius: 7,
-                  borderTopRightRadius: 7,
-                  backgroundColor: Colors.text,
-                  marginTop: 1,
-                }} />
-              </View>
-              
-              {/* Segunda persona (adelante/derecha) - superpuesta */}
-              <View style={{
-                position: 'absolute',
-                right: 0,
-                top: 0,
-              }}>
-                {/* Cabeza */}
-                <View style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: Colors.text,
-                  marginLeft: 2.5,
-                }} />
-                {/* Cuerpo */}
-                <View style={{
-                  width: 13,
-                  height: 12,
-                  borderTopLeftRadius: 7,
-                  borderTopRightRadius: 7,
-                  backgroundColor: Colors.text,
-                  marginTop: 1,
-                }} />
-              </View>
-            </View>
+            <MaterialDesignIcons name="account-multiple-plus" size={28} color={Colors.text} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
-            {/* Ícono de engranaje (configuración) */}
-            <View style={{ width: 22, height: 22, position: 'relative' }}>
-              {/* Dientes del engranaje */}
-              <View style={{
-                position: 'absolute',
-                top: -1,
-                left: 9,
-                width: 4,
-                height: 4,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                bottom: -1,
-                left: 9,
-                width: 4,
-                height: 4,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: 9,
-                left: 0,
-                width: 4,
-                height: 4,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: 9,
-                right: -1,
-                width: 4,
-                height: 4,
-                backgroundColor: Colors.text,
-              }} />
-              {/* Dientes diagonales */}
-              <View style={{
-                position: 'absolute',
-                top: 2,
-                left: 2,
-                width: 5,
-                height: 5,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: 2,
-                right: 2,
-                width: 5,
-                height: 5,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                bottom: 2,
-                left: 2,
-                width: 5,
-                height: 5,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                bottom: 2,
-                right: 2,
-                width: 5,
-                height: 5,
-                backgroundColor: Colors.text,
-              }} />
-              {/* Anillo exterior desde donde salen los dientes */}
-              <View style={{
-                position: 'absolute',
-                top: 3,
-                left: 3,
-                width: 16,
-                height: 16,
-                borderRadius: 8,
-                borderWidth: 3,
-                borderColor: Colors.text,
-                backgroundColor: Colors.background,
-              }} />
-              {/* Círculo central sólido */}
-              <View style={{
-                position: 'absolute',
-                top: 8,
-                left: 8,
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: Colors.text,
-              }} />
-            </View>
+            <MaterialDesignIcons name="cog" size={28} color={Colors.text} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.headerInfoCentered}>
+      <TouchableOpacity style={styles.headerInfoCentered} onPress={openMembersModal}>
         <Text style={styles.title}>{group.name}</Text>
         <Text style={styles.subtitle}>{group.members} miembros</Text>
-      </View>
+      </TouchableOpacity>
 
       {/* Título fijo de cámaras */}
       <Text style={styles.sectionTitle}>Cámaras</Text>
 
       {/* Camera list */}
-      <ScrollView style={styles.cameraListContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.cameraListContainer} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.primary]}
+            tintColor={Colors.primary}
+            title="Actualizando cámaras..."
+            titleColor="#64748B"
+          />
+        }
+      >
         {isLoadingCameras ? (
           <View style={styles.noCameraCard}>
             <ActivityIndicator />
           </View>
         ) : (
           (fetchedCameras && fetchedCameras.length > 0) ? (
-            fetchedCameras.map((cam, idx) => (
+            fetchedCameras.map((cam, idx) => {
+              // Determinar el estado real: runtime status tiene prioridad sobre el del backend
+              const cameraId = cam._id || cam.user || idx;
+              const runtimeStatus = camerasRuntimeStatus[cameraId];
+              const effectiveStatus = runtimeStatus || cam.status;
+              const isCurrentlyOnline = effectiveStatus === 'ONLINE';
+
+              return (
               <TouchableOpacity 
-                key={cam._id || cam.user || idx} 
+                key={cameraId} 
                 style={styles.cameraCardVertical} 
                 onPress={(event) => {
                   const { pageX, pageY } = event.nativeEvent;
@@ -432,7 +454,21 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               >
                 {/* Thumbnail placeholder con relación de aspecto 16:9 */}
                 <View style={styles.cameraAvatarVertical}>
-                  {cam.status !== 'ONLINE' && (
+                  {isCurrentlyOnline ? (
+                    <>
+                      <CameraThumbnailPreview
+                        roomId={group._id || group.id}
+                        cameraName={cam.name}
+                        isOnline={true}
+                        onDisconnected={() => handleCameraDisconnected(cameraId)}
+                      />
+                      {/* Badge de "EN VIVO" */}
+                      <View style={styles.liveBadge}>
+                        <View style={styles.liveIndicator} />
+                        <Text style={styles.liveText}>EN VIVO</Text>
+                      </View>
+                    </>
+                  ) : (
                     <View style={styles.offlineIconContainer}>
                       <MaterialDesignIcons 
                         name="video-off-outline" 
@@ -446,12 +482,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 {/* Información debajo del thumbnail */}
                 <View style={styles.cameraInfo}>
                   <Text style={styles.cameraNameVertical}>{cam.name || `Cámara ${idx+1}`}</Text>
-                  <Text style={styles.cameraStatus}>
-                    {cam.status === 'ONLINE' ? '🟢 En línea' : '⚫ Desconectada'}
-                  </Text>
                 </View>
               </TouchableOpacity>
-            ))
+              );
+            })
           ) : (
             <View style={styles.noCameraCard}>
               <Text style={styles.noCameraText}>No hay cámaras añadidas</Text>
@@ -467,14 +501,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           style={styles.navButton}
           onPress={goToStatistics}
         >
-          <View style={styles.navIconContainer}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
-              <View style={{ width: 4, height: 12, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
-              <View style={{ width: 4, height: 18, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
-              <View style={{ width: 4, height: 10, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
-              <View style={{ width: 4, height: 16, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
-            </View>
-          </View>
+          <MaterialDesignIcons name="chart-bar" size={32} color={Colors.textSecondary} />
         </TouchableOpacity>
 
         {/* Botón central de Agregar Bebé */}
@@ -483,7 +510,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           onPress={goToCamera}
         >
           <View style={styles.navIconContainerCenter}>
-            <Text style={styles.navIconCenter}>+</Text>
+            <MaterialDesignIcons name="plus" size={40} color="#fff" />
           </View>
         </TouchableOpacity>
 
@@ -492,20 +519,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           style={styles.navButton}
           onPress={() => setShowMediaModal(!showMediaModal)}
         >
-          <View style={styles.navIconContainer}>
-            {/* Ícono de play (reproducir) */}
-            <View style={{ 
-              width: 0, 
-              height: 0, 
-              borderLeftWidth: 16,
-              borderTopWidth: 10,
-              borderBottomWidth: 10,
-              borderLeftColor: Colors.textSecondary,
-              borderTopColor: 'transparent',
-              borderBottomColor: 'transparent',
-              marginLeft: 4,
-            }} />
-          </View>
+          <MaterialDesignIcons name="play" size={32} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
       
@@ -653,8 +667,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   <Text style={styles.settingLabel}>Detección de llanto</Text>
                   <TouchableOpacity 
                     style={[styles.toggle, cryingDetection && styles.toggleActive]}
-                    onPress={() => setCryingDetection(!cryingDetection)}
-                    disabled={isSavingSettings}
+                    onPress={() => isAdmin && setCryingDetection(!cryingDetection)}
+                    disabled={isSavingSettings || !isAdmin}
                   >
                     <View style={[styles.toggleCircle, cryingDetection && styles.toggleCircleActive]} />
                   </TouchableOpacity>
@@ -665,10 +679,22 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   <Text style={styles.settingLabel}>Grabación de audio y video</Text>
                   <TouchableOpacity 
                     style={[styles.toggle, audioVideoRecording && styles.toggleActive]}
-                    onPress={() => setAudioVideoRecording(!audioVideoRecording)}
-                    disabled={isSavingSettings}
+                    onPress={() => isAdmin && setAudioVideoRecording(!audioVideoRecording)}
+                    disabled={isSavingSettings || !isAdmin}
                   >
                     <View style={[styles.toggleCircle, audioVideoRecording && styles.toggleCircleActive]} />
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Toggle para detección de movimiento */}
+                <View style={styles.settingItem}>
+                  <Text style={styles.settingLabel}>Detección de movimiento</Text>
+                  <TouchableOpacity 
+                    style={[styles.toggle, motionDetection && styles.toggleActive]}
+                    onPress={() => isAdmin && setMotionDetection(!motionDetection)}
+                    disabled={isSavingSettings || !isAdmin}
+                  >
+                    <View style={[styles.toggleCircle, motionDetection && styles.toggleCircleActive]} />
                   </TouchableOpacity>
                 </View>
               </>
@@ -680,20 +706,22 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 onPress={() => setShowSettingsModal(false)}
                 disabled={isSavingSettings}
               >
-                <Text style={GlobalStyles.cancelButtonText}>Cancelar</Text>
+                <Text style={GlobalStyles.cancelButtonText}>{isAdmin ? 'Cancelar' : 'Cerrar'}</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={[GlobalStyles.modalButton, GlobalStyles.addButton]} 
-                onPress={saveGroupSettings}
-                disabled={isSavingSettings || isLoadingSettings}
-              >
-                {isSavingSettings ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.addButtonText}>Guardar</Text>
-                )}
-              </TouchableOpacity>
+              {isAdmin && (
+                <TouchableOpacity 
+                  style={[GlobalStyles.modalButton, GlobalStyles.addButton]} 
+                  onPress={saveGroupSettings}
+                  disabled={isSavingSettings || isLoadingSettings}
+                >
+                  {isSavingSettings ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.addButtonText}>Guardar</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -767,6 +795,73 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         </View>
       )}
 
+      {/* Modal de miembros del grupo */}
+      <Modal
+        visible={showMembersModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMembersModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Miembros del Grupo</Text>
+            
+            {isLoadingMembers ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#3E5F8A" />
+                <Text style={styles.loadingText}>Cargando miembros...</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.membersListContainer} showsVerticalScrollIndicator={false}>
+                {groupMembers.length > 0 ? (
+                  groupMembers.map((member, index) => {
+                    const isCurrentUser = member.UID === currentUserUID;
+                    return (
+                      <View key={member._id || index} style={styles.memberItem}>
+                        <View style={styles.memberInfo}>
+                          <MaterialDesignIcons name="account-circle" size={24} color="#64748B" />
+                          <View style={styles.memberTextContainer}>
+                            <Text style={styles.memberEmail}>{member.email}</Text>
+                            {isCurrentUser && (
+                              <Text style={styles.currentUserLabel}>(Tú)</Text>
+                            )}
+                          </View>
+                        </View>
+                        {isAdmin && !isCurrentUser && (
+                          <TouchableOpacity
+                            style={styles.removeButton}
+                            onPress={() => handleRemoveMember(member)}
+                          >
+                            <MaterialDesignIcons 
+                              name="account-remove" 
+                              size={24} 
+                              color="#DC2626" 
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View style={styles.noMembersContainer}>
+                    <Text style={styles.noMembersText}>No hay miembros en este grupo</Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => setShowMembersModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
   </SafeAreaView>
   );
 };
@@ -778,8 +873,8 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 20,
-    left: 10,
+    top: 4,
+    left: 4,
     width: 40,
     height: 40,
     justifyContent: 'center',
@@ -793,7 +888,7 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     position: 'absolute',
-    top: 20,
+    top: 4,
     right: 15,
     width: 40,
     height: 40,
@@ -822,7 +917,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: 18,
+    paddingTop: 4,
     paddingBottom: 12,
   },
   headerInfoCentered: { 
@@ -864,6 +959,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden', // Importante para que el video respete el borderRadius
+    position: 'relative',
   },
   offlineIconContainer: {
     justifyContent: 'center',
@@ -884,11 +981,38 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     marginBottom: 4,
   },
-  cameraStatus: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
+  
+  // Badge de "EN VIVO"
+  liveBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(220, 38, 38, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
   },
+  liveIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+    marginRight: 6,
+  },
+  liveText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  
   noCameraCard: { 
     padding: 20,
     alignItems: 'center',
@@ -1065,11 +1189,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
-  navIconCenter: {
-    fontSize: 40,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
   
   // Menú de opciones de Media
   mediaMenuContainer: {
@@ -1132,6 +1251,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
     fontWeight: '600',
+  },
+  
+  // Estilos para el modal de miembros
+  membersListContainer: {
+    maxHeight: 400,
+    marginVertical: 10,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  memberTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+    flex: 1,
+  },
+  memberEmail: {
+    fontSize: 15,
+    color: '#0F172A',
+    fontWeight: '500',
+  },
+  currentUserLabel: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  removeButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#FEE2E2',
+  },
+  noMembersContainer: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  noMembersText: {
+    fontSize: 15,
+    color: '#94A3B8',
   },
 });
 

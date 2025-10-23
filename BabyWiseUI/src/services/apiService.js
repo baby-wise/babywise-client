@@ -129,10 +129,23 @@ export const groupService = {
   // Remover miembro del grupo
   async removeMember(UID, groupId) {
     try {
+      console.log('=== removeMember API call ===');
+      console.log('UID:', UID);
+      console.log('groupId:', groupId);
+      console.log('Request URL:', `${SIGNALING_SERVER_URL}/secure/remove-member`);
+      console.log('Request body:', { UID, groupId });
+      
       const response = await apiClient.post('/secure/remove-member', { UID, groupId });
+      
+      console.log('removeMember response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error removing member:', error);
+      console.error('=== removeMember API Error ===');
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
+      console.error('Error response status:', error.response?.status);
+      console.error('Error response data:', error.response?.data);
+      console.error('Request config:', error.config);
       throw error;
     }
   },
@@ -199,6 +212,45 @@ export const groupService = {
     } catch (error) {
       console.log(error)
     }
+  },
+
+  // Obtener configuraciones del grupo
+  async getGroupSettings(groupId) {
+    try {
+      console.log('=== getGroupSettings API call ===');
+      console.log('groupId:', groupId);
+      const response = await apiClient.get(`/secure/group-settings/${groupId}`);
+      console.log('Settings received:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting group settings:', error);
+      throw error;
+    }
+  },
+
+  // Actualizar configuraciones del grupo
+  async updateGroupSettings(groupId, settings) {
+    try {
+      console.log('=== updateGroupSettings API call ===');
+      console.log('groupId:', groupId);
+      console.log('settings:', settings);
+      
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      const response = await apiClient.post('/secure/update-group-settings', {
+        groupId,
+        settings,
+        UID: currentUser.uid
+      });
+      console.log('Settings updated:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating group settings:', error);
+      throw error;
+    }
   }
 };
 
@@ -237,6 +289,39 @@ export const userService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching users:', error);
+      throw error;
+    }
+  },
+
+  // Obtener configuraciones del usuario
+  async getUserSettings(UID) {
+    try {
+      console.log('=== getUserSettings API call ===');
+      console.log('UID:', UID);
+      const response = await apiClient.get(`/secure/user-settings/${UID}`);
+      console.log('User settings received:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting user settings:', error);
+      throw error;
+    }
+  },
+
+  // Actualizar configuraciones del usuario
+  async updateUserSettings(UID, settings) {
+    try {
+      console.log('=== updateUserSettings API call ===');
+      console.log('UID:', UID);
+      console.log('settings:', settings);
+      
+      const response = await apiClient.post('/secure/update-user-settings', {
+        UID,
+        settings
+      });
+      console.log('User settings updated:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating user settings:', error);
       throw error;
     }
   }

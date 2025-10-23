@@ -11,6 +11,8 @@ const RecordingsListScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadedVideos, setLoadedVideos] = useState({});
+  const [expandedBabies, setExpandedBabies] = useState({});
+  const [expandedMonths, setExpandedMonths] = useState({});
 
   // Función para formatear la fecha y hora en un solo texto
   const formatDateTime = (dateString, timeString) => {
@@ -26,6 +28,56 @@ const RecordingsListScreen = ({ navigation, route }) => {
     const formattedTime = timeString.replace(/_/g, ':');
     
     return `${parseInt(day)} de ${monthName} de ${year} a las ${formattedTime}`;
+  };
+
+  // Función para agrupar grabaciones por mes y año
+  const groupRecordingsByMonth = (recordings) => {
+    const months = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+
+    const grouped = {};
+    
+    recordings.forEach(rec => {
+      const [year, month] = rec.date.split('-');
+      const monthName = months[parseInt(month) - 1];
+      const key = `${month}-${year}`; // Formato: "02-2025"
+      
+      if (!grouped[key]) {
+        grouped[key] = {
+          displayName: `${monthName} de ${year}`, // Formato: "Febrero de 2025"
+          recordings: []
+        };
+      }
+      grouped[key].recordings.push(rec);
+    });
+
+    // Ordenar por fecha (más reciente primero)
+    Object.keys(grouped).forEach(key => {
+      grouped[key].recordings.sort((a, b) => {
+        const dateA = new Date(a.date + ' ' + a.time.replace(/_/g, ':'));
+        const dateB = new Date(b.date + ' ' + b.time.replace(/_/g, ':'));
+        return dateB - dateA;
+      });
+    });
+
+    return grouped;
+  };
+
+  const toggleBaby = (babyName) => {
+    setExpandedBabies(prev => ({
+      ...prev,
+      [babyName]: !prev[babyName]
+    }));
+  };
+
+  const toggleMonth = (babyName, monthKey) => {
+    const key = `${babyName}-${monthKey}`;
+    setExpandedMonths(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
   useEffect(() => {
@@ -83,66 +135,115 @@ const RecordingsListScreen = ({ navigation, route }) => {
             <Text style={GlobalStyles.cardSubtitle}>No hay grabaciones disponibles</Text>
           </View>
         ) : (
-          recordingsByParticipant.map((participantData) => (
-            <View key={participantData.participant} style={styles.participantSection}>
-              {!babyName && (
-                <Text style={styles.participantTitle}>
-                  {participantData.participant.replace("camera-", "")}
-                </Text>
-              )}
-              
-              {participantData.recordings.map((recording) => (
-                <TouchableOpacity
-                  key={recording.key}
-                  style={styles.recordingCard}
-                  onPress={() => handleSelect(recording)}
-                  activeOpacity={0.7}
-                >
-                  {/* Video pausado como thumbnail */}
-                  <View style={styles.thumbnailContainer}>
-                    <Video
-                      source={{ uri: recording.playlistUrl }}
-                      style={[
-                        styles.videoThumbnail,
-                        !loadedVideos[recording.key] && { opacity: 0 }
-                      ]}
-                      paused={true}
-                      muted={true}
-                      resizeMode="cover"
-                      controls={false}
-                      disableFocus={true}
-                      playInBackground={false}
-                      playWhenInactive={false}
-                      hideShutterView={true}
-                      onLoad={() => setLoadedVideos(prev => ({ ...prev, [recording.key]: true }))}
+          recordingsByParticipant.map((participantData) => {
+            const babyDisplayName = participantData.participant.replace("camera-", "");
+            const isBabyExpanded = expandedBabies[babyDisplayName];
+            const groupedByMonth = groupRecordingsByMonth(participantData.recordings);
+
+            return (
+              <View key={participantData.participant} style={styles.participantSection}>
+                {/* Acordeón del bebé */}
+                {!babyName && (
+                  <TouchableOpacity
+                    style={styles.accordionHeader}
+                    onPress={() => toggleBaby(babyDisplayName)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.babyName}>{babyDisplayName}</Text>
+                    <MaterialDesignIcons 
+                      name={isBabyExpanded ? "chevron-up" : "chevron-down"} 
+                      size={24} 
+                      color="#64748B" 
                     />
-                    {/* Placeholder mientras carga */}
-                    {!loadedVideos[recording.key] && (
-                      <View style={styles.videoPlaceholder} />
-                    )}
-                    {/* Overlay con ícono de play */}
-                    <View style={styles.playOverlay}>
-                      <MaterialDesignIcons name="play-circle-outline" size={56} color="#FFFFFF" />
-                    </View>
-                    {/* Capa extra para bloquear completamente los controles */}
-                    <View style={styles.controlBlocker} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Contenido expandible del bebé */}
+                {(babyName || isBabyExpanded) && (
+                  <View style={styles.accordionContent}>
+                    {Object.entries(groupedByMonth).map(([monthKey, monthData]) => {
+                      const monthExpandKey = `${babyDisplayName}-${monthKey}`;
+                      const isMonthExpanded = expandedMonths[monthExpandKey];
+
+                      return (
+                        <View key={monthKey} style={styles.monthSection}>
+                          {/* Acordeón del mes */}
+                          <TouchableOpacity
+                            style={styles.monthHeader}
+                            onPress={() => toggleMonth(babyDisplayName, monthKey)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.monthName}>{monthData.displayName}</Text>
+                            <MaterialDesignIcons 
+                              name={isMonthExpanded ? "chevron-up" : "chevron-down"} 
+                              size={22} 
+                              color="#64748B" 
+                            />
+                          </TouchableOpacity>
+
+                          {/* Contenido expandible del mes */}
+                          {isMonthExpanded && (
+                            <View style={styles.monthContent}>
+                              {monthData.recordings.map((recording) => (
+                                <TouchableOpacity
+                                  key={recording.key}
+                                  style={styles.recordingCard}
+                                  onPress={() => handleSelect(recording)}
+                                  activeOpacity={0.7}
+                                >
+                                  {/* Video pausado como thumbnail */}
+                                  <View style={styles.thumbnailContainer}>
+                                    <Video
+                                      source={{ uri: recording.playlistUrl }}
+                                      style={[
+                                        styles.videoThumbnail,
+                                        !loadedVideos[recording.key] && { opacity: 0 }
+                                      ]}
+                                      paused={true}
+                                      muted={true}
+                                      resizeMode="cover"
+                                      controls={false}
+                                      disableFocus={true}
+                                      playInBackground={false}
+                                      playWhenInactive={false}
+                                      hideShutterView={true}
+                                      onLoad={() => setLoadedVideos(prev => ({ ...prev, [recording.key]: true }))}
+                                    />
+                                    {/* Placeholder mientras carga */}
+                                    {!loadedVideos[recording.key] && (
+                                      <View style={styles.videoPlaceholder} />
+                                    )}
+                                    {/* Overlay con ícono de play */}
+                                    <View style={styles.playOverlay}>
+                                      <MaterialDesignIcons name="play-circle-outline" size={56} color="#FFFFFF" />
+                                    </View>
+                                    {/* Capa extra para bloquear completamente los controles */}
+                                    <View style={styles.controlBlocker} />
+                                  </View>
+                                  
+                                  {/* Información de la grabación */}
+                                  <View style={styles.recordingInfo}>
+                                    <Text style={styles.recordingDate}>
+                                      {formatDateTime(recording.date, recording.time)}
+                                    </Text>
+                                    {recording.duration && (
+                                      <Text style={styles.recordingDuration}>
+                                        Duración: {recording.duration}s
+                                      </Text>
+                                    )}
+                                  </View>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
                   </View>
-                  
-                  {/* Información de la grabación */}
-                  <View style={styles.recordingInfo}>
-                    <Text style={styles.recordingDate}>
-                      {formatDateTime(recording.date, recording.time)}
-                    </Text>
-                    {recording.duration && (
-                      <Text style={styles.recordingDuration}>
-                        Duración: {recording.duration}s
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))
+                )}
+              </View>
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
@@ -161,7 +262,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
   },
   centerContainer: {
     flex: 1,
@@ -170,27 +271,53 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   participantSection: {
-    marginBottom: 24,
+    marginBottom: 8,
   },
-  participantTitle: {
-    fontSize: 20,
+  // Estilos para acordeón del bebé
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
+  },
+  babyName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  accordionContent: {
+    paddingLeft: 8,
+  },
+  // Estilos para acordeón del mes
+  monthSection: {
+    marginBottom: 4,
+  },
+  monthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
+  },
+  monthName: {
+    fontSize: 18,
     fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 12,
-    paddingHorizontal: 6,
+    color: '#475569',
   },
+  monthContent: {
+    paddingLeft: 8,
+    paddingTop: 8,
+  },
+  // Estilos de las tarjetas de grabación (sin cambios)
   recordingCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     borderRadius: 16,
     marginBottom: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#EFEFF1',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    padding: 0,
+    borderWidth: 0,
   },
   thumbnailContainer: {
     width: '100%',
