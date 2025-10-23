@@ -93,8 +93,8 @@ export const GlobalStyles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 20,
-    left: 10,
+    top: 4,
+    left: -10,
     width: 40,
     height: 40,
     justifyContent: 'center',

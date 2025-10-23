@@ -367,151 +367,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
 
         <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: -45 }}>
           <TouchableOpacity style={[styles.settingsButton, { marginRight: 35 }]} onPress={addMembers}>
-            {/* Ícono de personas (agregar miembros) */}
-            <View style={{ width: 26, height: 22, position: 'relative' }}>
-              {/* Primera persona (atrás/izquierda) */}
-              <View style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-              }}>
-                {/* Cabeza */}
-                <View style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: Colors.text,
-                  marginLeft: 3,
-                }} />
-                {/* Cuerpo */}
-                <View style={{
-                  width: 13,
-                  height: 12,
-                  borderTopLeftRadius: 7,
-                  borderTopRightRadius: 7,
-                  backgroundColor: Colors.text,
-                  marginTop: 1,
-                }} />
-              </View>
-              
-              {/* Segunda persona (adelante/derecha) - superpuesta */}
-              <View style={{
-                position: 'absolute',
-                right: 0,
-                top: 0,
-              }}>
-                {/* Cabeza */}
-                <View style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: Colors.text,
-                  marginLeft: 2.5,
-                }} />
-                {/* Cuerpo */}
-                <View style={{
-                  width: 13,
-                  height: 12,
-                  borderTopLeftRadius: 7,
-                  borderTopRightRadius: 7,
-                  backgroundColor: Colors.text,
-                  marginTop: 1,
-                }} />
-              </View>
-            </View>
+            <MaterialDesignIcons name="account-multiple-plus" size={28} color={Colors.text} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettingsModal(true)}>
-            {/* Ícono de engranaje (configuración) */}
-            <View style={{ width: 22, height: 22, position: 'relative' }}>
-              {/* Dientes del engranaje */}
-              <View style={{
-                position: 'absolute',
-                top: -1,
-                left: 9,
-                width: 4,
-                height: 4,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                bottom: -1,
-                left: 9,
-                width: 4,
-                height: 4,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: 9,
-                left: 0,
-                width: 4,
-                height: 4,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: 9,
-                right: -1,
-                width: 4,
-                height: 4,
-                backgroundColor: Colors.text,
-              }} />
-              {/* Dientes diagonales */}
-              <View style={{
-                position: 'absolute',
-                top: 2,
-                left: 2,
-                width: 5,
-                height: 5,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: 2,
-                right: 2,
-                width: 5,
-                height: 5,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                bottom: 2,
-                left: 2,
-                width: 5,
-                height: 5,
-                backgroundColor: Colors.text,
-              }} />
-              <View style={{
-                position: 'absolute',
-                bottom: 2,
-                right: 2,
-                width: 5,
-                height: 5,
-                backgroundColor: Colors.text,
-              }} />
-              {/* Anillo exterior desde donde salen los dientes */}
-              <View style={{
-                position: 'absolute',
-                top: 3,
-                left: 3,
-                width: 16,
-                height: 16,
-                borderRadius: 8,
-                borderWidth: 3,
-                borderColor: Colors.text,
-                backgroundColor: Colors.background,
-              }} />
-              {/* Círculo central sólido */}
-              <View style={{
-                position: 'absolute',
-                top: 8,
-                left: 8,
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: Colors.text,
-              }} />
-            </View>
+            <MaterialDesignIcons name="cog" size={28} color={Colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -642,14 +501,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           style={styles.navButton}
           onPress={goToStatistics}
         >
-          <View style={styles.navIconContainer}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
-              <View style={{ width: 4, height: 12, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
-              <View style={{ width: 4, height: 18, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
-              <View style={{ width: 4, height: 10, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
-              <View style={{ width: 4, height: 16, backgroundColor: Colors.textSecondary, borderRadius: 2 }} />
-            </View>
-          </View>
+          <MaterialDesignIcons name="chart-bar" size={32} color={Colors.textSecondary} />
         </TouchableOpacity>
 
         {/* Botón central de Agregar Bebé */}
@@ -658,7 +510,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           onPress={goToCamera}
         >
           <View style={styles.navIconContainerCenter}>
-            <Text style={styles.navIconCenter}>+</Text>
+            <MaterialDesignIcons name="plus" size={40} color="#fff" />
           </View>
         </TouchableOpacity>
 
@@ -667,20 +519,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           style={styles.navButton}
           onPress={() => setShowMediaModal(!showMediaModal)}
         >
-          <View style={styles.navIconContainer}>
-            {/* Ícono de play (reproducir) */}
-            <View style={{ 
-              width: 0, 
-              height: 0, 
-              borderLeftWidth: 16,
-              borderTopWidth: 10,
-              borderBottomWidth: 10,
-              borderLeftColor: Colors.textSecondary,
-              borderTopColor: 'transparent',
-              borderBottomColor: 'transparent',
-              marginLeft: 4,
-            }} />
-          </View>
+          <MaterialDesignIcons name="play" size={32} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
       
@@ -1034,8 +873,8 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 20,
-    left: 10,
+    top: 4,
+    left: 4,
     width: 40,
     height: 40,
     justifyContent: 'center',
@@ -1049,7 +888,7 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     position: 'absolute',
-    top: 20,
+    top: 4,
     right: 15,
     width: 40,
     height: 40,
@@ -1078,7 +917,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: 18,
+    paddingTop: 4,
     paddingBottom: 12,
   },
   headerInfoCentered: { 
@@ -1349,11 +1188,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-  },
-  navIconCenter: {
-    fontSize: 40,
-    color: '#fff',
-    fontWeight: 'bold',
   },
   
   // Menú de opciones de Media
