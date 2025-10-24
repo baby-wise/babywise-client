@@ -32,7 +32,10 @@ const CameraScreen = ({ route }) => {
         baby: cameraName
       });
       const handlePlayAudio = ({ audioUrl }) => setAudioUrl(audioUrl);
-      const handleStopAudio = () => setAudioUrl(null);
+      const handleStopAudio = () => {
+        setAudioUrl(null);
+        AudioSession.startAudioSession();
+      };
       socket.on('play-audio', handlePlayAudio);
       socket.on('stop-audio', handleStopAudio);
       return () => {
@@ -139,10 +142,14 @@ const CameraScreen = ({ route }) => {
           source={{ uri: audioUrl }}
           audioOnly
           paused={false}
-          onEnd={() => setAudioUrl(null)}
+          onEnd={() => {
+            setAudioUrl(null);
+            AudioSession.startAudioSession();
+          }}
           onError={e => {
             setAudioUrl(null);
             setStatus('Error al reproducir audio');
+            AudioSession.startAudioSession();
           }}
           style={{ width: 0, height: 0 }}
         />
