@@ -46,6 +46,21 @@ const CameraScreen = ({ route }) => {
       };
     }
   }, [socket, ROOM_ID, cameraName]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRotateCamera = () => {
+      console.log('[CameraScreen] Recibido evento rotate-camera');
+      handleChangeFacingMode();
+    };
+
+    socket.on('rotate-camera', handleRotateCamera);
+
+    return () => {
+      socket.off('rotate-camera', handleRotateCamera);
+    };
+  }, [socket, handleChangeFacingMode]);
   // Construye la URL WebSocket correctamente, evitando doble puerto
   let wsUrl = 'wss://babywise-jqbqqsgq.livekit.cloud'
 
@@ -76,13 +91,14 @@ const CameraScreen = ({ route }) => {
       AudioSession.stopAudioSession();
     };
   }, [cameraName]);
-  const handleChangeFacingMode = ()=>{
-    console.log("Cambiando el facing mode, original en:", camaraMode)
-    const cambiar = camaraMode === 'user' ? 'environment' : 'user';
-    console.log("Cambiando a: ", cambiar  )
-    setCameraMode(cambiar)
 
-  }
+  const handleChangeFacingMode = () => {
+    setCameraMode(prev => {
+      const next = prev === 'user' ? 'environment' : 'user';
+      console.log(`[CameraScreen] Rotando cámara de ${prev} a ${next}`);
+      return next;
+    });
+  };
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>

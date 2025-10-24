@@ -399,14 +399,32 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
       )}
       {/* Botón de visión nocturna */}
       {selectedCamera && (
-        <TouchableOpacity
-          style={styles.nightVisionButton}
-          onPress={() => setNightVision(!nightVision)}
-        >
-          <Text style={styles.nightVisionButtonText}>
-            {nightVision ? '🌞' : '🌙'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.topRightButtons}>
+          {/* Botón visión nocturna */}
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => setNightVision(!nightVision)}
+          >
+            <Text>
+              {nightVision ? '🌞' : '🌙'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Botón rotar cámara */}
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => {
+              if (socket && selectedCamera) {
+                socket.emit('rotate-camera', {
+                  cameraIdentity: selectedCamera.replace('camera-', ''),
+                  group: group.id,
+                });
+              }
+            }}
+          >
+            <Text>🔄</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Indicador de viewers hablando */}
@@ -489,28 +507,26 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
 };
 const styles = StyleSheet.create({
   // Botón de visión nocturna
-  nightVisionButton: {
+  topRightButtons: {
     position: 'absolute',
     top: 20,
     right: 20,
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  iconButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderRadius: 25,
     width: 45,
     height: 45,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
 
-  nightVisionButtonText: {
-    fontSize: 24,
-    color: '#fff',
-  },
-
-  nightVisionButtonActive: {
-    backgroundColor: '#2e8b57',
+  iconButtonText: {
+    color: 'white',
+    fontSize: 22,
   },
   container: {
     flex: 1,
