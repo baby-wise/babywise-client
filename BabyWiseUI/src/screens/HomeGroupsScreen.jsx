@@ -12,7 +12,8 @@ import {
   ActivityIndicator,
   ScrollView,
   Modal,
-  TextInput
+  TextInput,
+  RefreshControl
 } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../config/firebase';
@@ -36,6 +37,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   
   // Estados para unirse a grupo
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -504,6 +506,16 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
     await loadUserSettings();
   };
 
+  // Función para refrescar grupos
+  const onRefresh = async () => {
+    setRefreshing(true);
+    console.log('Refrescando lista de grupos...');
+    if (isLoggedIn && email.current) {
+      await loadUserGroups(email.current);
+    }
+    setRefreshing(false);
+  };
+
   const joinGroup = (group) => {
     if (!isLoggedIn) {
       Alert.alert('Iniciar Sesión', 'Debes iniciar sesión para unirte a un grupo');
@@ -670,7 +682,20 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
     )}
     
     {/* Lista de grupos */}
-    <ScrollView showsVerticalScrollIndicator={false} style={{ marginBottom: 100 }}>
+    <ScrollView 
+      showsVerticalScrollIndicator={false} 
+      style={{ marginBottom: 100 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={[Colors.primary]}
+          tintColor={Colors.primary}
+          title="Actualizando grupos..."
+          titleColor="#64748B"
+        />
+      }
+    >
       <Text style={GlobalStyles.sectionTitle}>Mis Grupos</Text>
       
       {isLoadingGroups ? (
