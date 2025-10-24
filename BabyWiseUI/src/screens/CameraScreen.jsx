@@ -19,6 +19,7 @@ const CameraScreen = ({ route }) => {
   const [audioUrl, setAudioUrl] = useState(null);
   const socket = useSocket();
   const ROOM_ID = `${group.id}`;
+  const [camaraMode, setCameraMode] = useState('user')
   // Unirse a la sala como cámara y escuchar eventos cuando el socket esté listo
   useEffect(() => {
     if (socket && socket.connected) {
@@ -75,7 +76,13 @@ const CameraScreen = ({ route }) => {
       AudioSession.stopAudioSession();
     };
   }, [cameraName]);
+  const handleChangeFacingMode = ()=>{
+    console.log("Cambiando el facing mode, original en:", camaraMode)
+    const cambiar = camaraMode === 'user' ? 'environment' : 'user';
+    console.log("Cambiando a: ", cambiar  )
+    setCameraMode(cambiar)
 
+  }
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -86,13 +93,14 @@ const CameraScreen = ({ route }) => {
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
       {token && (
         <LiveKitRoom
+          key={camaraMode}
           serverUrl={wsUrl}
           token={token}
           connect={true}
           audio={{
             echoCancellation: true
           }}
-          video={true}
+          video={{ facingMode: camaraMode}}
           options={{
             adaptiveStream: { pixelDensity: 'screen' }
           }}
@@ -103,6 +111,12 @@ const CameraScreen = ({ route }) => {
           <RoomView setStatus={setStatus} />
         </LiveKitRoom>
       )}
+      <TouchableOpacity
+          style={styles.rotateButton}
+          onPress={()=> handleChangeFacingMode()}
+      >
+        <Text>{'🔄'}</Text>
+      </TouchableOpacity>
       {/* Reproductor de audio oculto, solo cuando hay audioUrl */}
       {audioUrl && (
         <Video
@@ -180,6 +194,20 @@ const RoomView = ({ setStatus }) => {
 };
 
 const styles = StyleSheet.create({
+  rotateButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 25,
+    width: 45,
+    height: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
   container: {
     flex: 1,
     backgroundColor: 'black',
