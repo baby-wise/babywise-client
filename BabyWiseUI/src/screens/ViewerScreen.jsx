@@ -105,6 +105,7 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
   // Audio modal y reproducción
   const [audioModalVisible, setAudioModalVisible] = useState(false);
   const [reproduciendoAudio, setReproduciendoAudio] = useState(false);
+  const [nightVision, setNightVision] = useState(false);
   // Escuchar eventos de audio para mostrar/ocultar botón detener
   useEffect(() => {
     if (!socket) return;
@@ -326,12 +327,48 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
     <View style={styles.tracksContainer}>
       {/* Video o texto de espera */}
       {selectedTrack ? (
-        <VideoTrack trackRef={selectedTrack} style={styles.video} objectFit="cover" />
-      ) : (
-        <View style={styles.waitingContainer}>
-          <Text style={styles.waitingText}>Esperando transmisión de cámara...</Text>
-        </View>
-      )}
+          <View style={{ flex: 1 }}>
+            <VideoTrack
+              trackRef={selectedTrack}
+              style={styles.video}
+              objectFit="cover"
+            />
+
+            {/* Overlay gris translúcido que simula visión nocturna */}
+            {nightVision && (
+              <View style={StyleSheet.absoluteFill}>
+                {/* Capa de amplificación de luz */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(255,255,255,0.25)', // aclara la imagen
+                    mixBlendMode: 'screen', // iOS only, pero Android la ignora sin romper
+                  }}
+                />
+
+                {/* Capa verdosa muy sutil para mejorar el contraste de zonas oscuras */}
+                <View
+                  style={{
+                    ...StyleSheet.absoluteFillObject,
+                    backgroundColor: 'rgba(180, 255, 180, 0.08)', // leve verde “amplificador”
+                  }}
+                />
+
+                {/* Capa de contraste suave */}
+                <View
+                  style={{
+                    ...StyleSheet.absoluteFillObject,
+                    backgroundColor: 'rgba(0,0,0,0.25)', // mejora definición en sombras
+                  }}
+                />
+              </View>
+            )}
+          </View>
+        ) : (
+          <View style={styles.waitingContainer}>
+            <Text style={styles.waitingText}>Esperando transmisión de cámara...</Text>
+          </View>
+        )}
 
       {/* Título con nombre del bebé */}
       {selectedCamera && (
@@ -359,6 +396,17 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
             )}
           />
         </View>
+      )}
+      {/* Botón de visión nocturna */}
+      {selectedCamera && (
+        <TouchableOpacity
+          style={styles.nightVisionButton}
+          onPress={() => setNightVision(!nightVision)}
+        >
+          <Text style={styles.nightVisionButtonText}>
+            {nightVision ? '🌞' : '🌙'}
+          </Text>
+        </TouchableOpacity>
       )}
 
       {/* Indicador de viewers hablando */}
@@ -440,6 +488,30 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
   );
 };
 const styles = StyleSheet.create({
+  // Botón de visión nocturna
+  nightVisionButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 25,
+    width: 45,
+    height: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+
+  nightVisionButtonText: {
+    fontSize: 24,
+    color: '#fff',
+  },
+
+  nightVisionButtonActive: {
+    backgroundColor: '#2e8b57',
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
