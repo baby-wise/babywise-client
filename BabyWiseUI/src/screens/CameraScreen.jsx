@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import InCallManager from 'react-native-incall-manager';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
 import { LiveKitRoom, useTracks, VideoTrack, AudioSession, registerGlobals, isTrackReference } from '@livekit/react-native';
 import { Track } from 'livekit-client';
@@ -22,6 +23,9 @@ const CameraScreen = ({ route }) => {
   const [camaraMode, setCameraMode] = useState('user')
   // Unirse a la sala como cámara y escuchar eventos cuando el socket esté listo
   useEffect(() => {
+    // Al montar, iniciar la sesión de audio para priorizar el micrófono
+    InCallManager.start({ media: 'audio', auto: true });
+
     if (socket && socket.connected) {
       socket.emit('join-room', {
         group: ROOM_ID,
@@ -31,10 +35,17 @@ const CameraScreen = ({ route }) => {
         UID: auth.currentUser.uid,
         baby: cameraName
       });
-      const handlePlayAudio = ({ audioUrl }) => setAudioUrl(audioUrl);
+      const handlePlayAudio = ({ audioUrl }) => {
+        console.log('[CameraScreen] play-audio recibido', audioUrl);
+        setAudioUrl(audioUrl);
+        // Liberar el control de la sesión de audio para la reproducción
+        InCallManager.stop();
+      };
       const handleStopAudio = () => {
+        console.log('[CameraScreen] stop-audio recibido');
         setAudioUrl(null);
-        AudioSession.startAudioSession();
+        // Recuperar el control de la sesión de audio para el micrófono
+        InCallManager.start({ media: 'audio', auto: true });
       };
       socket.on('play-audio', handlePlayAudio);
       socket.on('stop-audio', handleStopAudio);
@@ -46,6 +57,8 @@ const CameraScreen = ({ route }) => {
         });
         socket.off('play-audio', handlePlayAudio);
         socket.off('stop-audio', handleStopAudio);
+        // Al desmontar, restaurar el estado original del audio
+        InCallManager.stop();
       };
     }
   }, [socket, ROOM_ID, cameraName]);
@@ -144,12 +157,15 @@ const CameraScreen = ({ route }) => {
           paused={false}
           onEnd={() => {
             setAudioUrl(null);
-            AudioSession.startAudioSession();
+            // Restaurar modo comunicación para el micrófono
+            console.log('[CameraScreen] Audio terminado, restaurando micrófono');
+            InCallManager.start({ media: 'audio', auto: true });
           }}
           onError={e => {
             setAudioUrl(null);
+            console.log('[CameraScreen] Error al reproducir audio:', e);
             setStatus('Error al reproducir audio');
-            AudioSession.startAudioSession();
+            InCallManager.start({ media: 'audio', auto: true });
           }}
           style={{ width: 0, height: 0 }}
         />
