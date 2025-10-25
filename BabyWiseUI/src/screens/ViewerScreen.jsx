@@ -405,9 +405,11 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
             style={styles.iconButton}
             onPress={() => setNightVision(!nightVision)}
           >
-            <Text>
-              {nightVision ? '🌞' : '🌙'}
-            </Text>
+            <MaterialDesignIcons
+              name={nightVision ? 'white-balance-sunny' : 'weather-night'}
+              size={28}
+              color="#fff"
+            />
           </TouchableOpacity>
 
           {/* Botón rotar cámara */}
@@ -422,7 +424,7 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
               }
             }}
           >
-            <Text>🔄</Text>
+            <MaterialDesignIcons name="camera-flip" size={28} color="#fff" />
           </TouchableOpacity>
         </View>
       )}

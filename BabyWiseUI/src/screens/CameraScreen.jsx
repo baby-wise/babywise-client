@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 import InCallManager from 'react-native-incall-manager';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
 import { LiveKitRoom, useTracks, VideoTrack, AudioSession, registerGlobals, isTrackReference } from '@livekit/react-native';
@@ -144,11 +145,12 @@ const CameraScreen = ({ route }) => {
         </LiveKitRoom>
       )}
       <TouchableOpacity
-          style={styles.rotateButton}
-          onPress={()=> handleChangeFacingMode()}
+        style={styles.rotateButton}
+        onPress={() => handleChangeFacingMode()}
       >
-        <Text>{'🔄'}</Text>
+        <MaterialDesignIcons name="camera-flip" size={28} color="#fff" />
       </TouchableOpacity>
+
       {/* Reproductor de audio oculto, solo cuando hay audioUrl */}
       {audioUrl && (
         <Video
