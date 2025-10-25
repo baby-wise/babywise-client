@@ -185,20 +185,19 @@ const StatisticsScreen = ({ navigation, route }) => {
     const maxMovement = Math.max(...eventsData.events.map(e => e.movement));
     const maxValue = Math.max(maxCrying, maxMovement);
     
+    // Labels locales para el gráfico
+    const localLabels = eventsData.events.map(e => new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     return (
       <View style={styles.chartContainer}>
         <Text style={styles.chartTitle}>Actividad en las últimas 24 horas</Text>
-        
         {/* Contenedor fijo para el gráfico */}
         <View style={styles.chartFixedContainer}>
-          
           {/* Etiquetas del eje Y - Fijas */}
           <View style={styles.yAxisContainer}>
             {[maxValue, Math.round(maxValue * 0.75), Math.round(maxValue * 0.5), Math.round(maxValue * 0.25), 0].map((value, index) => (
               <Text key={index} style={styles.yAxisLabel}>{value}</Text>
             ))}
           </View>
-          
           {/* ScrollView SOLO para el gráfico */}
           <ScrollView 
             ref={chartScrollRef}
@@ -211,7 +210,7 @@ const StatisticsScreen = ({ navigation, route }) => {
             onScroll={handleChartScroll}
             nestedScrollEnabled={true}
           >
-            <View style={[styles.chartGraph, { width: totalWidth, height: chartHeight }]}>
+            <View style={[styles.chartGraph, { width: totalWidth, height: chartHeight }]}> 
               {/* Líneas de cuadrícula horizontales */}
               {[0.25, 0.5, 0.75, 1].map((ratio, i) => (
                 <View 
@@ -225,18 +224,15 @@ const StatisticsScreen = ({ navigation, route }) => {
                   ]} 
                 />
               ))}
-              
               {/* Líneas verticales y datos por hora */}
               {eventsData.events.map((event, index) => {
                 const x = index * hourWidth;
                 const cryingHeight = (event.crying / maxValue) * chartHeight;
                 const movementHeight = (event.movement / maxValue) * chartHeight;
-                
                 return (
-                    <View key={`${event.timestamp}-${index}`} style={[styles.hourColumn, { left: x, width: hourWidth }]}>
+                    <View key={`${event.timestamp}-${index}`} style={[styles.hourColumn, { left: x, width: hourWidth }]}> 
                     {/* Línea vertical de cuadrícula */}
                     <View style={[styles.gridLineVertical, { height: chartHeight }]} />
-                    
                     {/* Barra de llantos */}
                     <View 
                       style={[
@@ -248,7 +244,6 @@ const StatisticsScreen = ({ navigation, route }) => {
                         }
                       ]} 
                     />
-                    
                     {/* Barra de movimientos */}
                     <View 
                       style={[
@@ -260,7 +255,6 @@ const StatisticsScreen = ({ navigation, route }) => {
                         }
                       ]} 
                     />
-                    
                     {/* Punto de llantos */}
                     <View 
                       style={[
@@ -271,7 +265,6 @@ const StatisticsScreen = ({ navigation, route }) => {
                         }
                       ]} 
                     />
-                    
                     {/* Punto de movimientos */}
                     <View 
                       style={[
@@ -287,7 +280,6 @@ const StatisticsScreen = ({ navigation, route }) => {
               })}
             </View>
           </ScrollView>
-          
           {/* Etiquetas de horas - ScrollView separado sincronizado */}
           <ScrollView 
             ref={hoursScrollRef}
@@ -299,28 +291,30 @@ const StatisticsScreen = ({ navigation, route }) => {
             scrollEnabled={false}
             nestedScrollEnabled={false}
           >
-            <View style={[styles.hoursContainer, { width: totalWidth }]}>
-              {eventsData.events.map((event, index) => (
-                <Text 
-                  key={`h-${event.timestamp}-${index}`} 
-                  style={[
-                    styles.hourLabel, 
-                    { 
-                      left: index * hourWidth + 20,
-                      width: hourWidth
-                    }
-                  ]}
-                >
-                  {event.hour}h
-                </Text>
-              ))}
+            <View style={[styles.hoursContainer, { width: totalWidth }]}> 
+              {eventsData.events.map((event, index) => {
+                // Convertir el timestamp UTC a hora local del usuario
+                const localHour = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return (
+                  <Text 
+                    key={`h-${event.timestamp}-${index}`} 
+                    style={[
+                      styles.hourLabel, 
+                      { 
+                        left: index * hourWidth + 20,
+                        width: hourWidth
+                      }
+                    ]}
+                  >
+                    {localHour}
+                  </Text>
+                );
+              })}
             </View>
           </ScrollView>
         </View>
-        
         {/* Instrucciones */}
         <Text style={styles.instructionText}>← Desliza horizontalmente para ver todas las 24 horas →</Text>
-        
         {/* Leyenda */}
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}>
@@ -407,7 +401,7 @@ const StatisticsScreen = ({ navigation, route }) => {
                 {eventsData && eventsData.events ? (
                   <ChartWebView
                     height={220}
-                    labels={eventsData.events.map(e => `${e.hour}h`)}
+                    labels={eventsData.events.map(e => new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}
                     datasets={[
                       { label: 'Llantos', data: eventsData.events.map(e => e.crying), borderColor: 'rgba(255,99,132,1)', backgroundColor: 'rgba(255,99,132,0.2)' },
                       { label: 'Movimientos', data: eventsData.events.map(e => e.movement), borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.2)' }
