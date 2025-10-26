@@ -429,14 +429,17 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
         </View>
       )}
 
-      {/* Indicador de viewers hablando */}
+      {/* Indicador de viewers hablando - ahora justo encima del botón de hablar */}
       {speakingViewers.length > 0 && (
-        <View style={styles.speakingIndicator}>
-          <Text style={styles.speakingText}>
-            {speakingViewers.length === 1
-              ? `Hablando: ${speakingViewers[0].replace('viewer-', '')}`
-              : `Hablando: ${speakingViewers.map(id => id.replace('viewer-', '')).join(', ')}`}
-          </Text>
+        <View style={styles.speakingIndicatorBottom}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialDesignIcons name="microphone" size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.speakingText}>
+              {speakingViewers.length === 1
+                ? `${speakingViewers[0].replace('viewer-', '')} está hablando...`
+                : `${speakingViewers.map(id => id.replace('viewer-', '')).join(', ')} están hablando...`}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -667,22 +670,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 2,
   },
-  speakingIndicator: {
+  // Indicador de viewers hablando - ahora abajo, justo encima de los controles
+  speakingIndicatorBottom: {
     position: 'absolute',
-    top: 160,
     left: 0,
     right: 0,
+    bottom: 120, // justo encima del botón de hablar
     alignItems: 'center',
-    zIndex: 5,
+    zIndex: 11,
   },
   speakingText: {
-    color: '#00FF00',
-    fontWeight: 'bold',
-    fontSize: 18,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+    backgroundColor: 'rgba(62, 95, 138, 0.92)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    letterSpacing: 0.5,
   },
   backButton: {
     position: 'absolute',
