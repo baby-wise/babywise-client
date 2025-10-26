@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Keyboard, FlatList } from 'react-native';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 import { completeChat } from '../services/cerebrasClient';
 import { Colors, GlobalStyles } from '../styles/Styles';
 
@@ -63,44 +64,59 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null, eve
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <View style={{ flex: 1 }}>
-        <FlatList
-          ref={listRef}
-          style={{ flex: 1 }}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={[styles.msgRow, item.role === 'user' ? styles.userRow : styles.assistantRow]}>
-              <Text style={item.role === 'user' ? styles.msgTextUser : styles.msgTextAssistant} selectable={true}>
+      <FlatList
+        ref={listRef}
+        style={{ flex: 1 }}
+        data={messages}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          item.role === 'assistant' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+              <MaterialDesignIcons name="face-agent" size={22} color="#888" style={{ marginRight: 6, marginBottom: 2 }} />
+              <View style={[styles.msgRow, styles.assistantRow, { maxWidth: '75%' }]}> 
+                <Text style={styles.msgTextAssistant} selectable={true}>
+                  {item.text}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.msgRow, styles.userRow, { maxWidth: '75%' }]}> 
+              <Text style={styles.msgTextUser} selectable={true}>
                 {item.text}
               </Text>
             </View>
-          )}
-          contentContainerStyle={{ paddingVertical: 8, paddingBottom: bottomSpacerHeight + 8, flexGrow: 1 }}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="always"
-          showsVerticalScrollIndicator={true}
-          initialNumToRender={20}
-          windowSize={10}
-          removeClippedSubviews={false}
-        />
+          )
+        )}
+        contentContainerStyle={{ paddingVertical: 8, paddingBottom: bottomSpacerHeight + 8, flexGrow: 1 }}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="always"
+        showsVerticalScrollIndicator={true}
+        initialNumToRender={20}
+        windowSize={10}
+        removeClippedSubviews={false}
+      />
 
-        <View style={styles.inputWrapper} pointerEvents="box-none">
+      {/* Input row now outside the inner container, edge-to-edge */}
+      <View style={styles.inputWrapper} pointerEvents="box-none">
+        <View style={styles.inputRowOuter}>
+          {/* White background bar, full width, behind input row */}
           <View style={styles.inputRow}>
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              ref={inputRef}
-              style={styles.input}
-              placeholder="Escribe un mensaje..."
-              placeholderTextColor="#999"
-              color="#000"
-              returnKeyType="send"
-              blurOnSubmit={true}
-              onSubmitEditing={send}
-            />
-            <TouchableOpacity style={[styles.sendBtn, { backgroundColor: Colors.secondary }]} onPress={send}>
-              <Text style={GlobalStyles.buttonText}>Enviar</Text>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              <TextInput
+                value={text}
+                onChangeText={setText}
+                ref={inputRef}
+                style={[styles.input, { borderTopRightRadius: 22, borderBottomRightRadius: 22, maxWidth: '90%',  zIndex: 1 }]}
+                placeholder="Escribe un mensaje..."
+                placeholderTextColor="#999"
+                color="#000"
+                returnKeyType="send"
+                blurOnSubmit={true}
+                onSubmitEditing={send}
+              />
+            </View>
+            <TouchableOpacity style={[styles.sendBtn, { backgroundColor: Colors.primary, marginLeft: -22, zIndex: 1 }]} onPress={send}>
+              <MaterialDesignIcons name="send" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -110,16 +126,17 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null, eve
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1 },
   msgRow: {
     marginVertical: 6,
-    marginHorizontal: 10,
+    marginHorizontal: 0,
     padding: 10,
-    borderRadius: 8,
-    maxWidth: '85%',
-    minHeight: 44,
+    borderRadius: 18,
+    maxWidth: '98%',
+    minHeight: 32,
+    alignSelf: 'stretch',
   },
-  userRow: { alignSelf: 'flex-end', backgroundColor: '#3E5F8A' },
+  userRow: { alignSelf: 'flex-end', backgroundColor: Colors.secondary },
   assistantRow: { alignSelf: 'flex-start', backgroundColor: '#f1f1f1' },
   msgTextUser: {
     color: '#fff',
@@ -136,16 +153,62 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     paddingBottom: Platform.OS === 'ios' ? 16 : 8,
     zIndex: 1000,
     elevation: 1000,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopWidth: 0,
+    alignItems: 'center',
   },
-  inputRow: { flexDirection: 'row', padding: 8, alignItems: 'center' },
-  input: { flex: 1, backgroundColor: '#fff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', marginRight: 8, height: 44 },
-  sendBtn: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8 },
+
+  inputRowOuter: {
+    width: '100%',
+    paddingHorizontal: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    width: '98%',
+    alignSelf: 'center',
+    marginHorizontal: 0,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderTopLeftRadius: 22,
+    borderBottomLeftRadius: 22,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    borderWidth: 0,
+    marginRight: 0,
+    height: 44,
+    color: '#000',
+    fontSize: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  sendBtn: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#3E5F8A',
+    borderRadius: 22,
+    marginLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
 });
 
 export default ChatPanel;

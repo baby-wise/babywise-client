@@ -14,6 +14,7 @@ import {
   Pressable,
   Platform
 } from 'react-native';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import ChartWebView from '../components/ChartWebView';
 import ChatPanel from '../components/ChatPanel';
@@ -331,7 +332,7 @@ const StatisticsScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={GlobalStyles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff', paddingHorizontal: 0, paddingTop: 0}}>
       {/* Header */}
       <View>
         <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
@@ -341,7 +342,7 @@ const StatisticsScreen = ({ navigation, route }) => {
       
 
       <View style={GlobalStyles.container}>
-      <Text style={GlobalStyles.title}>Estadísticas</Text>
+      <Text style={[GlobalStyles.title, { paddingTop: 24 }]}>Estadísticas</Text>
         
         {/* Selector de cámaras */}
         <View style={{ marginBottom: 12 }}>
@@ -353,13 +354,19 @@ const StatisticsScreen = ({ navigation, route }) => {
           ) : (
             <View>
               {/* Collapsed picklist: show only selected camera. Tap to toggle list. */}
-              <TouchableOpacity onPress={() => setDropdownOpen(o => !o)} style={{ padding: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, backgroundColor: '#fff' }}>
+              <TouchableOpacity onPress={() => setDropdownOpen(o => !o)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 22, backgroundColor: '#fff' }}>
                 <Text style={{ color: '#333' }}>{selectedCamera ? selectedCamera : 'Seleccionar cámara'}</Text>
+                <MaterialDesignIcons 
+                  name={dropdownOpen ? 'chevron-up' : 'chevron-down'} 
+                  size={24}
+                  color="#64748B" 
+                  style={{ marginLeft: 8 }}
+                />
               </TouchableOpacity>
 
               {/* Expanded list */}
               {dropdownOpen && (
-                <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, overflow: 'hidden' }}>
+                <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 22, overflow: 'hidden' }}>
                   {cameras.map((cam, index) => {
                     // Prefer camera user id if available; fallback to camera name
                     const camUid = cam?.user?._id ?? cam?.user ?? cam?.uid ?? cam?.name;
