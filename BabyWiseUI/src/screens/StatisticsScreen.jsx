@@ -18,7 +18,7 @@ import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import ChartWebView from '../components/ChartWebView';
 import ChatPanel from '../components/ChatPanel';
-import { GlobalStyles } from '../styles/Styles';
+import { Colors, GlobalStyles } from '../styles/Styles';
 import { groupService } from '../services/apiService';
 
 
@@ -410,8 +410,8 @@ const StatisticsScreen = ({ navigation, route }) => {
                     height={220}
                     labels={eventsData.events.map(e => new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}
                     datasets={[
-                      { label: 'Llantos', data: eventsData.events.map(e => e.crying), borderColor: 'rgba(255,99,132,1)', backgroundColor: 'rgba(255,99,132,0.2)' },
-                      { label: 'Movimientos', data: eventsData.events.map(e => e.movement), borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.2)' }
+                      { label: 'Llantos', data: eventsData.events.map(e => e.crying), borderColor: "#3cc28aff", backgroundColor: '#3fc8af22' },
+                      { label: 'Movimientos', data: eventsData.events.map(e => e.movement), borderColor: "#3b9ee0ff", backgroundColor: '#45c3ec44' }
                     ]}
                   />
                 ) : (
