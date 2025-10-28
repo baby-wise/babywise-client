@@ -408,7 +408,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const handleMakeAdmin = async () => {
     try {
       await groupService.addAdmin(selectedMember.UID, group.id)
-      Alert.alert('Éxito', 'El usuario ahora es administrador');
+      //Alert.alert('Éxito', 'El usuario ahora es administrador');
       setShowMemberOptionsModal(false);
     } catch (error) {
       console.error('Error al hacer admin:', error);
