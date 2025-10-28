@@ -14,10 +14,11 @@ import {
   Pressable,
   Platform
 } from 'react-native';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 import ChartWebView from '../components/ChartWebView';
 import ChatPanel from '../components/ChatPanel';
-import { GlobalStyles } from '../styles/Styles';
+import { Colors, GlobalStyles } from '../styles/Styles';
 import { groupService } from '../services/apiService';
 
 
@@ -185,20 +186,19 @@ const StatisticsScreen = ({ navigation, route }) => {
     const maxMovement = Math.max(...eventsData.events.map(e => e.movement));
     const maxValue = Math.max(maxCrying, maxMovement);
     
+    // Labels locales para el gráfico
+    const localLabels = eventsData.events.map(e => new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     return (
       <View style={styles.chartContainer}>
         <Text style={styles.chartTitle}>Actividad en las últimas 24 horas</Text>
-        
         {/* Contenedor fijo para el gráfico */}
         <View style={styles.chartFixedContainer}>
-          
           {/* Etiquetas del eje Y - Fijas */}
           <View style={styles.yAxisContainer}>
             {[maxValue, Math.round(maxValue * 0.75), Math.round(maxValue * 0.5), Math.round(maxValue * 0.25), 0].map((value, index) => (
               <Text key={index} style={styles.yAxisLabel}>{value}</Text>
             ))}
           </View>
-          
           {/* ScrollView SOLO para el gráfico */}
           <ScrollView 
             ref={chartScrollRef}
@@ -211,7 +211,7 @@ const StatisticsScreen = ({ navigation, route }) => {
             onScroll={handleChartScroll}
             nestedScrollEnabled={true}
           >
-            <View style={[styles.chartGraph, { width: totalWidth, height: chartHeight }]}>
+            <View style={[styles.chartGraph, { width: totalWidth, height: chartHeight }]}> 
               {/* Líneas de cuadrícula horizontales */}
               {[0.25, 0.5, 0.75, 1].map((ratio, i) => (
                 <View 
@@ -225,18 +225,15 @@ const StatisticsScreen = ({ navigation, route }) => {
                   ]} 
                 />
               ))}
-              
               {/* Líneas verticales y datos por hora */}
               {eventsData.events.map((event, index) => {
                 const x = index * hourWidth;
                 const cryingHeight = (event.crying / maxValue) * chartHeight;
                 const movementHeight = (event.movement / maxValue) * chartHeight;
-                
                 return (
-                    <View key={`${event.timestamp}-${index}`} style={[styles.hourColumn, { left: x, width: hourWidth }]}>
+                    <View key={`${event.timestamp}-${index}`} style={[styles.hourColumn, { left: x, width: hourWidth }]}> 
                     {/* Línea vertical de cuadrícula */}
                     <View style={[styles.gridLineVertical, { height: chartHeight }]} />
-                    
                     {/* Barra de llantos */}
                     <View 
                       style={[
@@ -248,7 +245,6 @@ const StatisticsScreen = ({ navigation, route }) => {
                         }
                       ]} 
                     />
-                    
                     {/* Barra de movimientos */}
                     <View 
                       style={[
@@ -260,7 +256,6 @@ const StatisticsScreen = ({ navigation, route }) => {
                         }
                       ]} 
                     />
-                    
                     {/* Punto de llantos */}
                     <View 
                       style={[
@@ -271,7 +266,6 @@ const StatisticsScreen = ({ navigation, route }) => {
                         }
                       ]} 
                     />
-                    
                     {/* Punto de movimientos */}
                     <View 
                       style={[
@@ -287,7 +281,6 @@ const StatisticsScreen = ({ navigation, route }) => {
               })}
             </View>
           </ScrollView>
-          
           {/* Etiquetas de horas - ScrollView separado sincronizado */}
           <ScrollView 
             ref={hoursScrollRef}
@@ -299,28 +292,30 @@ const StatisticsScreen = ({ navigation, route }) => {
             scrollEnabled={false}
             nestedScrollEnabled={false}
           >
-            <View style={[styles.hoursContainer, { width: totalWidth }]}>
-              {eventsData.events.map((event, index) => (
-                <Text 
-                  key={`h-${event.timestamp}-${index}`} 
-                  style={[
-                    styles.hourLabel, 
-                    { 
-                      left: index * hourWidth + 20,
-                      width: hourWidth
-                    }
-                  ]}
-                >
-                  {event.hour}h
-                </Text>
-              ))}
+            <View style={[styles.hoursContainer, { width: totalWidth }]}> 
+              {eventsData.events.map((event, index) => {
+                // Convertir el timestamp UTC a hora local del usuario
+                const localHour = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return (
+                  <Text 
+                    key={`h-${event.timestamp}-${index}`} 
+                    style={[
+                      styles.hourLabel, 
+                      { 
+                        left: index * hourWidth + 20,
+                        width: hourWidth
+                      }
+                    ]}
+                  >
+                    {localHour}
+                  </Text>
+                );
+              })}
             </View>
           </ScrollView>
         </View>
-        
         {/* Instrucciones */}
         <Text style={styles.instructionText}>← Desliza horizontalmente para ver todas las 24 horas →</Text>
-        
         {/* Leyenda */}
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}>
@@ -337,7 +332,7 @@ const StatisticsScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={GlobalStyles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff', paddingHorizontal: 0, paddingTop: 0}}>
       {/* Header */}
       <View>
         <TouchableOpacity style={GlobalStyles.backButton} onPress={() => navigation.goBack()}>
@@ -347,7 +342,7 @@ const StatisticsScreen = ({ navigation, route }) => {
       
 
       <View style={GlobalStyles.container}>
-      <Text style={GlobalStyles.title}>Estadísticas</Text>
+      <Text style={[GlobalStyles.title, { paddingTop: 24 }]}>Estadísticas</Text>
         
         {/* Selector de cámaras */}
         <View style={{ marginBottom: 12 }}>
@@ -359,13 +354,19 @@ const StatisticsScreen = ({ navigation, route }) => {
           ) : (
             <View>
               {/* Collapsed picklist: show only selected camera. Tap to toggle list. */}
-              <TouchableOpacity onPress={() => setDropdownOpen(o => !o)} style={{ padding: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, backgroundColor: '#fff' }}>
+              <TouchableOpacity onPress={() => setDropdownOpen(o => !o)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 22, backgroundColor: '#fff' }}>
                 <Text style={{ color: '#333' }}>{selectedCamera ? selectedCamera : 'Seleccionar cámara'}</Text>
+                <MaterialDesignIcons 
+                  name={dropdownOpen ? 'chevron-up' : 'chevron-down'} 
+                  size={24}
+                  color="#64748B" 
+                  style={{ marginLeft: 8 }}
+                />
               </TouchableOpacity>
 
               {/* Expanded list */}
               {dropdownOpen && (
-                <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, overflow: 'hidden' }}>
+                <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 22, overflow: 'hidden' }}>
                   {cameras.map((cam, index) => {
                     // Prefer camera user id if available; fallback to camera name
                     const camUid = cam?.user?._id ?? cam?.user ?? cam?.uid ?? cam?.name;
@@ -407,10 +408,10 @@ const StatisticsScreen = ({ navigation, route }) => {
                 {eventsData && eventsData.events ? (
                   <ChartWebView
                     height={220}
-                    labels={eventsData.events.map(e => `${e.hour}h`)}
+                    labels={eventsData.events.map(e => new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}
                     datasets={[
-                      { label: 'Llantos', data: eventsData.events.map(e => e.crying), borderColor: 'rgba(255,99,132,1)', backgroundColor: 'rgba(255,99,132,0.2)' },
-                      { label: 'Movimientos', data: eventsData.events.map(e => e.movement), borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.2)' }
+                      { label: 'Llantos', data: eventsData.events.map(e => e.crying), borderColor: "#3cc28aff", backgroundColor: '#3fc8af22' },
+                      { label: 'Movimientos', data: eventsData.events.map(e => e.movement), borderColor: "#3b9ee0ff", backgroundColor: '#45c3ec44' }
                     ]}
                   />
                 ) : (

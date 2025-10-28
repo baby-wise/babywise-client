@@ -1,5 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
+import InCallManager from 'react-native-incall-manager';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
 import { LiveKitRoom, useTracks, VideoTrack, AudioSession, registerGlobals, isTrackReference } from '@livekit/react-native';
 import { Track } from 'livekit-client';
@@ -19,8 +21,12 @@ const CameraScreen = ({ route }) => {
   const [audioUrl, setAudioUrl] = useState(null);
   const socket = useSocket();
   const ROOM_ID = `${group.id}`;
+  const [camaraMode, setCameraMode] = useState('user')
   // Unirse a la sala como cámara y escuchar eventos cuando el socket esté listo
   useEffect(() => {
+    // Al montar, iniciar la sesión de audio para priorizar el micrófono
+    InCallManager.start({ media: 'audio', auto: true });
+
     if (socket && socket.connected) {
       socket.emit('join-room', {
         group: ROOM_ID,
@@ -30,8 +36,18 @@ const CameraScreen = ({ route }) => {
         UID: auth.currentUser.uid,
         baby: cameraName
       });
-      const handlePlayAudio = ({ audioUrl }) => setAudioUrl(audioUrl);
-      const handleStopAudio = () => setAudioUrl(null);
+      const handlePlayAudio = ({ audioUrl }) => {
+        console.log('[CameraScreen] play-audio recibido', audioUrl);
+        setAudioUrl(audioUrl);
+        // Liberar el control de la sesión de audio para la reproducción
+        InCallManager.stop();
+      };
+      const handleStopAudio = () => {
+        console.log('[CameraScreen] stop-audio recibido');
+        setAudioUrl(null);
+        // Recuperar el control de la sesión de audio para el micrófono
+        InCallManager.start({ media: 'audio', auto: true });
+      };
       socket.on('play-audio', handlePlayAudio);
       socket.on('stop-audio', handleStopAudio);
       return () => {
@@ -42,9 +58,26 @@ const CameraScreen = ({ route }) => {
         });
         socket.off('play-audio', handlePlayAudio);
         socket.off('stop-audio', handleStopAudio);
+        // Al desmontar, restaurar el estado original del audio
+        InCallManager.stop();
       };
     }
   }, [socket, ROOM_ID, cameraName]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRotateCamera = () => {
+      console.log('[CameraScreen] Recibido evento rotate-camera');
+      handleChangeFacingMode();
+    };
+
+    socket.on('rotate-camera', handleRotateCamera);
+
+    return () => {
+      socket.off('rotate-camera', handleRotateCamera);
+    };
+  }, [socket, handleChangeFacingMode]);
   // Construye la URL WebSocket correctamente, evitando doble puerto
   let wsUrl = 'wss://babywise-jqbqqsgq.livekit.cloud'
 
@@ -76,6 +109,13 @@ const CameraScreen = ({ route }) => {
     };
   }, [cameraName]);
 
+  const handleChangeFacingMode = () => {
+    setCameraMode(prev => {
+      const next = prev === 'user' ? 'environment' : 'user';
+      console.log(`[CameraScreen] Rotando cámara de ${prev} a ${next}`);
+      return next;
+    });
+  };
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -86,13 +126,14 @@ const CameraScreen = ({ route }) => {
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
       {token && (
         <LiveKitRoom
+          key={camaraMode}
           serverUrl={wsUrl}
           token={token}
           connect={true}
           audio={{
             echoCancellation: true
           }}
-          video={true}
+          video={{ facingMode: camaraMode}}
           options={{
             adaptiveStream: { pixelDensity: 'screen' }
           }}
@@ -103,16 +144,30 @@ const CameraScreen = ({ route }) => {
           <RoomView setStatus={setStatus} />
         </LiveKitRoom>
       )}
+      <TouchableOpacity
+        style={styles.rotateButton}
+        onPress={() => handleChangeFacingMode()}
+      >
+        <MaterialDesignIcons name="camera-flip" size={28} color="#fff" />
+      </TouchableOpacity>
+
       {/* Reproductor de audio oculto, solo cuando hay audioUrl */}
       {audioUrl && (
         <Video
           source={{ uri: audioUrl }}
           audioOnly
           paused={false}
-          onEnd={() => setAudioUrl(null)}
+          onEnd={() => {
+            setAudioUrl(null);
+            // Restaurar modo comunicación para el micrófono
+            console.log('[CameraScreen] Audio terminado, restaurando micrófono');
+            InCallManager.start({ media: 'audio', auto: true });
+          }}
           onError={e => {
             setAudioUrl(null);
+            console.log('[CameraScreen] Error al reproducir audio:', e);
             setStatus('Error al reproducir audio');
+            InCallManager.start({ media: 'audio', auto: true });
           }}
           style={{ width: 0, height: 0 }}
         />
@@ -180,6 +235,20 @@ const RoomView = ({ setStatus }) => {
 };
 
 const styles = StyleSheet.create({
+  rotateButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 25,
+    width: 45,
+    height: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
   container: {
     flex: 1,
     backgroundColor: 'black',
