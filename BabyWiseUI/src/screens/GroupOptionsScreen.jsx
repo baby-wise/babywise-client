@@ -13,7 +13,7 @@ import {
   Dimensions,
   RefreshControl
 } from 'react-native';
-import { groupService } from '../services/apiService';
+import apiClient, { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
 import { GlobalStyles, Colors} from '../styles/Styles';
 import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
@@ -23,6 +23,7 @@ import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 const GroupOptionsScreen = ({ navigation, route }) => {
   const { group, userName } = route.params || {};
+  const [userPermission, setUserPermission] = useState(null)
   
   // Estados para el modal de agregar miembro
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -64,7 +65,20 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     fetchCamerasFromBackend();
     checkIfUserIsAdmin();
     getCurrentUserUID();
+    getUserPermission();
   }, []);
+
+  const getUserPermission = async () =>{
+    try {
+      const permisos = await groupService.getUserPermmissionForGroup(group.id)
+      if(permisos){
+        setUserPermission(permisos)
+      }
+    } catch (error) {
+      console.log(error)
+      setUserPermission({camera: true, viewer: true})
+    }
+  }
 
   const fetchCamerasFromBackend = async () => {
     setIsLoadingCameras(true);
@@ -739,26 +753,34 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           
           <View style={[styles.cameraOptionsContainer, { top: modalPosition.y, left: modalPosition.x }]}>
             {/* Ver en vivo */}
-            <TouchableOpacity
-              style={styles.cameraOptionButton}
-              onPress={() => {
-                setShowCameraOptionsModal(false);
-                navigation.navigate('Viewer', { group, userName, cameraName: selectedCamera?.name });
-              }}
-            >
-              <Text style={styles.cameraOptionButtonText}>Ver en vivo</Text>
-            </TouchableOpacity>
+            {userPermission?.viewer && (
+              <TouchableOpacity
+                style={styles.cameraOptionButton}
+                onPress={() => {
+                  setShowCameraOptionsModal(false);
+                  navigation.navigate('Viewer', {
+                    group,
+                    userName,
+                    cameraName: selectedCamera?.name
+                  });
+                }}
+              >
+                <Text style={styles.cameraOptionButtonText}>Ver en vivo</Text>
+              </TouchableOpacity>
+            )}
             
             {/* Grabar en vivo */}
-            <TouchableOpacity
-              style={styles.cameraOptionButton}
-              onPress={() => {
-                setShowCameraOptionsModal(false);
-                navigation.navigate('Camera', { group, cameraName: selectedCamera?.name, userName });
-              }}
-            >
-              <Text style={styles.cameraOptionButtonText}>Grabar en vivo</Text>
-            </TouchableOpacity>
+            {userPermission?.camera && (
+              <TouchableOpacity
+                style={styles.cameraOptionButton}
+                onPress={() => {
+                  setShowCameraOptionsModal(false);
+                  navigation.navigate('Camera', { group, cameraName: selectedCamera?.name, userName });
+                }}
+              >
+                <Text style={styles.cameraOptionButtonText}>Grabar en vivo</Text>
+              </TouchableOpacity>
+            )}
             
             {/* Ver grabaciones */}
             <TouchableOpacity

@@ -251,7 +251,18 @@ export const groupService = {
       console.error('Error updating group settings:', error);
       throw error;
     }
+  },
+  //Obtener permisos de un usuario en un grupo
+  async getUserPermmissionForGroup(groupId){
+    try {
+      const currentUser = auth.currentUser
+      const response = await apiClient.get(`/secure/group/${groupId}/user/${currentUser.uid}/permission`)
+      return response.data
+    } catch (error) {
+      console.log(error)
+    }
   }
+
 };
 
 // Función helper para obtener token del usuario actual
