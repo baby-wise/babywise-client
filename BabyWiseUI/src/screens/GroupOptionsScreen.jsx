@@ -895,13 +895,6 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                         </View>
                         {isAdmin && !isCurrentUser && (
                           <View style={{ flexDirection: "row", alignItems: "center" }}>
-                            {/* Botón de opciones avanzadas */}
-                            <TouchableOpacity
-                              style={styles.optionsButton}
-                              onPress={() => handleOpenMemberOptions(member)}
-                            >
-                              <MaterialDesignIcons name="dots-vertical" size={22} color="#3E5F8A" />
-                            </TouchableOpacity>
 
                             {/* Botón de eliminar miembro */}
                             <TouchableOpacity
@@ -909,6 +902,13 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                               onPress={() => handleRemoveMember(member)}
                             >
                               <MaterialDesignIcons name="account-remove" size={24} color="#DC2626" />
+                            </TouchableOpacity>
+                            {/* Botón de opciones avanzadas */}
+                            <TouchableOpacity
+                              style={styles.optionsButton}
+                              onPress={() => handleOpenMemberOptions(member)}
+                            >
+                              <MaterialDesignIcons name="dots-vertical" size={22} color="#3E5F8A" />
                             </TouchableOpacity>
                           </View>
                         )}
