@@ -238,6 +238,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     setRefreshing(true);
     console.log('Refrescando lista de cámaras...');
     await fetchCamerasFromBackend();
+    await loadGroupSettings();
+    await checkIfUserIsAdmin();
+    await getCurrentUserUID();
+    await getUserPermission();
     // Resetear el estado de runtime al refrescar
     setCamerasRuntimeStatus({});
     setRefreshing(false);
