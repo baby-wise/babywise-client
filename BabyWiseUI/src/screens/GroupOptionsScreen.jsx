@@ -13,7 +13,7 @@ import {
   Dimensions,
   RefreshControl
 } from 'react-native';
-import { groupService } from '../services/apiService';
+import apiClient, { groupService } from '../services/apiService';
 import { auth } from '../config/firebase';
 import { GlobalStyles, Colors} from '../styles/Styles';
 import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
@@ -23,6 +23,7 @@ import SIGNALING_SERVER_URL from '../siganlingServerUrl';
 
 const GroupOptionsScreen = ({ navigation, route }) => {
   const { group, userName } = route.params || {};
+  const [userPermission, setUserPermission] = useState(null)
   
   // Estados para el modal de agregar miembro
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -64,7 +65,21 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     fetchCamerasFromBackend();
     checkIfUserIsAdmin();
     getCurrentUserUID();
+    getUserPermission();
   }, []);
+
+  const getUserPermission = async () =>{
+    try {
+      const permisos = await groupService.getUserPermmissionForGroup(auth.currentUser.uid,group.id)
+      if(permisos){
+        setUserPermission(permisos)
+      }
+      console.log(permisos)
+    } catch (error) {
+      console.log(error)
+      setUserPermission({camera: true, viewer: true})
+    }
+  }
 
   const fetchCamerasFromBackend = async () => {
     setIsLoadingCameras(true);
@@ -223,6 +238,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     setRefreshing(true);
     console.log('Refrescando lista de cámaras...');
     await fetchCamerasFromBackend();
+    await loadGroupSettings();
+    await checkIfUserIsAdmin();
+    await getCurrentUserUID();
+    await getUserPermission();
     // Resetear el estado de runtime al refrescar
     setCamerasRuntimeStatus({});
     setRefreshing(false);
@@ -356,6 +375,49 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const cancelAddMember = () => {
     setShowAddMemberModal(false);
     setInviteCode('');
+  };
+
+  //Modal de permisos
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [showMemberOptionsModal, setShowMemberOptionsModal] = useState(false);
+  const [permissions, setPermissions] = useState({ camera: false, viewer: false });
+  const [selectedMemberIsAdmin, setSelectedMemberIsAdmin] = useState(false)
+
+  const handleOpenMemberOptions = async (member) => {
+    const permisos = await groupService.getUserPermmissionForGroup(member.UID,group.id)
+    setSelectedMember(member);
+    setPermissions(permisos);
+    const response = await groupService.isAdmin(member.UID, group._id || group.id);
+    setSelectedMemberIsAdmin(response.message === "Is admin");
+    setShowMemberOptionsModal(true);
+  };
+
+  const handleTogglePermission = (key) => {
+    setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedMember) return;
+    if (!permissions) return;
+    try {
+      groupService.setUserPermmissionForGroup(selectedMember.UID, group.id, permissions)
+      //Alert.alert('Éxito', 'Permisos actualizados correctamente');
+      setShowMemberOptionsModal(false);
+    } catch (error) {
+      console.error('Error al actualizar permisos:', error);
+      Alert.alert('Error', 'No se pudieron actualizar los permisos');
+    }
+  };
+
+  const handleMakeAdmin = async () => {
+    try {
+      await groupService.addAdmin(selectedMember.UID, group.id)
+      //Alert.alert('Éxito', 'El usuario ahora es administrador');
+      setShowMemberOptionsModal(false);
+    } catch (error) {
+      console.error('Error al hacer admin:', error);
+      Alert.alert('Error', 'No se pudo actualizar el rol de administrador');
+    }
   };
 
   return (
@@ -739,26 +801,34 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           
           <View style={[styles.cameraOptionsContainer, { top: modalPosition.y, left: modalPosition.x }]}>
             {/* Ver en vivo */}
-            <TouchableOpacity
-              style={styles.cameraOptionButton}
-              onPress={() => {
-                setShowCameraOptionsModal(false);
-                navigation.navigate('Viewer', { group, userName, cameraName: selectedCamera?.name });
-              }}
-            >
-              <Text style={styles.cameraOptionButtonText}>Ver en vivo</Text>
-            </TouchableOpacity>
+            {userPermission?.viewer && (
+              <TouchableOpacity
+                style={styles.cameraOptionButton}
+                onPress={() => {
+                  setShowCameraOptionsModal(false);
+                  navigation.navigate('Viewer', {
+                    group,
+                    userName,
+                    cameraName: selectedCamera?.name
+                  });
+                }}
+              >
+                <Text style={styles.cameraOptionButtonText}>Ver en vivo</Text>
+              </TouchableOpacity>
+            )}
             
             {/* Grabar en vivo */}
-            <TouchableOpacity
-              style={styles.cameraOptionButton}
-              onPress={() => {
-                setShowCameraOptionsModal(false);
-                navigation.navigate('Camera', { group, cameraName: selectedCamera?.name, userName });
-              }}
-            >
-              <Text style={styles.cameraOptionButtonText}>Grabar en vivo</Text>
-            </TouchableOpacity>
+            {userPermission?.camera && (
+              <TouchableOpacity
+                style={styles.cameraOptionButton}
+                onPress={() => {
+                  setShowCameraOptionsModal(false);
+                  navigation.navigate('Camera', { group, cameraName: selectedCamera?.name, userName });
+                }}
+              >
+                <Text style={styles.cameraOptionButtonText}>Grabar en vivo</Text>
+              </TouchableOpacity>
+            )}
             
             {/* Ver grabaciones */}
             <TouchableOpacity
@@ -828,16 +898,23 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                           </View>
                         </View>
                         {isAdmin && !isCurrentUser && (
-                          <TouchableOpacity
-                            style={styles.removeButton}
-                            onPress={() => handleRemoveMember(member)}
-                          >
-                            <MaterialDesignIcons 
-                              name="account-remove" 
-                              size={24} 
-                              color="#DC2626" 
-                            />
-                          </TouchableOpacity>
+                          <View style={{ flexDirection: "row", alignItems: "center" }}>
+
+                            {/* Botón de eliminar miembro */}
+                            <TouchableOpacity
+                              style={styles.removeButton}
+                              onPress={() => handleRemoveMember(member)}
+                            >
+                              <MaterialDesignIcons name="account-remove" size={24} color="#DC2626" />
+                            </TouchableOpacity>
+                            {/* Botón de opciones avanzadas */}
+                            <TouchableOpacity
+                              style={styles.optionsButton}
+                              onPress={() => handleOpenMemberOptions(member)}
+                            >
+                              <MaterialDesignIcons name="dots-vertical" size={22} color="#3E5F8A" />
+                            </TouchableOpacity>
+                          </View>
                         )}
                       </View>
                     );
@@ -861,12 +938,106 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
+      {/* Modal de opciones avanzadas de miembro */}
+      <Modal
+        visible={showMemberOptionsModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowMemberOptionsModal(false)}
+      >
+        <View style={GlobalStyles.modalOverlay}>
+          <View style={GlobalStyles.modalContainer}>
+            <Text style={GlobalStyles.modalTitle}>Permisos</Text>
+
+            {selectedMember ? (
+              <>
+                <Text style={styles.memberEmail}>{selectedMember.email}</Text>
+
+                {/* Toggle: Permiso de cámara */}
+                <View style={styles.settingItem}>
+                  <Text style={styles.settingLabel}>Permiso para grabar</Text>
+                  <TouchableOpacity
+                    style={[styles.toggle, permissions.camera && styles.toggleActive]}
+                    onPress={() => handleTogglePermission('camera')}
+                    disabled={isSavingSettings}
+                  >
+                    <View
+                      style={[
+                        styles.toggleCircle,
+                        permissions.camera && styles.toggleCircleActive,
+                      ]}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Toggle: Permiso de viewer */}
+                <View style={styles.settingItem}>
+                  <Text style={styles.settingLabel}>Permiso de viewer</Text>
+                  <TouchableOpacity
+                    style={[styles.toggle, permissions.viewer && styles.toggleActive]}
+                    onPress={() => handleTogglePermission('viewer')}
+                    disabled={isSavingSettings}
+                  >
+                    <View
+                      style={[
+                        styles.toggleCircle,
+                        permissions.viewer && styles.toggleCircleActive,
+                      ]}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Botón: Hacer administrador */}
+                {!selectedMemberIsAdmin && (
+                  <TouchableOpacity
+                    style={styles.adminButton}
+                    onPress={handleMakeAdmin}
+                    disabled={isSavingSettings}
+                  >
+                    <MaterialDesignIcons name="account-star" size={20} color="#FFF" />
+                    <Text style={styles.adminButtonText}>Hacer administrador</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Botones inferiores */}
+                <View style={GlobalStyles.modalButtons}>
+                  <TouchableOpacity
+                    style={[GlobalStyles.modalButton, GlobalStyles.cancelButton]}
+                    onPress={() => setShowMemberOptionsModal(false)}
+                  >
+                    <Text style={GlobalStyles.cancelButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[GlobalStyles.modalButton, GlobalStyles.addButton]}
+                    onPress={handleSavePermissions}
+                  >
+                    <Text style={styles.addButtonText}>Guardar</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.loadingText}>Cargando datos del usuario...</Text>
+            )}
+          </View>
+        </View>
+      </Modal>
 
   </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.secondary,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 10,
+    marginBottom: 10
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
