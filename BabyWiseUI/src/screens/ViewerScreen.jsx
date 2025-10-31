@@ -244,16 +244,15 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
     if (!cameraName) return;
 
     let attempts = 0;
-    const maxAttempts = 5;
+    const maxAttempts = 2;
     const interval = setInterval(() => {
       const targetCamera = `camera-${cameraName}`;
       const cameras = tracks
         .filter(t => t.participant.identity?.startsWith("camera-"))
         .map(t => t.participant.identity);
 
-      if (cameras.includes(targetCamera)) {
+      if (cameras.includes(targetCamera) && !hasSelectedInitialCamera.current) {
         console.log("[CameraSelector] Cámara encontrada:", targetCamera);
-        console.log("Intento:",attempts)
         setSelectedCamera(targetCamera);
         hasSelectedInitialCamera.current = true;
         clearInterval(interval);
@@ -261,7 +260,10 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
         attempts++;
         if (attempts >= maxAttempts) {
           console.log("[CameraSelector] No se encontró la cámara, usando la primera disponible");
-          if (cameras.length > 0) setSelectedCamera(cameras[0]);
+          if (cameras.length > 0) {
+            setSelectedCamera(cameras[0]);
+            hasSelectedInitialCamera.current=true
+          }
           clearInterval(interval);
         }
       }
