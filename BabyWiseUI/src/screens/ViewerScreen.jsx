@@ -241,22 +241,34 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
   const hasSelectedInitialCamera = useRef(null)
 
   useEffect(() => {
-    if (cameraParticipants.length === 0) {
-      setSelectedCamera(null);
-      hasSelectedInitialCamera.current = false;
-      return;
-    }
+    if (!cameraName) return;
 
-    // Solo seleccionar automáticamente la primera vez
-    if (!hasSelectedInitialCamera.current) {
-      if (cameraName && cameraParticipants.includes(`camera-${cameraName}`)) {
-        setSelectedCamera(`camera-${cameraName}`);
+    let attempts = 0;
+    const maxAttempts = 5;
+    const interval = setInterval(() => {
+      const targetCamera = `camera-${cameraName}`;
+      const cameras = tracks
+        .filter(t => t.participant.identity?.startsWith("camera-"))
+        .map(t => t.participant.identity);
+
+      if (cameras.includes(targetCamera)) {
+        console.log("[CameraSelector] Cámara encontrada:", targetCamera);
+        console.log("Intento:",attempts)
+        setSelectedCamera(targetCamera);
+        hasSelectedInitialCamera.current = true;
+        clearInterval(interval);
       } else {
-        setSelectedCamera(cameraParticipants[0]);
+        attempts++;
+        if (attempts >= maxAttempts) {
+          console.log("[CameraSelector] No se encontró la cámara, usando la primera disponible");
+          if (cameras.length > 0) setSelectedCamera(cameras[0]);
+          clearInterval(interval);
+        }
       }
-      hasSelectedInitialCamera.current = true;
-    }
-  }, [cameraParticipants, cameraName]);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [cameraName, cameraParticipants]);
 
   // Push-to-talk handlers
 
