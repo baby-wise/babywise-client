@@ -258,7 +258,7 @@ const RoomView = ({ navigation, group, userName, socket, cameraName}) => {
         clearInterval(interval);
       } else {
         attempts++;
-        if (attempts >= maxAttempts) {
+        if (attempts >= maxAttempts && !hasSelectedInitialCamera.current) {
           console.log("[CameraSelector] No se encontró la cámara, usando la primera disponible");
           if (cameras.length > 0) {
             setSelectedCamera(cameras[0]);
