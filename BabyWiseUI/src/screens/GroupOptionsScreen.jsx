@@ -19,7 +19,7 @@ import { GlobalStyles, Colors} from '../styles/Styles';
 import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
 import CameraThumbnailPreview from '../components/CameraThumbnailPreview';
 import SIGNALING_SERVER_URL from '../siganlingServerUrl';
-
+import Clipboard from '@react-native-clipboard/clipboard';
 
 const GroupOptionsScreen = ({ navigation, route }) => {
   const { group, userName } = route.params || {};
@@ -638,7 +638,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 <TouchableOpacity 
                   style={styles.copyButton}
                   onPress={() => {
-                    // TODO: Implementar copia al portapapeles
+                    Clipboard.setString(inviteCode);
                     showSuccessToast('Código copiado al portapapeles');
                   }}
                 >
