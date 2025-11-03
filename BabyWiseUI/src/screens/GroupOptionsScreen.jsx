@@ -61,6 +61,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
 
   // Cargar settings al montar el componente
   useEffect(() => {
+    console.log(group)
     loadGroupSettings();
     fetchCamerasFromBackend();
     checkIfUserIsAdmin();
@@ -152,6 +153,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         // Extraer los usuarios del array de objetos {user: {...}, role: "..."}
         const members = currentGroup.users.map(userObj => userObj.user);
         setGroupMembers(members);
+        group.members = members.length
       } else {
         setGroupMembers([]);
       }
