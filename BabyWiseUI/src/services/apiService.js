@@ -269,6 +269,38 @@ export const groupService = {
     } catch (error) {
       console.log(error)
     }
+  },
+  async getGroupRules(groupId){
+    try {
+      const response = await apiClient.get(`/secure/group/${groupId}/rules`)
+      return response.data
+    } catch (error) {
+      console.log(error)
+    }
+  },
+  async addGroupRules(groupId,rule){
+    try {
+      const response = await apiClient.post(`/secure/group/${groupId}/rules`,{rule: rule})
+      return response.data
+    } catch (error) {
+      console.log(error)
+    }
+  },
+   async updateGroupRules(groupId,rule){
+    try {
+      const response = await apiClient.put(`/secure/group/${groupId}/rules`,{rule: rule})
+      return response.data
+    } catch (error) {
+      console.log(error)
+    }
+  },
+  async deleteGroupRules(groupId,ruleId){
+    try {
+      const response = await apiClient.put(`/secure/group/${groupId}/rules/delete`,{ruleId: ruleId})
+      return response.data
+    } catch (error) {
+      console.log(error)
+    }
   }
 
 };

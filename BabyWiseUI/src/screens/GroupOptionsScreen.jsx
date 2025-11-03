@@ -461,9 +461,9 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const fetchRules = async () => {
     try {
       setLoadingRules(true);
-      const res = await fetch(`${SIGNALING_SERVER_URL}/secure/group/${group.id}/rules`);
-      const data = await res.json();
-      setRules(data.rules || []);
+      const data = await groupService.getGroupRules(group.id)
+
+      setRules(data|| []);
     } catch (err) {
       console.error("Error cargando reglas:", err);
     } finally {
@@ -486,21 +486,17 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     const newRule = {
       event: selectedEvent,
       action: selectedAction,
-      audioKey: selectedAudio?.key || null,
+      audio: selectedAudio || null,
     };
 
     try {
       setIsSavingRule(true);
-      const method = "POST";
-      const url = `${SIGNALING_SERVER_URL}/secure/group/${group.id}/rules`
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newRule),
-      });
-
-      if (!res.ok) throw new Error("Error al guardar regla");
+      if(editingRule){
+        newRule._id = editingRule._id
+        await groupService.updateGroupRules(group.id, newRule)
+      }else{
+        await groupService.addGroupRules(group.id, newRule)
+      }
 
       showSuccessToast(
         editingRule ? "Regla actualizada" : "Regla agregada correctamente"
@@ -527,11 +523,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
         style: "destructive",
         onPress: async () => {
           try {
-            const res = await fetch(
-              `${SIGNALING_SERVER_URL}/groups/${group.id}/rules/${ruleId}`,
-              { method: "DELETE" }
-            );
-            if (!res.ok) throw new Error("Error al eliminar");
+            await groupService.deleteGroupRules(group.id,ruleId)
             showSuccessToast("Regla eliminada");
             fetchRules();
           } catch (err) {
@@ -547,10 +539,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     setEditingRule(rule);
     setSelectedEvent(rule.event);
     setSelectedAction(rule.action);
-    setSelectedAudio(audios.find((a) => a.key === rule.audioKey) || null);
+    setSelectedAudio(rule.audio|| null);
   };
 
-
+  
   return (
     <SafeAreaView style={GlobalStyles.container}>
       <View style={styles.headerRow}>
@@ -1190,9 +1182,9 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                         <Text style={styles.ruleSubtext}>
                           Acción: {rule.action === "reproducir_audio" ? "Reproducir audio" : rule.action}
                         </Text>
-                        {rule.audioKey && (
+                        {rule.audio && (
                           <Text style={styles.ruleSubtextSmall}>
-                            Audio: {rule.audioKey.replace(`audio/${group.id}/`, '').replace(/\.[^/.]+$/, '')}
+                            Audio: {rule.audio}
                           </Text>
                         )}
                       </View>
@@ -1225,14 +1217,14 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 label="Evento"
                 selected={
                   selectedEvent
-                    ? selectedEvent === "llanto"
+                    ? selectedEvent === "LLANTO"
                       ? "🍼 Llanto"
                       : "🎥 Movimiento"
                     : null
                 }
                 options={[
-                  { label: "🍼 Llanto", value: "llanto" },
-                  { label: "🎥 Movimiento", value: "movimiento" },
+                  { label: "🍼 Llanto", value: "LLANTO" },
+                  { label: "🎥 Movimiento", value: "MOVIMIENTO" },
                 ]}
                 onSelect={setSelectedEvent}
               />
@@ -1252,17 +1244,15 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 <DropdownSelector
                   label="Audio"
                   selected={
-                    selectedAudio
-                      ? selectedAudio
-                          .replace(`audio/${group.id}/`, "")
-                          .replace(/\.[^/.]+$/, "")
-                      : null
+                    selectedAudio? selectedAudio : null
                   }
                   options={audios.map((a) => ({
                     label: a.key
                       .replace(`audio/${group.id}/`, "")
                       .replace(/\.[^/.]+$/, ""),
-                    value: a.key,
+                    value: a.key
+                      .replace(`audio/${group.id}/`, "")
+                      .replace(/\.[^/.]+$/, ""),
                   }))}
                   onSelect={setSelectedAudio}
                 />
@@ -1275,7 +1265,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 style={[GlobalStyles.modalButton, GlobalStyles.cancelButton]}
                 onPress={() => {
                   setEditingRule(null);
-                  setShowAdvancedConfigModal(false);
+                  setSelectedEvent(null);
+                  setSelectedAction(null);
+                  setSelectedAudio(null);
+                  setShowAdvancedConfigModal(false);  
                 }}
               >
                 <Text style={GlobalStyles.cancelButtonText}>Cerrar</Text>
