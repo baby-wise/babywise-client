@@ -1229,46 +1229,130 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 label="Evento"
                 selected={
                   selectedEvent
-                    ? selectedEvent === "LLANTO"
-                      ? "Llanto"
-                      : "Movimiento"
+                    ? selectedEvent === "LLANTO" ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="baby" size={18} color="#3E5F8A" />
+                          <Text>Llanto</Text>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="motion-sensor" size={18} color="#3E5F8A" />
+                          <Text>Movimiento</Text>
+                        </View>
+                      )
                     : null
                 }
                 options={[
-                  { label: "Llanto", value: "LLANTO" },
-                  { label: "Movimiento", value: "MOVIMIENTO" },
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="baby" size={18} color="#3E5F8A" />
+                        <Text>Llanto</Text>
+                      </View>
+                    ),
+                    value: "LLANTO",
+                  },
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="motion-sensor" size={18} color="#3E5F8A" />
+                        <Text>Movimiento</Text>
+                      </View>
+                    ),
+                    value: "MOVIMIENTO",
+                  },
                 ]}
                 onSelect={setSelectedEvent}
               />
+
               {/* Selector de Scope */}
               <DropdownSelector
                 label="Aplicar a"
-                selected={selectedScope === null ? selectedScope : selectedScope === "GLOBAL" ? "Todas las camaras" : "Cámara específica" }
+                selected={
+                  selectedScope
+                    ? selectedScope === "GLOBAL" ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="earth" size={18} color="#3E5F8A" />
+                          <Text>Todas las cámaras</Text>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="video" size={18} color="#3E5F8A" />
+                          <Text>Cámara específica</Text>
+                        </View>
+                      )
+                    : null
+                }
                 options={[
-                  { label: "Todas las camaras", value: "GLOBAL" },
-                  { label: "Cámara específica", value: "CAMERA" },
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="earth" size={18} color="#3E5F8A" />
+                        <Text>Todas las cámaras</Text>
+                      </View>
+                    ),
+                    value: "GLOBAL",
+                  },
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="video" size={18} color="#3E5F8A" />
+                        <Text>Cámara específica</Text>
+                      </View>
+                    ),
+                    value: "CAMERA",
+                  },
                 ]}
                 onSelect={setSelectedScope}
               />
-              {/* Seleccion de Cámara */}
+
+              {/* Selección de Cámara */}
               {selectedScope === "CAMERA" && (
                 <DropdownSelector
                   label="Seleccionar cámara"
-                  selected={selectedCamera}
+                  selected={
+                    selectedCamera ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="cctv" size={18} color="#3E5F8A" />
+                        <Text>{selectedCamera}</Text>
+                      </View>
+                    ) : null
+                  }
                   options={fetchedCameras.map((cam) => ({
-                    label: cam.name,
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="cctv" size={18} color="#3E5F8A" />
+                        <Text>{cam.name}</Text>
+                      </View>
+                    ),
                     value: cam.name,
                   }))}
                   onSelect={setSelectedCamera}
               />
               )}
+
               {/* Acción */}
               <DropdownSelector
                 label="Acción"
                 selected={
-                  selectedAction === "reproducir_audio" ? "Reproducir audio" : null
+                  selectedAction === "reproducir_audio" ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <MaterialDesignIcons name="volume-high" size={18} color="#3E5F8A" />
+                      <Text>Reproducir audio</Text>
+                    </View>
+                  ) : null
                 }
-                options={[{ label: "Reproducir audio", value: "reproducir_audio" }]}
+                options={[
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="volume-high" size={18} color="#3E5F8A" />
+                        <Text>Reproducir audio</Text>
+                      </View>
+                    ),
+                    value: "reproducir_audio",
+                  },
+                ]}
                 onSelect={setSelectedAction}
               />
 
@@ -1277,18 +1361,29 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 <DropdownSelector
                   label="Audio"
                   selected={
-                    selectedAudio? selectedAudio : null
+                    selectedAudio ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="music" size={18} color="#3E5F8A" />
+                        <Text>{selectedAudio}</Text>
+                      </View>
+                    ) : null
                   }
-                  options={audios.map((a) => ({
-                    label: a.key
+                  options={audios.map((a) => {
+                    const name = a.key
                       .replace(`audio/${group.id}/`, "")
-                      .replace(/\.[^/.]+$/, ""),
-                    value: a.key
-                      .replace(`audio/${group.id}/`, "")
-                      .replace(/\.[^/.]+$/, ""),
-                  }))}
+                      .replace(/\.[^/.]+$/, "");
+                    return {
+                      label: (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="music" size={18} color="#3E5F8A" />
+                          <Text>{name}</Text>
+                        </View>
+                      ),
+                      value: name,
+                    };
+                  })}
                   onSelect={setSelectedAudio}
-                />
+              />
               )}
             </View>
 
@@ -1340,9 +1435,19 @@ const DropdownSelector = ({ label, selected, options, onSelect }) => {
         style={styles.dropdownSelected}
         onPress={() => setOpen(true)}
       >
-        <Text style={{ color: '#94A3B8' }}>
-          {selected || `Seleccionar ${label.toLowerCase()}`}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {selected ? (
+            typeof selected === 'string' ? (
+              <Text style={{ color: '#111' }}>{selected}</Text>
+            ) : (
+              selected
+            )
+          ) : (
+            <Text style={{ color: '#94A3B8' }}>
+              {`Seleccionar ${label.toLowerCase()}`}
+            </Text>
+          )}
+        </View>
         <MaterialDesignIcons name="chevron-down" size={20} color="#64748B" />
       </TouchableOpacity>
 
