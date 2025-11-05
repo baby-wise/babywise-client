@@ -1230,23 +1230,23 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 selected={
                   selectedEvent
                     ? selectedEvent === "LLANTO"
-                      ? "🍼 Llanto"
-                      : "🎥 Movimiento"
+                      ? "Llanto"
+                      : "Movimiento"
                     : null
                 }
                 options={[
-                  { label: "🍼 Llanto", value: "LLANTO" },
-                  { label: "🎥 Movimiento", value: "MOVIMIENTO" },
+                  { label: "Llanto", value: "LLANTO" },
+                  { label: "Movimiento", value: "MOVIMIENTO" },
                 ]}
                 onSelect={setSelectedEvent}
               />
               {/* Selector de Scope */}
               <DropdownSelector
                 label="Aplicar a"
-                selected={selectedScope === null ? selectedScope : selectedScope === "GLOBAL" ? "🌍 Todas las camaras" : "📷 Cámara específica" }
+                selected={selectedScope === null ? selectedScope : selectedScope === "GLOBAL" ? "Todas las camaras" : "Cámara específica" }
                 options={[
-                  { label: "🌍 Todas las camaras", value: "GLOBAL" },
-                  { label: "📷 Cámara específica", value: "CAMERA" },
+                  { label: "Todas las camaras", value: "GLOBAL" },
+                  { label: "Cámara específica", value: "CAMERA" },
                 ]}
                 onSelect={setSelectedScope}
               />
@@ -1266,9 +1266,9 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               <DropdownSelector
                 label="Acción"
                 selected={
-                  selectedAction === "reproducir_audio" ? "🔊 Reproducir audio" : null
+                  selectedAction === "reproducir_audio" ? "Reproducir audio" : null
                 }
-                options={[{ label: "🔊 Reproducir audio", value: "reproducir_audio" }]}
+                options={[{ label: "Reproducir audio", value: "reproducir_audio" }]}
                 onSelect={setSelectedAction}
               />
 
