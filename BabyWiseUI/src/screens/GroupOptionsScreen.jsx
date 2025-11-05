@@ -435,6 +435,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
   const [selectedAction, setSelectedAction] = useState(null);
   const [selectedAudio, setSelectedAudio] = useState(null);
   const [isSavingRule, setIsSavingRule] = useState(false);
+  const [selectedScope, setSelectedScope] = useState(null)
 
   // Audios cargados
   const [audios, setAudios] = useState([]);
@@ -487,6 +488,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       event: selectedEvent,
       action: selectedAction,
       audio: selectedAudio || null,
+      scope: selectedScope,
+      cameraIdentity: selectedScope === "CAMERA" ? selectedCamera : null,
     };
 
     try {
@@ -505,6 +508,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       setSelectedEvent(null);
       setSelectedAction(null);
       setSelectedAudio(null);
+      setSelectedCamera(null);
+      setSelectedScope(null)
       fetchRules(); // refrescar lista
     } catch (err) {
       console.error(err);
@@ -539,7 +544,9 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     setEditingRule(rule);
     setSelectedEvent(rule.event);
     setSelectedAction(rule.action);
+    setSelectedScope(rule.scope)
     setSelectedAudio(rule.audio|| null);
+    if(rule.cameraIdentity) setSelectedCamera(rule.cameraIdentity)
   };
 
   
@@ -1187,6 +1194,11 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                             Audio: {rule.audio}
                           </Text>
                         )}
+                        {rule.scope && (
+                          <Text style={styles.ruleSubtextSmall}>
+                            Aplicar a: {rule.scope === 'GLOBAL' ? 'Todas las cámaras' : rule.cameraIdentity}
+                          </Text>
+                        )}
                       </View>
                       <View style={styles.ruleActions}>
                         <TouchableOpacity onPress={() => handleEditRule(rule)}>
@@ -1228,7 +1240,28 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 ]}
                 onSelect={setSelectedEvent}
               />
-
+              {/* Selector de Scope */}
+              <DropdownSelector
+                label="Aplicar a"
+                selected={selectedScope === null ? selectedScope : selectedScope === "GLOBAL" ? "🌍 Todas las camaras" : "📷 Cámara específica" }
+                options={[
+                  { label: "🌍 Todas las camaras", value: "GLOBAL" },
+                  { label: "📷 Cámara específica", value: "CAMERA" },
+                ]}
+                onSelect={setSelectedScope}
+              />
+              {/* Seleccion de Cámara */}
+              {selectedScope === "CAMERA" && (
+                <DropdownSelector
+                  label="Seleccionar cámara"
+                  selected={selectedCamera}
+                  options={fetchedCameras.map((cam) => ({
+                    label: cam.name,
+                    value: cam.name,
+                  }))}
+                  onSelect={setSelectedCamera}
+              />
+              )}
               {/* Acción */}
               <DropdownSelector
                 label="Acción"
@@ -1268,6 +1301,8 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   setSelectedEvent(null);
                   setSelectedAction(null);
                   setSelectedAudio(null);
+                  setSelectedCamera(null);
+                  setSelectedScope(null)
                   setShowAdvancedConfigModal(false);  
                 }}
               >
@@ -1305,7 +1340,7 @@ const DropdownSelector = ({ label, selected, options, onSelect }) => {
         style={styles.dropdownSelected}
         onPress={() => setOpen(true)}
       >
-        <Text style={{ color: selected ? '#111' : '#94A3B8' }}>
+        <Text style={{ color: '#94A3B8' }}>
           {selected || `Seleccionar ${label.toLowerCase()}`}
         </Text>
         <MaterialDesignIcons name="chevron-down" size={20} color="#64748B" />
