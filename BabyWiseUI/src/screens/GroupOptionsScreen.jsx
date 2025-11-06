@@ -549,7 +549,10 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     if(rule.cameraIdentity) setSelectedCamera(rule.cameraIdentity)
   };
 
-  
+  const truncate = (str, max = 20) => {
+    if (!str) return '';
+    return str.length > max ? str.slice(0, max) + '...' : str;
+  };
   return (
     <SafeAreaView style={GlobalStyles.container}>
       <View style={styles.headerRow}>
@@ -1191,7 +1194,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                       </Text>
                       {rule.audio && (
                           <Text style={styles.ruleSubtextSmall}>
-                          Audio: {rule.audio}
+                          Audio: {truncate(rule.audio, 25)}
                         </Text>
                       )}
                       {rule.scope && (
@@ -1490,22 +1493,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   ruleSubtextSmall: {
-    fontSize: 12,
     color: '#64748B',
-    flexShrink: 1,
-    flexWrap: 'wrap',
-    maxWidth: '100%',
-    numberOfLines: 1,
-    ellipsizeMode: 'tail',
-},
+    fontSize: 12,
+  },
   ruleActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  ruleTextContainer: {
-    flex: 1, 
-    marginRight: 8, 
+    gap: 12,
   },
   sectionTitle: {
     fontWeight: 'bold',
