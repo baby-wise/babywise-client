@@ -1202,7 +1202,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                       </View>
                       <View style={styles.ruleActions}>
                         <TouchableOpacity onPress={() => handleEditRule(rule)}>
-                          <MaterialDesignIcons name="pencil" size={20} color="#3E5F8A" />
+                          <MaterialDesignIcons name="pencil" size={20} color={Colors.secondary} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleDeleteRule(rule._id)}>
                           <MaterialDesignIcons name="delete" size={20} color="#DC2626" />
