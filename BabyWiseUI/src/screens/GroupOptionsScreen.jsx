@@ -1194,7 +1194,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                       </Text>
                       {rule.audio && (
                           <Text style={styles.ruleSubtextSmall}>
-                          Audio: {truncate(rule.audio, 25)}
+                          Audio: {truncate(rule.audio, 20)}
                         </Text>
                       )}
                       {rule.scope && (
