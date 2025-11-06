@@ -229,6 +229,44 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     );
   };
 
+  //Handle salir del grupo
+   const handleLeaveGroup = async (member) => {
+
+    // Mostrar confirmación
+    Alert.alert(
+      'Confirmar',
+      `¿Estás seguro de que deseas salir del grupo?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Si',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('Calling removeMember with:', {
+                UID: member.UID,
+                groupId: group._id || group.id
+              });
+              
+              const result = await groupService.removeMember(member.UID, group._id || group.id);
+              
+              console.log('removeMember result:', result);
+              showSuccessToast('Miembro eliminado correctamente');
+              // Refrescar la lista de miembros
+              navigation.navigate('HomeGroups');
+            } catch (error) {
+              Alert.alert('Error', `Esta accion no esta disponible en este momento`);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   // Función para abrir el modal de miembros
   const openMembersModal = async () => {
     setShowMembersModal(true);
@@ -1035,7 +1073,16 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                           <View style={styles.memberTextContainer}>
                             <Text style={styles.memberEmail}>{member.email}</Text>
                             {isCurrentUser && (
-                              <Text style={styles.currentUserLabel}>(Tú)</Text>
+                              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                <Text style={styles.currentUserLabel}>(Tú)</Text>
+                                {/* Botón de eliminar miembro */}
+                                <TouchableOpacity
+                                  style={styles.removeButton}
+                                  onPress={() => handleLeaveGroup(member)}
+                                >
+                                  <MaterialDesignIcons name="exit-to-app" size={24} color="#DC2626" />
+                                </TouchableOpacity>
+                              </View>
                             )}
                           </View>
                         </View>
