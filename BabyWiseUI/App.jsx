@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { TouchableOpacity, Text, View, PanResponder, Animated } from 'react-native';
+import { TouchableOpacity, Text, View, PanResponder, Animated, Platform, PermissionsAndroid } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import { SocketProvider } from './src/contexts/SocketContext';
 import { NavigationContainer } from '@react-navigation/native';
@@ -12,6 +12,7 @@ import RecordingsListScreen from './src/screens/RecordingsListScreen';
 import RecordingPlayerScreen from './src/screens/RecordingPlayerScreen';
 import AudioListScreen from './src/screens/AudioListScreen';
 import StatisticsScreen from './src/screens/StatisticsScreen';
+import { requestNotificationPermissionFirstTimeOpen } from './src/services/requestPermission';
 
 const Stack = createStackNavigator();
 
@@ -37,8 +38,6 @@ const forSlide = ({ current, next, layouts }) => {
   };
 };
 
-
-
 const App = () => {
   // Estado global para mostrar popup de notificación
   const [notifPopup, setNotifPopup] = useState({ visible: false, message: '', groupId: null });
@@ -52,6 +51,13 @@ const App = () => {
   // Flag para procesar initial notification solo una vez
   const initialNotificationProcessed = useRef(false);
   
+  useEffect(() => {
+    requestNotificationPermissionFirstTimeOpen();
+  }, []);
+
+
+
+
   // Recibir el email desde HomeGroupsScreen
   const handleSetUserEmail = (email) => {
     setUserEmail(email);
