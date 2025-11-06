@@ -21,6 +21,7 @@ import { signInWithCredential, GoogleAuthProvider, signOut } from '@react-native
 import { groupService, userService } from '../services/apiService';
 import { GlobalStyles, Colors } from '../styles/Styles';
 import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons';
+import { requestNotificationPermission } from '../services/requestPermission';
 
 const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
   // Estado para el popup de notificación
@@ -482,7 +483,10 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
       if (!currentUser) {
         throw new Error('Usuario no autenticado');
       }
-
+      if(userSettings.allowNotifications){
+        console.log("Mandando a request permisions")
+        requestNotificationPermission()
+      }
       const response = await userService.updateUserSettings(currentUser.uid, userSettings);
       
       if (response.success) {

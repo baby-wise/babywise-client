@@ -422,6 +422,134 @@ const GroupOptionsScreen = ({ navigation, route }) => {
     }
   };
 
+  // Estado del modal avanzado
+  const [showAdvancedConfigModal, setShowAdvancedConfigModal] = useState(false);
+
+  // Estado de reglas
+  const [rules, setRules] = useState([]);
+  const [loadingRules, setLoadingRules] = useState(false);
+
+  // Estado de edición/creación de regla
+  const [editingRule, setEditingRule] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedAction, setSelectedAction] = useState(null);
+  const [selectedAudio, setSelectedAudio] = useState(null);
+  const [isSavingRule, setIsSavingRule] = useState(false);
+  const [selectedScope, setSelectedScope] = useState(null)
+
+  // Audios cargados
+  const [audios, setAudios] = useState([]);
+  const [loadingAudios, setLoadingAudios] = useState(false);
+
+  // Obtener audios del grupo
+  useEffect(() => {
+    const fetchAudios = async () => {
+      try {
+        setLoadingAudios(true);
+        const res = await fetch(`${SIGNALING_SERVER_URL}/audios?room=${group.id}`);
+        const data = await res.json();
+        setAudios(data.audios || []);
+      } catch (err) {
+        console.error("Error cargando audios", err);
+      } finally {
+        setLoadingAudios(false);
+      }
+    };
+    fetchAudios();
+  }, [group.id]);
+
+  // Obtener reglas del backend
+  const fetchRules = async () => {
+    try {
+      setLoadingRules(true);
+      const data = await groupService.getGroupRules(group.id)
+
+      setRules(data|| []);
+    } catch (err) {
+      console.error("Error cargando reglas:", err);
+    } finally {
+      setLoadingRules(false);
+    }
+  };
+
+  // Ejecutar cuando se abre el modal
+  useEffect(() => {
+    if (showAdvancedConfigModal) fetchRules();
+  }, [showAdvancedConfigModal]);
+
+  // Guardar o editar una regla (handler)
+  const handleSaveRule = async () => {
+    if (!selectedEvent || !selectedAction) {
+      Alert.alert("Error", "Selecciona un evento y una acción");
+      return;
+    }
+
+    const newRule = {
+      event: selectedEvent,
+      action: selectedAction,
+      audio: selectedAudio || null,
+      scope: selectedScope,
+      cameraIdentity: selectedScope === "CAMERA" ? selectedCamera : null,
+    };
+
+    try {
+      setIsSavingRule(true);
+      if(editingRule){
+        newRule._id = editingRule._id
+        await groupService.updateGroupRules(group.id, newRule)
+      }else{
+        await groupService.addGroupRules(group.id, newRule)
+      }
+
+      showSuccessToast(
+        editingRule ? "Regla actualizada" : "Regla agregada correctamente"
+      );
+      setEditingRule(null);
+      setSelectedEvent(null);
+      setSelectedAction(null);
+      setSelectedAudio(null);
+      setSelectedCamera(null);
+      setSelectedScope(null)
+      fetchRules(); // refrescar lista
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "No se pudo guardar la regla");
+    } finally {
+      setIsSavingRule(false);
+    }
+  };
+
+  // Eliminar una regla
+  const handleDeleteRule = async (ruleId) => {
+    Alert.alert("Confirmar", "¿Eliminar esta regla?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await groupService.deleteGroupRules(group.id,ruleId)
+            showSuccessToast("Regla eliminada");
+            fetchRules();
+          } catch (err) {
+            Alert.alert("Error", "No se pudo eliminar la regla");
+          }
+        },
+      },
+    ]);
+  };
+
+  // Editar una regla existente
+  const handleEditRule = (rule) => {
+    setEditingRule(rule);
+    setSelectedEvent(rule.event);
+    setSelectedAction(rule.action);
+    setSelectedScope(rule.scope)
+    setSelectedAudio(rule.audio|| null);
+    if(rule.cameraIdentity) setSelectedCamera(rule.cameraIdentity)
+  };
+
+  
   return (
     <SafeAreaView style={GlobalStyles.container}>
       <View style={styles.headerRow}>
@@ -763,6 +891,15 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 </View>
               </>
             )}
+
+            {isAdmin && (
+              <TouchableOpacity 
+                style={[styles.adminButton, {backgroundColor: Colors.secondary}]}
+                onPress={() => setShowAdvancedConfigModal(true)}
+              >
+                <Text style={styles.adminButtonText}>Configuraciones avanzadas</Text>
+              </TouchableOpacity>
+            )}
             
             <View style={GlobalStyles.modalButtons}>
               <TouchableOpacity 
@@ -1024,12 +1161,407 @@ const GroupOptionsScreen = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
+      
+      {/* Modal de Configuraciones Avanzadas */}
+      <Modal
+        visible={showAdvancedConfigModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAdvancedConfigModal(false)}
+      >
+        <View style={GlobalStyles.modalOverlay}>
+          <View style={[GlobalStyles.modalContainer, { maxHeight: '90%' }]}>
+            <Text style={GlobalStyles.modalTitle}>Configuraciones avanzadas</Text>
 
+            {/* LISTA DE REGLAS */}
+            {loadingRules ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#4CAF50" />
+                <Text style={styles.loadingText}>Cargando reglas...</Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 250 }}>
+                {rules.length > 0 ? (
+                  rules.map((rule) => (
+                    <View key={rule._id} style={styles.ruleItem}>
+                      <View>
+                        <Text style={styles.ruleTitle}>Evento: {rule.event.toUpperCase()}</Text>
+                        <Text style={styles.ruleSubtext}>
+                          Acción: {rule.action === "reproducir_audio" ? "Reproducir audio" : rule.action}
+                        </Text>
+                        {rule.audio && (
+                          <Text style={styles.ruleSubtextSmall}>
+                            Audio: {rule.audio}
+                          </Text>
+                        )}
+                        {rule.scope && (
+                          <Text style={styles.ruleSubtextSmall}>
+                            Aplicar a: {rule.scope === 'GLOBAL' ? 'Todas las cámaras' : rule.cameraIdentity}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.ruleActions}>
+                        <TouchableOpacity onPress={() => handleEditRule(rule)}>
+                          <MaterialDesignIcons name="pencil" size={20} color={Colors.secondary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeleteRule(rule._id)}>
+                          <MaterialDesignIcons name="delete" size={20} color="#DC2626" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={{ color: '#64748B', textAlign: 'center' }}>
+                    No hay reglas configuradas
+                  </Text>
+                )}
+              </ScrollView>
+            )}
+
+            {/* FORMULARIO PARA AGREGAR / EDITAR */}
+            <View style={styles.newRuleContainer}>
+              <Text style={styles.sectionTitle}>
+                {editingRule ? "Editar regla" : "Nueva regla"}
+              </Text>
+
+              {/* Evento */}
+              <DropdownSelector
+                label="Evento"
+                selected={
+                  selectedEvent
+                    ? selectedEvent === "LLANTO" ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="baby-bottle-outline" size={18} color={Colors.secondary} />
+                          <Text>Llanto</Text>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="motion-sensor" size={18} color={Colors.secondary} />
+                          <Text>Movimiento</Text>
+                        </View>
+                      )
+                    : null
+                }
+                options={[
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="baby-bottle-outline" size={18} color={Colors.secondary} />
+                        <Text>Llanto</Text>
+                      </View>
+                    ),
+                    value: "LLANTO",
+                  },
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="motion-sensor" size={18} color={Colors.secondary} />
+                        <Text>Movimiento</Text>
+                      </View>
+                    ),
+                    value: "MOVIMIENTO",
+                  },
+                ]}
+                onSelect={setSelectedEvent}
+              />
+
+              {/* Selector de Scope */}
+              <DropdownSelector
+                label="Aplicar a"
+                selected={
+                  selectedScope
+                    ? selectedScope === "GLOBAL" ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="earth" size={18} color={Colors.secondary} />
+                          <Text>Todas las cámaras</Text>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="camera" size={18} color={Colors.secondary} />
+                          <Text>Cámara específica</Text>
+                        </View>
+                      )
+                    : null
+                }
+                options={[
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="earth" size={18} color={Colors.secondary} />
+                        <Text>Todas las cámaras</Text>
+                      </View>
+                    ),
+                    value: "GLOBAL",
+                  },
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="camera" size={18} color={Colors.secondary} />
+                        <Text>Cámara específica</Text>
+                      </View>
+                    ),
+                    value: "CAMERA",
+                  },
+                ]}
+                onSelect={setSelectedScope}
+              />
+
+              {/* Selección de Cámara */}
+              {selectedScope === "CAMERA" && (
+                <DropdownSelector
+                  label="Seleccionar cámara"
+                  selected={
+                    selectedCamera ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="video" size={18} color={Colors.secondary} />
+                        <Text>{selectedCamera}</Text>
+                      </View>
+                    ) : null
+                  }
+                  options={fetchedCameras.map((cam) => ({
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="video" size={18} color={Colors.secondary} />
+                        <Text>{cam.name}</Text>
+                      </View>
+                    ),
+                    value: cam.name,
+                  }))}
+                  onSelect={setSelectedCamera}
+              />
+              )}
+
+              {/* Acción */}
+              <DropdownSelector
+                label="Acción"
+                selected={
+                  selectedAction === "reproducir_audio" ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <MaterialDesignIcons name="volume-high" size={18} color={Colors.secondary} />
+                      <Text>Reproducir audio</Text>
+                    </View>
+                  ) : null
+                }
+                options={[
+                  {
+                    label: (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="volume-high" size={18} color={Colors.secondary} />
+                        <Text>Reproducir audio</Text>
+                      </View>
+                    ),
+                    value: "reproducir_audio",
+                  },
+                ]}
+                onSelect={setSelectedAction}
+              />
+
+              {/* Audio (solo si se seleccionó reproducir_audio) */}
+              {selectedAction === "reproducir_audio" && (
+                <DropdownSelector
+                  label="Audio"
+                  selected={
+                    selectedAudio ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <MaterialDesignIcons name="music" size={18} color={Colors.secondary} />
+                        <Text>{selectedAudio}</Text>
+                      </View>
+                    ) : null
+                  }
+                  options={audios.map((a) => {
+                    const name = a.key
+                      .replace(`audio/${group.id}/`, "")
+                      .replace(/\.[^/.]+$/, "");
+                    return {
+                      label: (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <MaterialDesignIcons name="music" size={18} color={Colors.secondary} />
+                          <Text>{name}</Text>
+                        </View>
+                      ),
+                      value: name,
+                    };
+                  })}
+                  onSelect={setSelectedAudio}
+              />
+              )}
+            </View>
+
+            {/* BOTONES */}
+            <View style={[GlobalStyles.modalButtons, { marginTop: 16 }]}>
+              <TouchableOpacity
+                style={[GlobalStyles.modalButton, GlobalStyles.cancelButton]}
+                onPress={() => {
+                  setEditingRule(null);
+                  setSelectedEvent(null);
+                  setSelectedAction(null);
+                  setSelectedAudio(null);
+                  setSelectedCamera(null);
+                  setSelectedScope(null)
+                  setShowAdvancedConfigModal(false);  
+                }}
+              >
+                <Text style={GlobalStyles.cancelButtonText}>Cerrar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[GlobalStyles.modalButton, GlobalStyles.addButton]}
+                onPress={handleSaveRule}
+                disabled={isSavingRule}
+              >
+                {isSavingRule ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.addButtonText}>
+                    {editingRule ? "Actualizar" : "Agregar"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
   </SafeAreaView>
   );
 };
 
+const DropdownSelector = ({ label, selected, options, onSelect }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <Text style={styles.settingLabel}>{label}</Text>
+      <TouchableOpacity
+        style={styles.dropdownSelected}
+        onPress={() => setOpen(true)}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {selected ? (
+            typeof selected === 'string' ? (
+              <Text style={{ color: '#111' }}>{selected}</Text>
+            ) : (
+              selected
+            )
+          ) : (
+            <Text style={{ color: '#94A3B8' }}>
+              {`Seleccionar ${label.toLowerCase()}`}
+            </Text>
+          )}
+        </View>
+        <MaterialDesignIcons name="chevron-down" size={20} color="#64748B" />
+      </TouchableOpacity>
+
+      {/* Modal para opciones */}
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownOverlay}
+          activeOpacity={1}
+          onPressOut={() => setOpen(false)}
+        >
+          <View style={styles.dropdownModal}>
+            {options.map((opt) => (
+              <TouchableOpacity
+                key={opt.value}
+                style={styles.dropdownOption}
+                onPress={() => {
+                  onSelect(opt.value);
+                  setOpen(false);
+                }}
+              >
+                <Text style={styles.dropdownOptionText}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+};
+
+
 const styles = StyleSheet.create({
+  dropdownSelected: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+  },
+
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  dropdownModal: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 8,
+    maxHeight: '50%',
+  },
+
+  dropdownOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+
+  dropdownOptionText: {
+    color: '#111',
+    fontSize: 15,
+  },
+  ruleItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  ruleTitle: {
+    color: '#1E293B',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  ruleSubtext: {
+    color: '#475569',
+    fontSize: 13,
+  },
+  ruleSubtextSmall: {
+    color: '#64748B',
+    fontSize: 12,
+  },
+  ruleActions: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontWeight: 'bold',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  newRuleContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#CBD5E1',
+    paddingTop: 10,
+  },
   adminButton: {
     flexDirection: 'row',
     alignItems: 'center',
