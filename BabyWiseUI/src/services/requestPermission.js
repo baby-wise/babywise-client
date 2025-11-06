@@ -15,14 +15,7 @@ export const requestNotificationPermission = async () => {
 
         // Pedimos el permiso si no está concedido
         const result = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-            {
-            title: 'Permiso para notificaciones',
-            message:
-                'Esta app necesita permisos para enviarte alertas y notificaciones importantes.',
-            buttonPositive: 'Permitir',
-            }
-        );
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
 
         if (result === PermissionsAndroid.RESULTS.GRANTED) {
             console.log('✅ Permiso concedido');
