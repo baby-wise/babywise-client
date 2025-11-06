@@ -1231,12 +1231,12 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   selectedEvent
                     ? selectedEvent === "LLANTO" ? (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="baby" size={18} color="#3E5F8A" />
+                          <MaterialDesignIcons name="baby-bottle-outline" size={18} color={Colors.secondary} />
                           <Text>Llanto</Text>
                         </View>
                       ) : (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="motion-sensor" size={18} color="#3E5F8A" />
+                          <MaterialDesignIcons name="motion-sensor" size={18} color={Colors.secondary} />
                           <Text>Movimiento</Text>
                         </View>
                       )
@@ -1246,7 +1246,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   {
                     label: (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="baby" size={18} color="#3E5F8A" />
+                        <MaterialDesignIcons name="baby-bottle-outline" size={18} color={Colors.secondary} />
                         <Text>Llanto</Text>
                       </View>
                     ),
@@ -1255,7 +1255,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   {
                     label: (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="motion-sensor" size={18} color="#3E5F8A" />
+                        <MaterialDesignIcons name="motion-sensor" size={18} color={Colors.secondary} />
                         <Text>Movimiento</Text>
                       </View>
                     ),
@@ -1272,12 +1272,12 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   selectedScope
                     ? selectedScope === "GLOBAL" ? (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="earth" size={18} color="#3E5F8A" />
+                          <MaterialDesignIcons name="earth" size={18} color={Colors.secondary} />
                           <Text>Todas las cámaras</Text>
                         </View>
                       ) : (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="video" size={18} color="#3E5F8A" />
+                          <MaterialDesignIcons name="camera" size={18} color={Colors.secondary} />
                           <Text>Cámara específica</Text>
                         </View>
                       )
@@ -1287,7 +1287,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   {
                     label: (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="earth" size={18} color="#3E5F8A" />
+                        <MaterialDesignIcons name="earth" size={18} color={Colors.secondary} />
                         <Text>Todas las cámaras</Text>
                       </View>
                     ),
@@ -1296,7 +1296,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   {
                     label: (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="video" size={18} color="#3E5F8A" />
+                        <MaterialDesignIcons name="camera" size={18} color={Colors.secondary} />
                         <Text>Cámara específica</Text>
                       </View>
                     ),
@@ -1313,7 +1313,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   selected={
                     selectedCamera ? (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="cctv" size={18} color="#3E5F8A" />
+                        <MaterialDesignIcons name="video" size={18} color={Colors.secondary} />
                         <Text>{selectedCamera}</Text>
                       </View>
                     ) : null
@@ -1321,7 +1321,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   options={fetchedCameras.map((cam) => ({
                     label: (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="cctv" size={18} color="#3E5F8A" />
+                        <MaterialDesignIcons name="video" size={18} color={Colors.secondary} />
                         <Text>{cam.name}</Text>
                       </View>
                     ),
@@ -1337,7 +1337,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                 selected={
                   selectedAction === "reproducir_audio" ? (
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <MaterialDesignIcons name="volume-high" size={18} color="#3E5F8A" />
+                      <MaterialDesignIcons name="volume-high" size={18} color={Colors.secondary} />
                       <Text>Reproducir audio</Text>
                     </View>
                   ) : null
@@ -1346,7 +1346,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   {
                     label: (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="volume-high" size={18} color="#3E5F8A" />
+                        <MaterialDesignIcons name="volume-high" size={18} color={Colors.secondary} />
                         <Text>Reproducir audio</Text>
                       </View>
                     ),
@@ -1363,7 +1363,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   selected={
                     selectedAudio ? (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="music" size={18} color="#3E5F8A" />
+                        <MaterialDesignIcons name="music" size={18} color={Colors.secondary} />
                         <Text>{selectedAudio}</Text>
                       </View>
                     ) : null
@@ -1375,7 +1375,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                     return {
                       label: (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="music" size={18} color="#3E5F8A" />
+                          <MaterialDesignIcons name="music" size={18} color={Colors.secondary} />
                           <Text>{name}</Text>
                         </View>
                       ),
