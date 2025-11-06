@@ -1182,34 +1182,34 @@ const GroupOptionsScreen = ({ navigation, route }) => {
             ) : (
               <ScrollView style={{ maxHeight: 250 }}>
                 {rules.length > 0 ? (
-                  rules.map((rule) => (
-                    <View key={rule._id} style={styles.ruleItem}>
+                 rules.map((rule) => (
+                  <View key={rule._id} style={styles.ruleItem}>
                       <View>
-                        <Text style={styles.ruleTitle}>Evento: {rule.event.toUpperCase()}</Text>
-                        <Text style={styles.ruleSubtext}>
-                          Acción: {rule.action === "reproducir_audio" ? "Reproducir audio" : rule.action}
+                      <Text style={styles.ruleTitle}>Evento: {rule.event.toUpperCase()}</Text>
+                      <Text style={styles.ruleSubtext}>
+                        Acción: {rule.action === "reproducir_audio" ? "Reproducir audio" : rule.action}
+                      </Text>
+                      {rule.audio && (
+                          <Text style={styles.ruleSubtextSmall}>
+                          Audio: {rule.audio}
                         </Text>
-                        {rule.audio && (
-                          <Text style={styles.ruleSubtextSmall}>
-                            Audio: {rule.audio}
-                          </Text>
-                        )}
-                        {rule.scope && (
-                          <Text style={styles.ruleSubtextSmall}>
-                            Aplicar a: {rule.scope === 'GLOBAL' ? 'Todas las cámaras' : rule.cameraIdentity}
-                          </Text>
-                        )}
-                      </View>
-                      <View style={styles.ruleActions}>
-                        <TouchableOpacity onPress={() => handleEditRule(rule)}>
-                          <MaterialDesignIcons name="pencil" size={20} color={Colors.secondary} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleDeleteRule(rule._id)}>
-                          <MaterialDesignIcons name="delete" size={20} color="#DC2626" />
-                        </TouchableOpacity>
-                      </View>
+                      )}
+                      {rule.scope && (
+                        <Text style={styles.ruleSubtextSmall}>
+                          Aplicar a: {rule.scope === 'GLOBAL' ? 'Todas las cámaras' : rule.cameraIdentity}
+                        </Text>
+                      )}
                     </View>
-                  ))
+                    <View style={styles.ruleActions}>
+                      <TouchableOpacity onPress={() => handleEditRule(rule)}>
+                        <MaterialDesignIcons name="pencil" size={20} color={Colors.secondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteRule(rule._id)}>
+                        <MaterialDesignIcons name="delete" size={20} color="#DC2626" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
                 ) : (
                   <Text style={{ color: '#64748B', textAlign: 'center' }}>
                     No hay reglas configuradas
@@ -1227,164 +1227,68 @@ const GroupOptionsScreen = ({ navigation, route }) => {
               {/* Evento */}
               <DropdownSelector
                 label="Evento"
-                selected={
-                  selectedEvent
-                    ? selectedEvent === "LLANTO" ? (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="baby-bottle-outline" size={18} color={Colors.secondary} />
-                          <Text>Llanto</Text>
-                        </View>
-                      ) : (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="motion-sensor" size={18} color={Colors.secondary} />
-                          <Text>Movimiento</Text>
-                        </View>
-                      )
-                    : null
-                }
-                options={[
-                  {
-                    label: (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="baby-bottle-outline" size={18} color={Colors.secondary} />
-                        <Text>Llanto</Text>
-                      </View>
-                    ),
-                    value: "LLANTO",
-                  },
-                  {
-                    label: (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="motion-sensor" size={18} color={Colors.secondary} />
-                        <Text>Movimiento</Text>
-                      </View>
-                    ),
-                    value: "MOVIMIENTO",
-                  },
-                ]}
+                selected={selectedEvent}
                 onSelect={setSelectedEvent}
+                options={[
+                  { icon: "baby-bottle-outline", text: "Llanto", value: "LLANTO" },
+                  { icon: "motion-sensor", text: "Movimiento", value: "MOVIMIENTO" },
+                ]}
               />
 
               {/* Selector de Scope */}
               <DropdownSelector
                 label="Aplicar a"
-                selected={
-                  selectedScope
-                    ? selectedScope === "GLOBAL" ? (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="earth" size={18} color={Colors.secondary} />
-                          <Text>Todas las cámaras</Text>
-                        </View>
-                      ) : (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="camera" size={18} color={Colors.secondary} />
-                          <Text>Cámara específica</Text>
-                        </View>
-                      )
-                    : null
-                }
-                options={[
-                  {
-                    label: (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="earth" size={18} color={Colors.secondary} />
-                        <Text>Todas las cámaras</Text>
-                      </View>
-                    ),
-                    value: "GLOBAL",
-                  },
-                  {
-                    label: (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="camera" size={18} color={Colors.secondary} />
-                        <Text>Cámara específica</Text>
-                      </View>
-                    ),
-                    value: "CAMERA",
-                  },
-                ]}
+                selected={selectedScope}
                 onSelect={setSelectedScope}
+                options={[
+                  { icon: "earth", text: "Todas las cámaras", value: "GLOBAL" },
+                  { icon: "camera", text: "Cámara específica", value: "CAMERA" },
+                ]}
               />
 
               {/* Selección de Cámara */}
               {selectedScope === "CAMERA" && (
                 <DropdownSelector
                   label="Seleccionar cámara"
-                  selected={
-                    selectedCamera ? (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="video" size={18} color={Colors.secondary} />
-                        <Text>{selectedCamera}</Text>
-                      </View>
-                    ) : null
-                  }
+                  selected={selectedCamera}
+                  onSelect={setSelectedCamera}
                   options={fetchedCameras.map((cam) => ({
-                    label: (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="video" size={18} color={Colors.secondary} />
-                        <Text>{cam.name}</Text>
-                      </View>
-                    ),
+                    icon: "video",
+                    text: cam.name,
                     value: cam.name,
                   }))}
-                  onSelect={setSelectedCamera}
               />
               )}
 
               {/* Acción */}
               <DropdownSelector
                 label="Acción"
-                selected={
-                  selectedAction === "reproducir_audio" ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <MaterialDesignIcons name="volume-high" size={18} color={Colors.secondary} />
-                      <Text>Reproducir audio</Text>
-                    </View>
-                  ) : null
-                }
-                options={[
-                  {
-                    label: (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="volume-high" size={18} color={Colors.secondary} />
-                        <Text>Reproducir audio</Text>
-                      </View>
-                    ),
-                    value: "reproducir_audio",
-                  },
-                ]}
+                selected={selectedAction}
                 onSelect={setSelectedAction}
+                options={[
+                  { icon: "volume-high", text: "Reproducir audio", value: "reproducir_audio" },
+                ]}
               />
 
               {/* Audio (solo si se seleccionó reproducir_audio) */}
               {selectedAction === "reproducir_audio" && (
                 <DropdownSelector
                   label="Audio"
-                  selected={
-                    selectedAudio ? (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <MaterialDesignIcons name="music" size={18} color={Colors.secondary} />
-                        <Text>{selectedAudio}</Text>
-                      </View>
-                    ) : null
-                  }
+                  selected={selectedAudio}
+                  onSelect={setSelectedAudio}
                   options={audios.map((a) => {
                     const name = a.key
                       .replace(`audio/${group.id}/`, "")
                       .replace(/\.[^/.]+$/, "");
                     return {
-                      label: (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <MaterialDesignIcons name="music" size={18} color={Colors.secondary} />
-                          <Text>{name}</Text>
-                        </View>
-                      ),
+                      icon: "music",
+                      text: name,
                       value: name,
                     };
                   })}
-                  onSelect={setSelectedAudio}
               />
               )}
+
             </View>
 
             {/* BOTONES */}
@@ -1428,30 +1332,39 @@ const GroupOptionsScreen = ({ navigation, route }) => {
 const DropdownSelector = ({ label, selected, options, onSelect }) => {
   const [open, setOpen] = useState(false);
 
+  // Buscar el texto e ícono del valor seleccionado
+  const selectedOption = options.find((opt) => opt.value === selected);
+
   return (
     <View style={{ marginBottom: 12 }}>
-      <Text style={styles.settingLabel}>{label}</Text>
+
+      {/* Selector principal */}
       <TouchableOpacity
         style={styles.dropdownSelected}
         onPress={() => setOpen(true)}
+        activeOpacity={0.7}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {selected ? (
-            typeof selected === 'string' ? (
-              <Text style={{ color: '#111' }}>{selected}</Text>
-            ) : (
-              selected
-            )
-          ) : (
-            <Text style={{ color: '#94A3B8' }}>
-              {`Seleccionar ${label.toLowerCase()}`}
-            </Text>
-          )}
-        </View>
+        {selectedOption ? (
+          <View style={styles.optionRow}>
+            {selectedOption.icon && (
+              <MaterialDesignIcons
+                name={selectedOption.icon}
+                size={18}
+                color={Colors.secondary}
+                style={{ marginRight: 6 }}
+              />
+            )}
+            <Text style={styles.selectedText}>{selectedOption.text}</Text>
+          </View>
+        ) : (
+          <Text style={styles.placeholderText}>
+            {`Seleccionar ${label.toLowerCase()}`}
+          </Text>
+        )}
         <MaterialDesignIcons name="chevron-down" size={20} color="#64748B" />
       </TouchableOpacity>
 
-      {/* Modal para opciones */}
+      {/* Modal */}
       <Modal
         visible={open}
         transparent
@@ -1472,8 +1385,19 @@ const DropdownSelector = ({ label, selected, options, onSelect }) => {
                   onSelect(opt.value);
                   setOpen(false);
                 }}
+                activeOpacity={0.8}
               >
-                <Text style={styles.dropdownOptionText}>{opt.label}</Text>
+                <View style={styles.optionRow}>
+                  {opt.icon && (
+                    <MaterialDesignIcons
+                      name={opt.icon}
+                      size={18}
+                      color={Colors.secondary}
+                      style={{ marginRight: 6 }}
+                    />
+                  )}
+                  <Text style={styles.dropdownOptionText}>{opt.text}</Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -1485,6 +1409,29 @@ const DropdownSelector = ({ label, selected, options, onSelect }) => {
 
 
 const styles = StyleSheet.create({
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dropdownSelected: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#FFF",
+  },
+  selectedText: {
+    color: "#111",
+    fontSize: 16,
+  },
+  placeholderText: {
+    color: "#94A3B8",
+    fontSize: 16,
+  },
   dropdownSelected: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1529,10 +1476,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
     borderRadius: 10,
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
   ruleTitle: {
     color: '#1E293B',
@@ -1544,13 +1490,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   ruleSubtextSmall: {
-    color: '#64748B',
     fontSize: 12,
-  },
+    color: '#64748B',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    maxWidth: '100%',
+    numberOfLines: 1,
+    ellipsizeMode: 'tail',
+},
   ruleActions: {
     flexDirection: 'row',
-    gap: 12,
     alignItems: 'center',
+    gap: 10,
+  },
+  ruleTextContainer: {
+    flex: 1, 
+    marginRight: 8, 
   },
   sectionTitle: {
     fontWeight: 'bold',
