@@ -1067,45 +1067,52 @@ const GroupOptionsScreen = ({ navigation, route }) => {
                   groupMembers.map((member, index) => {
                     const isCurrentUser = member.UID === currentUserUID;
                     return (
-                      <View key={member._id || index} style={styles.memberItem}>
-                        <View style={styles.memberInfo}>
-                          <MaterialDesignIcons name="account-circle" size={24} color="#64748B" />
-                          <View style={styles.memberTextContainer}>
-                            <Text style={styles.memberEmail}>{member.email}</Text>
+                    <View key={member._id || index} style={styles.memberItem}>
+                      <View style={styles.memberInfo}>
+                        <MaterialDesignIcons name="account-circle" size={24} color="#64748B" />
+                        
+                        <View style={styles.memberTextContainer}>
+                          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                            <Text style={[styles.memberEmail, { flexShrink: 1 }]}>
+                              {member.email}
+                            </Text>
+
                             {isCurrentUser && (
-                              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                                <Text style={styles.currentUserLabel}>(Tú)</Text>
-                                {/* Botón de eliminar miembro */}
-                                <TouchableOpacity
-                                  style={styles.removeButton}
-                                  onPress={() => handleLeaveGroup(member)}
-                                >
-                                  <MaterialDesignIcons name="exit-to-app" size={24} color="#DC2626" />
-                                </TouchableOpacity>
-                              </View>
+                              <Text style={styles.currentUserLabel} numberOfLines={1}>
+                                {" "}
+                                (Tú)
+                              </Text>
                             )}
                           </View>
-                        </View>
-                        {isAdmin && !isCurrentUser && (
-                          <View style={{ flexDirection: "row", alignItems: "center" }}>
 
-                            {/* Botón de eliminar miembro */}
+                          {isCurrentUser && (
                             <TouchableOpacity
-                              style={styles.removeButton}
-                              onPress={() => handleRemoveMember(member)}
+                              style={[styles.removeButton, { marginLeft: 8 }]}
+                              onPress={() => handleLeaveGroup(member)}
                             >
-                              <MaterialDesignIcons name="account-remove" size={24} color="#DC2626" />
+                              <MaterialDesignIcons name="exit-to-app" size={22} color="#DC2626" />
                             </TouchableOpacity>
-                            {/* Botón de opciones avanzadas */}
-                            <TouchableOpacity
-                              style={styles.optionsButton}
-                              onPress={() => handleOpenMemberOptions(member)}
-                            >
-                              <MaterialDesignIcons name="dots-vertical" size={22} color="#3E5F8A" />
-                            </TouchableOpacity>
-                          </View>
-                        )}
+                          )}
+                        </View>
                       </View>
+
+                      {isAdmin && !isCurrentUser && (
+                        <View style={{ flexDirection: "row", alignItems: "center" }}>
+                          <TouchableOpacity
+                            style={styles.removeButton}
+                            onPress={() => handleRemoveMember(member)}
+                          >
+                            <MaterialDesignIcons name="account-remove" size={22} color="#DC2626" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.removeButton, { marginLeft: 6, backgroundColor: "transparent" }]}
+                            onPress={() => handleOpenMemberOptions(member)}
+                          >
+                            <MaterialDesignIcons name="dots-vertical" size={22} color="#3E5F8A" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
                     );
                   })
                 ) : (
