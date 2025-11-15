@@ -849,7 +849,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       >
         <View style={GlobalStyles.modalOverlay}>
           <View style={GlobalStyles.modalContainer}>
-            <Text style={GlobalStyles.modalTitle}>Nombre del Bebe</Text>
+            <Text style={GlobalStyles.modalTitle}>Nombre del Bebé</Text>
             <TextInput
               style={GlobalStyles.modalInput}
               placeholderTextColor="#999"
