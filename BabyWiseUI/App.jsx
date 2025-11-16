@@ -144,7 +144,8 @@ const App = () => {
         popupText = `${title}${body ? '\n' + body : ''}`;
       }
       const groupId = remoteMessage?.data?.group || null;
-      setNotifPopup({ visible: true, message: popupText, groupId });
+      const baby = remoteMessage?.data?.baby || null
+      setNotifPopup({ visible: true, message: popupText, groupId,baby });
       Animated.timing(popupAnimY, {
         toValue: 0,
         duration: 0,
@@ -192,12 +193,13 @@ const App = () => {
   const handleNotifPress = () => {
     setNotifPopup(p => ({ ...p, visible: false }));
     const groupId = notifPopup.groupId;
+    const cameraName = notifPopup.baby? notifPopup.baby : ''
     let userName = 'anonimo';
     if (userEmail) {
       userName = userEmail.split('@')[0];
     }
     if (groupId && navigationRef.current) {
-      navigationRef.current.navigate('Viewer', { group: { id: groupId }, userName });
+      navigationRef.current.navigate('Viewer', { group: { id: groupId }, userName, cameraName });
     }
   };
 
