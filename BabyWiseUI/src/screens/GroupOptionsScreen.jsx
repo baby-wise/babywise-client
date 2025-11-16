@@ -790,7 +790,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Código de Invitación</Text>
+            <Text style={styles.modalTitle}>Código de invitación</Text>
             
             <Text style={styles.modalDescription}>
               Comparte este código con la persona que deseas agregar al grupo:

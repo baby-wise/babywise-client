@@ -676,7 +676,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
                   color: Colors.white, 
                   fontWeight: '600'
                 }}>
-                  Iniciar Sesión
+                  Iniciar sesión
                 </Text>
               )}
             </TouchableOpacity>
@@ -743,7 +743,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
       <View style={GlobalStyles.modalOverlay}>
         <View style={GlobalStyles.modalContainer}>
           <Text style={GlobalStyles.modalTitle}>
-            Crear nuevo gupo
+            Crear un grupo nuevo
           </Text>
 
           <TextInput
@@ -885,7 +885,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
                     color: Colors.text,
                     marginBottom: 4
                   }}>
-                    Permitir Notificaciones
+                    Permitir notificaciones
                   </Text>
                   <Text style={{ 
                     fontSize: 13, 
@@ -991,7 +991,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
             color: Colors.text, 
             fontWeight: '600'
           }}>
-            Crear Grupo Nuevo
+            Nuevo grupo
           </Text>
         </TouchableOpacity>
         
@@ -1011,7 +1011,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
             color: Colors.text, 
             fontWeight: '600'
           }}>
-            Unirse a Grupo
+            Unirse a un grupo
           </Text>
         </TouchableOpacity>
       </View>
