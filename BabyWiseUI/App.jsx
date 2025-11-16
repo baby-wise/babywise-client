@@ -241,7 +241,7 @@ const App = () => {
     // Si no hay grabación pero hay groupId, navegar al viewer en vivo
     else if (group && navigationRef.current) {
       console.log('[FCM] No hay grabación, navegando a Viewer en vivo');
-      navigationRef.current.navigate('Viewer', { group: { id: group }, userName });
+      navigationRef.current.navigate('Viewer', { group: { id: group }, userName, cameraName: baby });
     }
     // Fallback: mostrar mensaje
     else {
