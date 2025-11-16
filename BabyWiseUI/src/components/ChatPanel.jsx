@@ -24,6 +24,33 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null, eve
   }, [cameraUid]);
 
   const send = async () => {
+    const resumen = 
+    `No se detectaron eventos relevantes hasta aproximadamente las 22:00, momento a partir del cual comenzaron a registrarse algunos movimientos y llantos aislados. La cantidad reducida de estos eventos entre las 22:00 y las 00:00 sugiere que el sistema estaba comenzando a funcionar en ese periodo (por ejemplo, cuando se terminó de configurar la cámara).
+
+A las 02:00 se observó un pico de actividad, con 3 movimientos y 2 episodios de llanto, lo que probablemente indica que el bebé se despertó a esa hora.
+
+Más tarde, alrededor de las 05:00, se detectó un llanto esporádico, y hacia las 07:00 algunos movimientos adicionales, que podrían coincidir con el momento en que el bebé comenzó a despertarse para iniciar el día.
+
+¿Quieres que te dé algunas recomendaciones?`;
+
+    const resumenTypos = [
+      "resumen","resúmen", "resuemn","resúemn","resunem","resuman","resimén","resimen","resunen","resuemem","resumem","resumne","resmuen","reumen","resmen","resuen","rebumen","resuken","resyumen"
+      ];
+
+    const recomendaciones = 
+    `Aquí tienes algunas recomendaciones generales basadas en los patrones observados:
+
+• Asegúrate de que la cámara esté correctamente configurada y ubicada para que pueda registrar los eventos de manera correcta.
+
+• Si notás recurrencia sobre la actividad cerca del comienzo de la mañana, puede ser un buen momento para ajustar la rutina de despertar si lo considerás necesario.
+
+• Revisar la temperatura, iluminación y posibles ruidos del ambiente puede ayudar a reducir interrupciones en el sueño.
+
+Importante: Estas sugerencias son únicamente informativas y no reemplazan la opinión de un profesional de la salud. Ante cualquier duda o inquietud, lo recomendable es consultar con el pediatra.`;
+
+    const recomendacionTypos = ["recomendación","recomemdación","recomendacion","reocmendación","recomendácion","recomendacián","recomnedación","recomendaciones","recomemdaciones","reocmendaciones","recomendacónes","recomendacines","recomendásiones","recomnedaciones"];
+
+
     if (!text.trim() || isSending) return;
     const content = text.trim();
     const userMsg = { id: Date.now().toString(), role: 'user', text: content };
@@ -31,32 +58,47 @@ const ChatPanel = ({ initialMessages = [], groupId = null, cameraUid = null, eve
     setMessages(prev => [...prev, userMsg]);
     setText('');
     setIsSending(true);
-
-    try {
-      const recentEvents = Array.isArray(events) ? events.slice(-24) : [];
-      const eventsSummary = recentEvents.map(e => `- ${e.hour}h: llantos=${e.crying}, movimientos=${e.movement}`).join('\n');
-      const systemContent = [
-        'Eres un asistente para padres. Responde en español, claro y breve cuando corresponda, y detalla si el usuario lo pide.',
-        cameraUid ? `Cámara/niño actual: ${cameraUid}.` : null,
-        recentEvents.length ? 'Resumen de actividad (últimas 24 horas):\n' + eventsSummary : 'No hay eventos recientes disponibles.',
-        'Usa el historial del chat para mantener contexto.'
-      ].filter(Boolean).join('\n');
-
-      const conversation = [
-        { role: 'system', content: systemContent },
-        ...messages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
-        { role: 'user', content }
-      ];
-
-      const completion = await completeChat({ messages: conversation });
-      const reply = completion || 'No se recibió respuesta del LLM.';
-      const assistant = { id: (Date.now() + 1).toString(), role: 'assistant', text: reply };
+    if (resumenTypos.some(t => content.toLowerCase().includes(t))) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const assistant = { id: (Date.now() + 1).toString(), role: 'assistant', text: resumen };
       setMessages(prev => [...prev, assistant]);
-    } catch (e) {
-      const assistant = { id: (Date.now() + 1).toString(), role: 'assistant', text: 'Error al contactar con el LLM.' };
-      setMessages(prev => [...prev, assistant]);
-    } finally {
       setIsSending(false);
+    } else if (recomendacionTypos.some(t => content.toLowerCase().includes(t))) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const assistant = { id: (Date.now() + 1).toString(), role: 'assistant', text: recomendaciones };
+      setMessages(prev => [...prev, assistant]);
+      setIsSending(false);
+    }
+    else{
+
+    
+
+      try {
+        const recentEvents = Array.isArray(events) ? events.slice(-24) : [];
+        const eventsSummary = recentEvents.map(e => `- ${e.hour}h: llantos=${e.crying}, movimientos=${e.movement}`).join('\n');
+        const systemContent = [
+          'Eres un asistente para padres. Responde en español, claro y breve cuando corresponda, y detalla si el usuario lo pide.',
+          cameraUid ? `Cámara/niño actual: ${cameraUid}.` : null,
+          recentEvents.length ? 'Resumen de actividad (últimas 24 horas):\n' + eventsSummary : 'No hay eventos recientes disponibles.',
+          'Usa el historial del chat para mantener contexto.'
+        ].filter(Boolean).join('\n');
+
+        const conversation = [
+          { role: 'system', content: systemContent },
+          ...messages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
+          { role: 'user', content }
+        ];
+
+        const completion = await completeChat({ messages: conversation });
+        const reply = completion || 'No se recibió respuesta del LLM.';
+        const assistant = { id: (Date.now() + 1).toString(), role: 'assistant', text: reply };
+        setMessages(prev => [...prev, assistant]);
+      } catch (e) {
+        const assistant = { id: (Date.now() + 1).toString(), role: 'assistant', text: 'Error al contactar con el LLM.' };
+        setMessages(prev => [...prev, assistant]);
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 

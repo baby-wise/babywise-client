@@ -346,7 +346,7 @@ const StatisticsScreen = ({ navigation, route }) => {
         
         {/* Selector de cámaras */}
         <View style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 14, color: '#555', marginBottom: 6 }}>Bebe</Text>
+          <Text style={{ fontSize: 14, color: '#555', marginBottom: 6 }}>Bebé</Text>
           {isLoadingEvents ? (
             <View style={{ padding: 12, alignItems: 'center' }}>
               <ActivityIndicator size="small" color="#3E5F8A" />

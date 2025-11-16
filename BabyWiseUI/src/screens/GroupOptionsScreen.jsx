@@ -790,7 +790,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Código de Invitación</Text>
+            <Text style={styles.modalTitle}>Código de invitación</Text>
             
             <Text style={styles.modalDescription}>
               Comparte este código con la persona que deseas agregar al grupo:
@@ -849,7 +849,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       >
         <View style={GlobalStyles.modalOverlay}>
           <View style={GlobalStyles.modalContainer}>
-            <Text style={GlobalStyles.modalTitle}>Nombre del Bebe</Text>
+            <Text style={GlobalStyles.modalTitle}>Nombre del bebé</Text>
             <TextInput
               style={GlobalStyles.modalInput}
               placeholderTextColor="#999"
@@ -1054,7 +1054,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Miembros del Grupo</Text>
+            <Text style={styles.modalTitle}>Miembros del grupo</Text>
             
             {isLoadingMembers ? (
               <View style={styles.loadingContainer}>
