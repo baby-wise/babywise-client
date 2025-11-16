@@ -1054,7 +1054,7 @@ const GroupOptionsScreen = ({ navigation, route }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Miembros del Grupo</Text>
+            <Text style={styles.modalTitle}>Miembros del grupo</Text>
             
             {isLoadingMembers ? (
               <View style={styles.loadingContainer}>

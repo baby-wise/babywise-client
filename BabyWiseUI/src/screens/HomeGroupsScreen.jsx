@@ -700,7 +700,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
         />
       }
     >
-      <Text style={GlobalStyles.sectionTitle}>Mis Grupos</Text>
+      <Text style={GlobalStyles.sectionTitle}>Mis grupos</Text>
       
       {isLoadingGroups ? (
         <View style={{ alignItems: "center", paddingVertical: 40 }}>
@@ -743,7 +743,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
       <View style={GlobalStyles.modalOverlay}>
         <View style={GlobalStyles.modalContainer}>
           <Text style={GlobalStyles.modalTitle}>
-            Crear Nuevo Grupo
+            Crear nuevo gupo
           </Text>
 
           <TextInput
@@ -797,7 +797,7 @@ const HomeGroupsScreen = ({ navigation, setUserEmail }) => {
     >
       <View style={GlobalStyles.modalOverlay}>
         <View style={GlobalStyles.modalContainer}>
-          <Text style={GlobalStyles.modalTitle}>Unirse a Grupo</Text>
+          <Text style={GlobalStyles.modalTitle}>Unirse a un grupo</Text>
 
           <TextInput
             style={GlobalStyles.modalInput}
